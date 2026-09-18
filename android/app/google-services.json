@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "868787273216",
+    "project_id": "grindfit-app",
+    "storage_bucket": "grindfit-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:868787273216:android:d79dd46836b465868462e5",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuwS_agBfdUbOtNtei0tGWPBATYMISE0Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

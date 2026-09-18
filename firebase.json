@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"grindfit-app","appId":"1:868787273216:android:d79dd46836b465868462e5","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"grindfit-app","configurations":{"android":"1:868787273216:android:d79dd46836b465868462e5","ios":"1:868787273216:ios:5f742bba9c51470c8462e5"}}}}}}
