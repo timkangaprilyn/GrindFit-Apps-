@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/workout_plan.dart';
 import 'workout_complete_screen.dart';
 import 'manual_log_workout_screen.dart';
 import 'exercise_timer_screen.dart';
-import 'workout_plan_details_screen.dart';
 import 'package:intl/intl.dart';
 
 class LogWorkoutScreen extends StatefulWidget {

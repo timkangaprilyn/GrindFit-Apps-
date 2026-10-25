@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../models/app_state.dart';
+import '../models/workout_plan.dart';
 import 'ai_recommendations_screen.dart';
-import 'ai_recommendation_update_screen.dart';
+import 'analytics_dashboard_screen.dart';
 import 'main_navigation_screen.dart';
 import 'warmup_screen.dart';
-import 'workout_plan_details_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -44,11 +45,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => WarmupScreen(
-          exerciseList: exercises,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => WarmupScreen(exerciseList: exercises)),
     );
   }
 
@@ -75,23 +72,58 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           children: [
             Icon(Icons.healing_rounded, color: _gold),
             SizedBox(width: 8),
-            Text('Recovery & Safety Center',
-                style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              'Recovery & Safety Center',
+              style: TextStyle(
+                color: _white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'Your current recovery status is optimal. Ensure you get 7-8 hours of sleep and proper stretching between scheduled training days.',
-          style: TextStyle(color: _gray, fontSize: 13.5),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Rest day recommended',
+              style: TextStyle(
+                color: _gold,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Dahilan: 3 workouts sa 4 na araw.',
+              style: TextStyle(
+                color: _white,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Use today to recover with enough sleep, hydration, and gentle stretching.',
+              style: TextStyle(color: _gray, fontSize: 13.5),
+            ),
+          ],
         ),
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
               foregroundColor: _bg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Got it',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -100,15 +132,22 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   // Dialog para sa manual weight update
   void _showUpdateWeightDialog() {
-    final TextEditingController controller =
-        TextEditingController(text: _currentWeight.toString());
+    final TextEditingController controller = TextEditingController(
+      text: _currentWeight.toString(),
+    );
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Log Progress (Update Weight)',
-            style: TextStyle(color: _white, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Log Progress (Update Weight)',
+          style: TextStyle(
+            color: _white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: TextField(
           controller: controller,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -135,7 +174,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
               foregroundColor: _bg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               final parsed = double.tryParse(controller.text);
@@ -146,7 +187,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               }
               Navigator.pop(context);
             },
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Save',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -158,7 +202,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     final String todayString = DateFormat('E').format(DateTime.now());
 
     final String fullName = AppState.instance.fullName.trim();
-    final String firstName = fullName.isNotEmpty ? fullName.split(' ').first : 'Athlete';
+    final String firstName = fullName.isNotEmpty
+        ? fullName.split(' ').first
+        : 'Athlete';
 
     final String summary = AppState.instance.sessionSummary.isNotEmpty
         ? AppState.instance.sessionSummary
@@ -166,10 +212,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
     final int doneCount = _checklist.values.where((v) => v).length;
 
-    double initialWeight = 72.0; 
+    double initialWeight = 72.0;
     double totalDiff = initialWeight - _targetWeight;
     double currentLost = initialWeight - _currentWeight;
-    double progressValue = totalDiff > 0 ? (currentLost / totalDiff).clamp(0.0, 1.0) : 0.0;
+    double progressValue = totalDiff > 0
+        ? (currentLost / totalDiff).clamp(0.0, 1.0)
+        : 0.0;
     double remainingKg = (_currentWeight - _targetWeight).clamp(0.0, 99.0);
 
     final int scheduledStreakCount = 4;
@@ -214,18 +262,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        flex: 11,
-                        child: _buildChecklistCard(doneCount),
-                      ),
+                      Expanded(flex: 11, child: _buildChecklistCard(doneCount)),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 10,
-                        child: Column(
-                          children: [
-                            _buildSafetyCard(),
-                          ],
-                        ),
+                        child: Column(children: [_buildSafetyCard()]),
                       ),
                     ],
                   ),
@@ -289,7 +330,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AiRecommendationUpdateScreen()),
+              MaterialPageRoute(
+                builder: (_) => const AnalyticsDashboardScreen(),
+              ),
             );
           },
           child: Container(
@@ -303,11 +346,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(
-                  Icons.notifications_none_rounded,
-                  color: _white,
-                  size: 22,
-                ),
+                const Icon(Icons.bar_chart_rounded, color: _white, size: 22),
                 Positioned(
                   top: 10,
                   right: 10,
@@ -342,14 +381,18 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           _verticalDivider(),
           _stat(Icons.fitness_center_rounded, 'Workouts', '3/4', 'Scheduled'),
           _verticalDivider(),
-          _stat(Icons.bolt_rounded, 'Streak', '$scheduledStreakCount', 'Scheduled Days'),
+          _stat(
+            Icons.bolt_rounded,
+            'Streak',
+            '$scheduledStreakCount',
+            'Scheduled Days',
+          ),
         ],
       ),
     );
   }
 
-  Widget _verticalDivider() =>
-      Container(width: 1, height: 56, color: _border);
+  Widget _verticalDivider() => Container(width: 1, height: 56, color: _border);
 
   Widget _stat(IconData icon, String label, String value, String sub) {
     return Expanded(
@@ -393,8 +436,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title,
-      {String? action, VoidCallback? onAction}) {
+  Widget _buildSectionHeader(
+    String title, {
+    String? action,
+    VoidCallback? onAction,
+  }) {
     return Row(
       children: [
         Expanded(
@@ -512,8 +558,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            const Icon(Icons.schedule_rounded,
-                                color: _gold, size: 15),
+                            const Icon(
+                              Icons.schedule_rounded,
+                              color: _gold,
+                              size: 15,
+                            ),
                             const SizedBox(width: 5),
                             Flexible(
                               child: Text(
@@ -616,8 +665,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         ),
                       ),
                       child: done
-                          ? const Icon(Icons.check_rounded,
-                              color: _bg, size: 14)
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: _bg,
+                              size: 14,
+                            )
                           : null,
                     ),
                     const SizedBox(width: 10),
@@ -681,8 +733,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     color: _good.withAlpha(35),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.verified_user_rounded,
-                      color: _good, size: 20),
+                  child: const Icon(
+                    Icons.verified_user_rounded,
+                    color: _good,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 const Expanded(
@@ -745,7 +800,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               GestureDetector(
                 onTap: _showUpdateWeightDialog,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _gold.withAlpha(30),
                     borderRadius: BorderRadius.circular(10),
@@ -842,8 +900,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildBarItem(String day, double heightFactor,
-      {bool isHighlight = false}) {
+  Widget _buildBarItem(
+    String day,
+    double heightFactor, {
+    bool isHighlight = false,
+  }) {
     return Column(
       children: [
         Container(

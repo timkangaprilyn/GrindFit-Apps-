@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/workout_plan.dart';
 import 'exercise_timer_screen.dart';
-import 'workout_plan_details_screen.dart'; // Kung saan naroon ang PlanExercise model
 
 class WarmupScreen extends StatefulWidget {
   final List<PlanExercise> exerciseList;
