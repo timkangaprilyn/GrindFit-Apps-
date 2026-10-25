@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 import 'workout_complete_screen.dart';
 
 class ExerciseDetailScreen extends StatefulWidget {
@@ -19,30 +21,110 @@ class ExerciseDetailScreen extends StatefulWidget {
 }
 
 class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
-  late Timer _timer;
-  int _secondsElapsed = 0;
+  // Timers para sa Automatic Progression
+  int _activeSecondsRemaining = 30; // 30 segundo bawat active set
+  Timer? _activeTimer;
+  
   bool _isResting = false;
-  int _restSecondsRemaining = 45;
+  int _restSecondsRemaining = 45; // 45 segundo rest period
   Timer? _restTimer;
+
   int _currentSet = 1;
   final int _totalSets = 3;
+
+  // Video Player Controller
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _startWorkoutTimer();
+    _initializeVideo();
+    _startActiveSetTimer();
   }
 
-  void _startWorkoutTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isResting) {
+  void _initializeVideo() {
+    String videoUrl = _getVideoUrlForExercise(widget.exerciseName);
+    _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _isVideoInitialized = true;
+          });
+          _videoController?.setLooping(true);
+          _videoController?.play();
+        }
+      });
+  }
+
+  String _getVideoUrlForExercise(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('push')) {
+      return 'https://assets.mixkit.co/videos/preview/mixkit-man-doing-push-ups-in-a-gym-42999-large.mp4';
+    } else if (lower.contains('squat')) {
+      return 'https://assets.mixkit.co/videos/preview/mixkit-woman-doing-squats-with-weights-41551-large.mp4';
+    } else if (lower.contains('plank')) {
+      return 'https://assets.mixkit.co/videos/preview/mixkit-woman-doing-exercises-on-a-mat-42998-large.mp4';
+    }
+    return 'https://assets.mixkit.co/videos/preview/mixkit-man-doing-push-ups-in-a-gym-42999-large.mp4';
+  }
+
+  // 3 Hakbang para sa Tamang Porma (Dynamic batay sa ehersisyo)
+  List<String> _getStepsForExercise(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('push')) {
+      return [
+        'Panatilihing tuwid ang katawan mula ulo hanggang sakong.',
+        'Ilagay ang mga kamay nang medyo mas malawak kaysa sa balikat.',
+        'Ibaba ang dibdib malapit sa sahig, pagkatapos ay itulak paitaas.'
+      ];
+    } else if (lower.contains('squat')) {
+      return [
+        'Ihiwalay ang mga paa ayon sa lapad ng balikat, i-tighten ang core.',
+        'Umupo pabalik at pababa nang nakadikit ang mga sakong sa sahig.',
+        'Itulak ang katawan pataas gamit ang mga sakong para bumalik sa simula.'
+      ];
+    } else if (lower.contains('plank')) {
+      return [
+        'Ihanay ang mga siko nang direkta sa ilalim ng mga balikat.',
+        'I-engage ang core at glutes para hindi lumubog ang likod.',
+        'Huminga nang tuloy-tuloy sa buong tagal ng paghawak.'
+      ];
+    } else if (lower.contains('row')) {
+      return [
+        'I-hinge ang balakang pabalik at panatilihing tuwid ang likod.',
+        'Hilahin ang bigat patungo sa balakang habang pinipiga ang likod.',
+        'Ibaba nang may kontrol pabalik sa panimulang posisyon.'
+      ];
+    }
+    return [
+      'Posisyonan ang katawan sa tamang simula at panatilihin ang tikas.',
+      'Isagawa ang galaw nang may kontrol at wastong paghinga.',
+      'Tapusin ang buong range of motion nang ligtas.'
+    ];
+  }
+
+  // Automatic Active Set Timer
+  void _startActiveSetTimer() {
+    setState(() {
+      _isResting = false;
+      _activeSecondsRemaining = 30;
+    });
+
+    _activeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_activeSecondsRemaining > 0) {
         setState(() {
-          _secondsElapsed++;
+          _activeSecondsRemaining--;
         });
+      } else {
+        _activeTimer?.cancel();
+        HapticFeedback.mediumImpact();
+        _startRestTimer();
       }
     });
   }
 
+  // Automatic Rest Timer
   void _startRestTimer() {
     setState(() {
       _isResting = true;
@@ -56,46 +138,58 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         });
       } else {
         _restTimer?.cancel();
-        setState(() {
-          _isResting = false;
-          if (_currentSet < _totalSets) {
+        HapticFeedback.vibrate();
+
+        if (_currentSet < _totalSets) {
+          setState(() {
             _currentSet++;
-          }
-        });
+          });
+          _startActiveSetTimer();
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
+          );
+        }
       }
     });
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _activeTimer?.cancel();
     _restTimer?.cancel();
+    _videoController?.dispose();
     super.dispose();
   }
 
-  String _formatTime(int totalSeconds) {
-    int minutes = totalSeconds ~/ 60;
-    int seconds = totalSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
+  // GrindFit Theme Colors (Black, Gold, White)
+  static const Color _bg = Color(0xFF0A0A0B);
+  static const Color _card = Color(0xFF14161B);
+  static const Color _border = Color(0xFF2C2F36);
+  static const Color _gold = Color(0xFFF5B800);
+  static const Color _white = Colors.white;
+  static const Color _gray = Color(0xFF9AA3AE);
 
   @override
   Widget build(BuildContext context) {
+    final instructions = _getStepsForExercise(widget.exerciseName);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _card,
         elevation: 0,
-        automaticallyImplyLeading: true,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
+        iconTheme: const IconThemeData(color: _white),
         title: Text(
           widget.exerciseName,
           style: const TextStyle(
-            color: Color(0xFF0F172A),
+            color: _white,
             fontWeight: FontWeight.w900,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -103,16 +197,28 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Video Player Banner
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   width: double.infinity,
-                  height: 180,
-                  color: Colors.white,
-                  child: Image.network(
-                    'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?auto=format&fit=crop&w=600&q=80',
-                    fit: BoxFit.cover,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: _card,
+                    border: Border.all(color: _border),
                   ),
+                  child: _isVideoInitialized && _videoController != null
+                      ? FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: _videoController!.value.size.width,
+                            height: _videoController!.value.size.height,
+                            child: VideoPlayer(_videoController!),
+                          ),
+                        )
+                      : const Center(
+                          child: CircularProgressIndicator(color: _gold),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -121,7 +227,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
+                  color: _white,
                 ),
               ),
               const SizedBox(height: 8),
@@ -135,19 +241,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+              // Automatic Timer & Progress Card
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: _card,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  border: Border.all(color: _border, width: 1.2),
                 ),
                 child: Column(
                   children: [
@@ -155,13 +255,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(_totalSets, (index) {
                         bool isCompleted = index + 1 < _currentSet;
-                        bool isCurrent = index + 1 == _currentSet && !_isResting;
+                        bool isCurrent = index + 1 == _currentSet;
                         return Container(
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           width: 40,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: isCompleted || isCurrent ? const Color(0xFFFF5200) : const Color(0xFFE2E8F0),
+                            color: isCompleted || isCurrent ? _gold : _border,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         );
@@ -171,13 +271,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: _isResting ? Colors.blue.withValues(alpha: 0.1) : const Color(0xFFFF5200).withValues(alpha: 0.1),
+                        color: _isResting ? Colors.blue.withValues(alpha: 0.15) : _gold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        _isResting ? 'REST PERIOD' : 'SET $_currentSet OF $_totalSets',
+                        _isResting ? 'REST PERIOD' : 'SET $_currentSet OF $_totalSets (ACTIVE)',
                         style: TextStyle(
-                          color: _isResting ? Colors.blueAccent : const Color(0xFFFF5200),
+                          color: _isResting ? Colors.blueAccent : _gold,
                           fontWeight: FontWeight.bold,
                           fontSize: 11.5,
                         ),
@@ -185,33 +285,36 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _isResting ? '$_restSecondsRemaining s' : _formatTime(_secondsElapsed),
+                      _isResting ? '$_restSecondsRemaining s' : '${_activeSecondsRemaining}s',
                       style: const TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                        color: _white,
                       ),
                     ),
                     Text(
-                      _isResting ? 'rest countdown' : 'active workout time',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500),
+                      _isResting ? 'rest countdown (auto-progress)' : 'active workout countdown',
+                      style: const TextStyle(color: _gray, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
               const Text(
-                'Instructions',
+                '3 Hakbang para sa Tamang Porma',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
+                  color: _white,
                 ),
               ),
               const SizedBox(height: 8),
-              _buildInstructionStep('1', 'Keep your body in a straight line.'),
-              _buildInstructionStep('2', 'Hands slightly wider than shoulders.'),
-              _buildInstructionStep('3', 'Lower your chest, then push back up.'),
+              // Dynamic 3 Instructions Steps
+              ...instructions.asMap().entries.map((entry) {
+                int idx = entry.key;
+                String text = entry.value;
+                return _buildInstructionStep('${idx + 1}', text);
+              }),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -219,41 +322,10 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   const SizedBox(width: 8),
                   Expanded(child: _buildMetricBox('Reps', widget.setsReps)),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildMetricBox('Weight', '5 kg')),
+                  Expanded(child: _buildMetricBox('Weight', 'Bodyweight')),
                   const SizedBox(width: 8),
-                  Expanded(child: _buildMetricBox('Duration', '45s')),
+                  Expanded(child: _buildMetricBox('Duration', '30s')),
                 ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFED7AA), width: 1.2),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, color: Color(0xFFEA580C), size: 22),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Safety Note',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9A3412)),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Keep your core tight and avoid sagging your hips.',
-                            style: TextStyle(fontSize: 11, color: Color(0xFFC2410C)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
               ),
               const SizedBox(height: 30),
             ],
@@ -262,13 +334,13 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
-        color: Colors.white,
+        color: _card,
         child: SizedBox(
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5200),
+              backgroundColor: _gold,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -276,37 +348,29 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
             ),
             onPressed: () {
               if (!_isResting) {
+                _activeTimer?.cancel();
+                _startRestTimer();
+              } else {
+                _restTimer?.cancel();
                 if (_currentSet < _totalSets) {
-                  _startRestTimer();
+                  setState(() {
+                    _currentSet++;
+                  });
+                  _startActiveSetTimer();
                 } else {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
                   );
                 }
-              } else {
-                setState(() {
-                  _restTimer?.cancel();
-                  _isResting = false;
-                  if (_currentSet < _totalSets) {
-                    _currentSet++;
-                  } else {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
-                    );
-                  }
-                });
               }
             },
             child: Text(
-              !_isResting
-                  ? (_currentSet < _totalSets ? 'Complete Set & Rest (45s)' : 'Finish Exercise')
-                  : 'Skip Rest',
+              !_isResting ? 'Skip Active Set / Rest Now' : 'Skip Rest Now',
               style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
             ),
           ),
@@ -319,15 +383,16 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: _card,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _border),
       ),
       child: Text(
         label,
         style: const TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF475569),
+          color: _white,
         ),
       ),
     );
@@ -341,12 +406,12 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         children: [
           Text(
             '$number. ',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _gold),
           ),
           Expanded(
             child: Text(
               instructionText,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+              style: const TextStyle(fontSize: 13, color: _gray),
             ),
           ),
         ],
@@ -358,17 +423,17 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        border: Border.all(color: _border, width: 1.2),
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 10, color: _gray, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: _white),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

@@ -113,7 +113,7 @@ class FirestoreService {
       if (doc.exists) {
         return doc.data();
       }
-      return getUserWorkoutPlan(userId);
+      return await getUserWorkoutPlan(userId);
     } catch (e) {
       throw _mapFirestoreError(e);
     }

@@ -13,6 +13,14 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  // Black + Gold + White palette
+  static const Color _bg = Color(0xFF121212); // Charcoal background
+  static const Color _card = Color(0xFF1C1C1E); // Card surface
+  static const Color _border = Color(0xFF2E2E31);
+  static const Color _gold = Color(0xFFF5B800); // Gold highlight
+  static const Color _white = Colors.white;
+  static const Color _gray = Color(0xFF9CA3AF); // Secondary text
+
   int _currentIndex = 3;
   String _selectedFilter = 'All';
 
@@ -63,18 +71,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         : _notifications.where((n) => n['type'] == _selectedFilter).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: _card,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
           'Notifications',
           style: TextStyle(
-            color: Color(0xFF0F172A),
+            color: _white,
             fontWeight: FontWeight.w900,
             fontSize: 22,
           ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: _border, height: 1.0),
         ),
       ),
       body: Column(
@@ -82,7 +94,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            color: Colors.white,
+            color: _card,
             child: Row(
               children: ['All', 'Reminders', 'Updates'].map((filter) {
                 bool isSelected = _selectedFilter == filter;
@@ -93,13 +105,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFFF5200) : const Color(0xFFF1F5F9),
+                        color: isSelected ? _gold : const Color(0xFF2C2F36),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected ? _gold : _border,
+                        ),
                       ),
                       child: Text(
                         filter,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFF64748B),
+                          color: isSelected ? _bg : _white,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -120,26 +135,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: _card,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                    border: Border.all(color: _border, width: 1.2),
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF5200).withValues(alpha: 0.1),
+                        color: _gold.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(item['icon'], color: const Color(0xFFFF5200), size: 20),
+                      child: Icon(item['icon'], color: _gold, size: 20),
                     ),
                     title: Text(
                       item['title'],
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF0F172A),
+                        color: _white,
                       ),
                     ),
                     subtitle: Column(
@@ -150,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           item['subtitle'],
                           style: const TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF64748B),
+                            color: _gray,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -159,15 +174,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           item['time'],
                           style: const TextStyle(
                             fontSize: 10,
-                            color: Color(0xFF94A3B8),
+                            color: Color(0xFF6B7280),
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    trailing: const Icon(Icons.chevron_right, color: Color(0xFF94A3B8)),
+                    trailing: const Icon(Icons.chevron_right, color: _gray),
                     onTap: () {
-                      // Direktang sinusuri kung ito ba ang AI Update o Rest Day
                       if (item['title'] == 'New Recommendation' || item['isAiUpdate'] == true) {
                         Navigator.push(
                           context,
@@ -189,6 +203,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
+        backgroundColor: _card,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -213,8 +228,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFFFF5200),
-        unselectedItemColor: const Color(0xFF94A3B8),
+        selectedItemColor: _gold,
+        unselectedItemColor: _gray,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
         items: const [

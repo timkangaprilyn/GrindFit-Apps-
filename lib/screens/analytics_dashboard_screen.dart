@@ -1,280 +1,203 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'home_dashboard_screen.dart';
-import 'ai_recommendations_screen.dart';
-import 'log_workout_screen.dart';
 import 'workout_history_screen.dart';
-import 'goal_progress_screen.dart';
+import 'log_workout_screen.dart'; // Siguraduhing ito ang import sa iyong Log/Goal screen
 
 class AnalyticsDashboardScreen extends StatefulWidget {
   const AnalyticsDashboardScreen({super.key});
 
   @override
-  State<AnalyticsDashboardScreen> createState() => _AnalyticsDashboardScreenState();
+  State<AnalyticsDashboardScreen> createState() =>
+      _AnalyticsDashboardScreenState();
 }
 
 class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
-  int _currentIndex = 3; // Nakatutok sa Analytics tab
+  static const Color _bg = Color(0xFF121212);
+  static const Color _card = Color(0xFF1C1C1E);
+  static const Color _tile = Color(0xFF2A2A2D);
+  static const Color _border = Color(0xFF2E2E31);
+  static const Color _grid = Color(0xFF2A2A2D);
+  static const Color _gold = Color(0xFFF5B800);
+  static const Color _goldBright = Color(0xFFFFCC1A);
+  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _white = Colors.white;
+  static const Color _gray = Color(0xFF9CA3AF);
+  static const Color _muted = Color(0xFF6B7280);
+
   bool _isWeekly = true;
+  int? _selectedBar;
+
+  void _setPeriod(bool weekly) {
+    if (_isWeekly == weekly) return;
+    setState(() {
+      _isWeekly = weekly;
+      _selectedBar = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final String totalSessions = _isWeekly ? '12' : '48';
-    final String avgDuration = _isWeekly ? '42 min' : '40 min';
+    final String totalSessions = _isWeekly ? '4' : '16';
+    final String avgDuration = _isWeekly ? '45 min' : '42 min';
+    final String periodLabel = _isWeekly ? 'this week' : 'this month';
+
     final List<double> durationTrend = _isWeekly
-        ? [30, 35, 32, 40, 38, 45, 42]
-        : [35, 38, 36, 40, 41, 39, 42, 40, 43, 41, 44, 42];
+        ? [35, 40, 42, 45, 40, 48, 45]
+        : [38, 40, 42, 41, 44, 42, 45, 43, 46, 44, 45, 42];
     final List<double> intensityTrend = _isWeekly
         ? [2, 2, 3, 2, 3, 3, 2]
         : [2, 2, 3, 2, 3, 2, 3, 3, 2, 3, 3, 2];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'Analytics',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Weekly / Monthly Toggle
-            Container(
-              padding: const EdgeInsets.all(4),
+      backgroundColor: _bg,
+      body: Stack(
+        children: [
+          Positioned(
+            top: -150,
+            right: -130,
+            child: Container(
+              width: 380,
+              height: 380,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildToggleTab('Weekly', _isWeekly, () {
-                      setState(() => _isWeekly = true);
-                    }),
-                  ),
-                  Expanded(
-                    child: _buildToggleTab('Monthly', !_isWeekly, () {
-                      setState(() => _isWeekly = false);
-                    }),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Total Sessions & Avg Duration Cards
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total Sessions',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          totalSessions,
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Avg. Duration',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          avgDuration,
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Workout Frequency Bar Chart Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Workout Frequency',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      _buildBarItem('Mon', 70),
-                      _buildBarItem('Tue', 65),
-                      _buildBarItem('Wed', 45),
-                      _buildBarItem('Thu', 70),
-                      _buildBarItem('Fri', 70),
-                      _buildBarItem('Sat', 65),
-                      _buildBarItem('Sun', 30),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Duration Trend & Intensity Trend
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildTrendCard('Duration Trend', durationTrend, const Color(0xFFFF5200)),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _buildTrendCard('Intensity Trend', intensityTrend, const Color(0xFFFF8A50)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Progress to Goal & Achievements
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const GoalProgressScreen()),
-                      );
-                    },
-                    child: _buildProgressToGoalCard(),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(child: _buildAchievementsCard()),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Workout History Quick Access Button
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WorkoutHistoryScreen()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF5200).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFF5200), width: 1.2),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.history_rounded, color: Color(0xFFFF5200), size: 24),
-                        SizedBox(width: 12),
-                        Text(
-                          'View Full Workout History',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFF5200),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Icon(Icons.chevron_right, color: Color(0xFFFF5200)),
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    _gold.withValues(alpha: 0.18),
+                    _gold.withValues(alpha: 0.0),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 30),
-          ],
-        ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildPeriodToggle(),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.fitness_center_rounded,
+                          label: 'Total Sessions',
+                          value: totalSessions,
+                          caption: periodLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.timer_outlined,
+                          label: 'Avg. Duration',
+                          value: avgDuration,
+                          caption: 'per session',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  _buildFrequencyCard(),
+                  const SizedBox(height: 18),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: _buildDurationTrendCard(durationTrend)),
+                      const SizedBox(width: 14),
+                      Expanded(
+                          child: _buildIntensityTrendCard(intensityTrend)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const LogWorkoutScreen()),
+                      );
+                    },
+                    child: _buildProgressToGoalCard(),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildAchievementsCard(),
+                  const SizedBox(height: 18),
+                  _buildHistoryButton(),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
-      // Tanging IISANG bottomNavigationBar lamang ang narito sa loob ng Scaffold:
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
-            );
-          } else if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const AiRecommendationsScreen()),
-            );
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LogWorkoutScreen()),
-            );
-          } else if (index == 3) {
-            // Kasalukuyang nasa Analytics na
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFFFF5200),
-        unselectedItemColor: const Color(0xFF94A3B8),
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.fitness_center), label: 'Workouts'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long_rounded), label: 'Log'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Analytics',
+                style: TextStyle(
+                  color: _white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 30,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Track your training progress',
+                style: TextStyle(
+                  color: _gray,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _border),
+          ),
+          child: const Icon(Icons.insights_rounded, color: _gold, size: 24),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPeriodToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildToggleTab('Weekly', _isWeekly, () => _setPeriod(true)),
+          ),
+          Expanded(
+            child:
+                _buildToggleTab('Monthly', !_isWeekly, () => _setPeriod(false)),
+          ),
         ],
       ),
     );
@@ -282,20 +205,24 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   Widget _buildToggleTab(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(vertical: 11),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          gradient: isSelected
+              ? const LinearGradient(colors: [_goldLight, _gold])
+              : null,
+          borderRadius: BorderRadius.circular(11),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                    color: _gold.withValues(alpha: 0.28),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ]
               : null,
@@ -303,67 +230,416 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: isSelected ? const Color(0xFFFF5200) : const Color(0xFF64748B),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w800,
+            color: isSelected ? Colors.black : _gray,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBarItem(String day, double heightFactor) {
-    return Column(
-      children: [
-        Container(
-          width: 20,
-          height: 80,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: 12,
-            height: heightFactor,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF5200),
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(day, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-      ],
-    );
-  }
+  BoxDecoration _cardDecoration({double radius = 20}) => BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: _border, width: 1.2),
+      );
 
-  Widget _buildTrendCard(String title, List<double> data, Color color) {
+  Widget _iconTile(IconData icon, {double size = 36, double iconSize = 18}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+        color: _gold.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(size * 0.32),
       ),
+      child: Icon(icon, color: _gold, size: iconSize),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String caption,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Flexible(
+              _iconTile(icon),
+              const SizedBox(width: 8),
+              Expanded(
                 child: Text(
-                  title,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-                  overflow: TextOverflow.ellipsis,
+                  label,
+                  softWrap: true,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _gray,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                  ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.trending_up_rounded, size: 14, color: color),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.25),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+            child: Text(
+              value,
+              key: ValueKey(value),
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: _white,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: _muted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFrequencyCard() {
+    final List<String> labels = _isWeekly
+        ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        : const ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'];
+    final List<int> values =
+        _isWeekly ? const [1, 0, 1, 0, 1, 1, 0] : const [4, 4, 4, 4];
+
+    final int defaultIndex = _isWeekly ? DateTime.now().weekday - 1 : 3;
+    final int selected =
+        (_selectedBar ?? defaultIndex).clamp(0, values.length - 1);
+
+    final int maxVal = values.reduce(math.max);
+    final int maxY = math.max(4, (((maxVal + 1) / 2).ceil()) * 2);
+    final int step = maxY ~/ 2;
+    const double plotH = 130;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Workout Frequency',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: _white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _isWeekly ? 'Sessions per day' : 'Sessions per week',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _gold.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _gold.withValues(alpha: 0.35)),
+                ),
+                child: Text(
+                  '${labels[selected]} · ${values[selected]}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: _goldBright,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          TweenAnimationBuilder<double>(
+            key: ValueKey('bars_$_isWeekly'),
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, _) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 26,
+                    height: plotH,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        for (int k = 0; k <= 2; k++)
+                          Positioned(
+                            left: 0,
+                            right: 6,
+                            bottom: plotH * k / 2 - 7,
+                            child: Text(
+                              '${step * k}',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: _muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: plotH,
+                          child: Stack(
+                            children: [
+                              for (int k = 0; k <= 2; k++)
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: plotH * k / 2,
+                                  child: Container(
+                                    height: 1,
+                                    color: k == 0
+                                        ? const Color(0xFF3A3A3F)
+                                        : _grid,
+                                  ),
+                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  for (int i = 0; i < values.length; i++)
+                                    Expanded(
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () =>
+                                            setState(() => _selectedBar = i),
+                                        child: Align(
+                                          alignment: Alignment.bottomCenter,
+                                          child: _buildBar(
+                                            height: values[i] / maxY * plotH * t,
+                                            width: _isWeekly ? 18 : 38,
+                                            selected: i == selected,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            for (int i = 0; i < labels.length; i++)
+                              Expanded(
+                                child: Text(
+                                  labels[i],
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: i == selected ? _goldBright : _muted,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBar({
+    required double height,
+    required double width,
+    required bool selected,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: width,
+      height: math.max(height, 0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: selected
+              ? const [_goldLight, _gold]
+              : [_gold.withValues(alpha: 0.55), _gold.withValues(alpha: 0.22)],
+        ),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(8),
+          bottom: Radius.circular(3),
+        ),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: _gold.withValues(alpha: 0.35),
+                  blurRadius: 14,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildDurationTrendCard(List<double> data) {
+    final double diff = data.last - data.first;
+    final bool up = diff >= 0;
+    return _buildTrendCard(
+      title: 'Duration Trend',
+      valueText: '${data.last.toInt()} min',
+      deltaText: '${up ? '+' : ''}${diff.toInt()} min',
+      up: up,
+      data: data,
+      chartKey: 'duration_$_isWeekly',
+    );
+  }
+
+  Widget _buildIntensityTrendCard(List<double> data) {
+    final double avg = data.reduce((a, b) => a + b) / data.length;
+    final String level = avg < 1.7
+        ? 'Low'
+        : avg < 2.5
+            ? 'Moderate'
+            : 'High';
+    final double diff = data.last - data.first;
+    return _buildTrendCard(
+      title: 'Intensity Trend',
+      valueText: level,
+      deltaText: 'Avg ${avg.toStringAsFixed(1)}/3',
+      up: diff >= 0,
+      data: data,
+      chartKey: 'intensity_$_isWeekly',
+    );
+  }
+
+  Widget _buildTrendCard({
+    required String title,
+    required String valueText,
+    required String deltaText,
+    required bool up,
+    required List<double> data,
+    required String chartKey,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: _gray,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            valueText,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: _white,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(
+                up ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                size: 15,
+                color: _goldBright,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  deltaText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: _goldBright,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           SizedBox(
-            height: 60,
+            height: 64,
             width: double.infinity,
-            child: CustomPaint(
-              painter: _LineChartPainter(data: data, color: color),
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey(chartKey),
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, _) => CustomPaint(
+                painter: _SmoothLinePainter(
+                  data: data,
+                  color: _gold,
+                  gridColor: _grid,
+                  progress: t,
+                ),
+              ),
             ),
           ),
         ],
@@ -374,48 +650,76 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   Widget _buildProgressToGoalCard() {
     const double progress = 0.75;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Row(
         children: [
-          const Text(
-            'Progress to Goal',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
-          ),
-          const SizedBox(height: 14),
           SizedBox(
-            width: 56,
-            height: 56,
-            child: Stack(
-              alignment: Alignment.center,
+            width: 76,
+            height: 76,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 1100),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(76, 76),
+                    painter: _RingPainter(
+                      progress: value,
+                      track: _tile,
+                      start: _gold,
+                      end: _goldLight,
+                    ),
+                  ),
+                  Text(
+                    '${(value * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: _white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 18),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 6,
-                    backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF5200)),
+                Text(
+                  'Progress to Goal',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: _white,
                   ),
                 ),
+                SizedBox(height: 4),
                 Text(
-                  '${(progress * 100).toInt()}%',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                  '9 / 12 weeks',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: _goldBright,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  '3 weeks to go — keep it up!',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: _gray,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            '12 / 16 weeks',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-          ),
+          const Icon(Icons.chevron_right_rounded, color: _muted, size: 26),
         ],
       ),
     );
@@ -423,26 +727,36 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   Widget _buildAchievementsCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Achievements',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: _white,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildAchievementItem(Icons.local_fire_department_rounded, '7 Day', 'Streak'),
-              _buildAchievementItem(Icons.bolt_rounded, '12', 'Workouts'),
-              _buildAchievementItem(Icons.emoji_events_rounded, 'Goal', 'Progress'),
+              Expanded(
+                child: _buildAchievementItem(
+                    Icons.local_fire_department_rounded, '7 Day', 'Streak'),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildAchievementItem(
+                    Icons.bolt_rounded, '16', 'Workouts'),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildAchievementItem(
+                    Icons.emoji_events_rounded, 'Goal', 'Progress'),
+              ),
             ],
           ),
         ],
@@ -451,75 +765,230 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Widget _buildAchievementItem(IconData icon, String value, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF5200).withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: _tile,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _gold.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+              border: Border.all(color: _gold.withValues(alpha: 0.4)),
+            ),
+            child: Icon(icon, color: _gold, size: 21),
           ),
-          child: Icon(icon, color: const Color(0xFFFF5200), size: 18),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: _white,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: _gray,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryButton() {
+    return Material(
+      color: _gold.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: _gold.withValues(alpha: 0.55), width: 1.2),
+      ),
+      child: InkWell(
+        customBorder: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
         ),
-        const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-        Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-      ],
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WorkoutHistoryScreen()),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              _iconTile(Icons.history_rounded, size: 40, iconSize: 22),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text(
+                  'View Full Workout History',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                    color: _goldBright,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: _goldBright, size: 26),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _LineChartPainter extends CustomPainter {
+class _SmoothLinePainter extends CustomPainter {
   final List<double> data;
   final Color color;
+  final Color gridColor;
+  final double progress;
 
-  _LineChartPainter({required this.data, required this.color});
+  _SmoothLinePainter({
+    required this.data,
+    required this.color,
+    required this.gridColor,
+    required this.progress,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
+    if (data.length < 2) return;
 
-    final double maxVal = data.reduce((a, b) => a > b ? a : b);
-    final double minVal = data.reduce((a, b) => a < b ? a : b);
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+    for (int k = 0; k < 3; k++) {
+      final y = size.height * k / 2;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    final double maxVal = data.reduce(math.max);
+    final double minVal = data.reduce(math.min);
     final double range = (maxVal - minVal) == 0 ? 1 : (maxVal - minVal);
 
-    final double topPad = size.height * 0.15;
-    final double usableHeight = size.height - (topPad * 2);
-    final double stepX = data.length > 1 ? size.width / (data.length - 1) : 0;
+    const double xPad = 5;
+    final double topPad = size.height * 0.14;
+    final double usableHeight = size.height - topPad * 2;
+    final double stepX = (size.width - xPad * 2) / (data.length - 1);
 
-    Offset pointAt(int i) {
-      final double x = stepX * i;
-      final double normalized = (data[i] - minVal) / range;
-      final double y = size.height - topPad - (normalized * usableHeight);
-      return Offset(x, y);
+    final List<Offset> pts = [
+      for (int i = 0; i < data.length; i++)
+        Offset(
+          xPad + stepX * i,
+          size.height - topPad - ((data[i] - minVal) / range) * usableHeight,
+        ),
+    ];
+
+    final line = Path()..moveTo(pts.first.dx, pts.first.dy);
+    for (int i = 0; i < pts.length - 1; i++) {
+      final a = pts[i];
+      final b = pts[i + 1];
+      final cx = (a.dx + b.dx) / 2;
+      line.cubicTo(cx, a.dy, cx, b.dy, b.dx, b.dy);
     }
 
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final fill = Path.from(line)
+      ..lineTo(pts.last.dx, size.height)
+      ..lineTo(pts.first.dx, size.height)
+      ..close();
 
-    final path = Path();
-    for (int i = 0; i < data.length; i++) {
-      final p = pointAt(i);
-      if (i == 0) {
-        path.moveTo(p.dx, p.dy);
-      } else {
-        path.lineTo(p.dx, p.dy);
-      }
-    }
-    canvas.drawPath(path, linePaint);
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, -8, size.width * progress, size.height + 16));
 
-    final dotPaint = Paint()..color = color;
-    for (int i = 0; i < data.length; i++) {
-      canvas.drawCircle(pointAt(i), 2.5, dotPaint);
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0.0)],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
+    );
+
+    canvas.drawPath(
+      line,
+      Paint()
+        ..color = color
+        ..strokeWidth = 2.6
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+    canvas.restore();
+
+    if (progress > 0.98) {
+      final end = pts.last;
+      canvas.drawCircle(
+          end, 7, Paint()..color = color.withValues(alpha: 0.25));
+      canvas.drawCircle(end, 4, Paint()..color = color);
+      canvas.drawCircle(end, 1.6, Paint()..color = const Color(0xFF1C1C1E));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
-    return oldDelegate.data != data || oldDelegate.color != color;
+  bool shouldRepaint(covariant _SmoothLinePainter old) =>
+      old.data != data || old.color != color || old.progress != progress;
+}
+
+class _RingPainter extends CustomPainter {
+  final double progress;
+  final Color track;
+  final Color start;
+  final Color end;
+
+  _RingPainter({
+    required this.progress,
+    required this.track,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double stroke = 9;
+    final rect = Offset.zero & size;
+    final arcRect = rect.deflate(stroke / 2);
+
+    canvas.drawArc(
+      arcRect,
+      0,
+      math.pi * 2,
+      false,
+      Paint()
+        ..color = track
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke,
+    );
+
+    canvas.drawArc(
+      arcRect,
+      -math.pi / 2,
+      math.pi * 2 * progress,
+      false,
+      Paint()
+        ..shader = SweepGradient(
+          colors: [start, end],
+          transform: const GradientRotation(-math.pi / 2),
+        ).createShader(rect)
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = stroke,
+    );
   }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.progress != progress || old.start != start || old.end != end;
 }

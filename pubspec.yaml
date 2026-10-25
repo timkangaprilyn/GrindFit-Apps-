@@ -14,9 +14,11 @@ dependencies:
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
+  google_sign_in: ^6.2.1
   google_generative_ai: ^0.4.0
   fl_chart: ^0.68.0
   intl: ^0.20.3
+  video_player: ^2.8.6
 
 dev_dependencies:
   flutter_test:
@@ -30,3 +32,12 @@ flutter:
     - assets/images/grindfit_logo.png
     - assets/images/google_logo.png
     - assets/images/fitness_hero.png
+    - assets/images/goal_hero.png
+    - assets/images/splash_bg.png
+    - assets/images/env_hero.png
+    - assets/images/env_indoor.png
+    - assets/images/env_outdoor.png
+    - assets/images/duration_hero.png
+    - assets/images/duration_bottom.png
+    - assets/images/schedule_hero.png
+    - assets/images/schedule_bottom.png
