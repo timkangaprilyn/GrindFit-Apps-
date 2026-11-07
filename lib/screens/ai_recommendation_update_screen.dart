@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'app_state.dart';
+
+import '../models/app_state.dart';
 import 'ai_recommendations_screen.dart';
 
 class AiRecommendationUpdateScreen extends StatelessWidget {
@@ -17,17 +18,19 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppState.instance;
-    final String userGoal = state.fitnessGoal.isNotEmpty 
-        ? state.fitnessGoal 
+    final String userGoal = state.fitnessGoal.isNotEmpty
+        ? state.fitnessGoal
         : 'Muscle Gain / Strength';
 
     // Natural-sounding reasons based on the user's goal
-    String goalReason = "We made a few minor adjustments to keep you moving smoothly toward your target.";
+    String goalReason =
+        "We made a few minor adjustments to keep you moving smoothly toward your target.";
     final goalLower = userGoal.toLowerCase();
-    
+
     if (goalLower.contains('muscle gain') || goalLower.contains('strength')) {
       goalReason = "We tweaked the intensity and progression since your primary focus is building solid strength and muscle mass.";
-    } else if (goalLower.contains('lose weight') || goalLower.contains('weight loss')) {
+    } else if (goalLower.contains('lose weight') ||
+        goalLower.contains('weight loss')) {
       goalReason = "To support your weight loss goal, we've optimized the pacing to keep your active calorie burn efficient.";
     } else if (goalLower.contains('endurance')) {
       goalReason = "We adjusted the rest intervals slightly to help improve your overall stamina and cardiovascular endurance.";
@@ -39,7 +42,11 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
         backgroundColor: _card,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _white, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: _white,
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -81,7 +88,10 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: _gold.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
@@ -128,12 +138,18 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _buildChangeItem("Adjusted exercise parameters for $userGoal"),
+                        _buildChangeItem(
+                          "Adjusted exercise parameters for $userGoal",
+                        ),
                         const SizedBox(height: 12),
-                        _buildChangeItem("Optimized set pacing and overall volume"),
+                        _buildChangeItem(
+                          "Optimized set pacing and overall volume",
+                        ),
                         const SizedBox(height: 12),
-                        _buildChangeItem("Fine-tuned recovery windows between sets"),
-                        
+                        _buildChangeItem(
+                          "Fine-tuned recovery windows between sets",
+                        ),
+
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16.0),
                           child: Divider(color: _border, height: 1),
@@ -149,12 +165,17 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                                 color: _gold.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.info_outline, color: _gold, size: 18),
+                              child: const Icon(
+                                Icons.info_outline,
+                                color: _gold,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start, // Itinama sa maliit na titik ang c
+                                crossAxisAlignment: CrossAxisAlignment
+                                    .start, // Itinama sa maliit na titik ang c
                                 children: [
                                   const Text(
                                     "Why?",
@@ -211,7 +232,9 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (_) => const AiRecommendationsScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const AiRecommendationsScreen(),
+                              ),
                             );
                           },
                           child: const Center(

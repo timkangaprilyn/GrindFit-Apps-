@@ -1,5 +1,7 @@
-import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'main_navigation_screen.dart';
@@ -22,7 +24,7 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
   static const Color _red = Color(0xFFEF4444);
 
   bool _isGenerating = false;
-  String _loadingStepText = 'Checking network connection...';
+  String _loadingStepText = 'Preparing your personalized plan...';
   String? _errorMessage;
 
   late final List<PlanExercise> _exercises;
@@ -34,35 +36,16 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
     _exercises = WorkoutPlan.forProfile(
       goal: state.fitnessGoal,
       environment: state.workoutEnvironment,
+      savedOverrides: state.workoutPlanOverrides,
     );
-  }
-
-  Future<bool> _hasInternet() async {
-    try {
-      final result = await InternetAddress.lookup('google.com')
-          .timeout(const Duration(seconds: 5));
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
   }
 
   Future<void> _handleGenerateAndProceed() async {
     setState(() {
       _isGenerating = true;
       _errorMessage = null;
-      _loadingStepText = 'Checking network connection...';
+      _loadingStepText = 'Preparing your personalized plan...';
     });
-
-    if (!await _hasInternet()) {
-      if (!mounted) return;
-      setState(() {
-        _isGenerating = false;
-        _errorMessage =
-            'No internet connection. Please check your network and try again.';
-      });
-      return;
-    }
 
     const steps = <String>[
       'Analyzing your goals & environment...',
@@ -76,12 +59,70 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
     }
     if (!mounted) return;
 
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw StateError(
+          'Your login session has expired. Please sign in again.',
+        );
+      }
+
+      final state = AppState.instance;
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'fullName': state.fullName,
+        'email': user.email ?? '',
+        'age': state.age,
+        'height': state.heightCm,
+        'weight': state.weightKg,
+        'fitnessLevel': state.fitnessLevel,
+        'gender': state.gender,
+        'hasInjuryOrCondition': state.hasInjuryOrCondition,
+        'injuryDetails': state.injuryDetails,
+        'fitnessGoal': state.fitnessGoal,
+        'environment': state.workoutEnvironment,
+        'workoutEnvironment': state.workoutEnvironment,
+        'programDurationMonths': state.programDurationMonths,
+        'workoutDays': state.workoutDays,
+        'daysPerWeek': state.workoutDays.length,
+        'sessionDuration': state.sessionDuration,
+        'setupCompleted': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (error) {
+      debugPrint('Unable to save the completed GrindFit setup: $error');
+      if (!mounted) return;
+      setState(() {
+        _isGenerating = false;
+        _errorMessage = _saveErrorMessage(error);
+      });
+      return;
+    }
+
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => const MainNavigationScreen(initialIndex: 0),
       ),
     );
+  }
+
+  String _saveErrorMessage(Object error) {
+    if (error is StateError) return error.message.toString();
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'permission-denied':
+          return 'Your account does not have permission to save this profile. Please sign in again.';
+        case 'unauthenticated':
+          return 'Your login session has expired. Please sign in again.';
+        case 'unavailable':
+        case 'deadline-exceeded':
+          return 'Could not reach GrindFit. Check that your Wi-Fi has internet access, then try again.';
+        default:
+          return 'Could not save your profile. Please try again.';
+      }
+    }
+    return 'Could not save your profile. Please try again.';
   }
 
   @override
@@ -111,14 +152,18 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
             ),
             SafeArea(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     InkWell(
                       borderRadius: BorderRadius.circular(14),
-                      onTap: _isGenerating ? null : () => Navigator.maybePop(context),
+                      onTap: _isGenerating
+                          ? null
+                          : () => Navigator.maybePop(context),
                       child: Container(
                         width: 42,
                         height: 42,
@@ -158,7 +203,8 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
                       child: Column(
                         children: [
                           for (var i = 0; i < _exercises.length; i++) ...[
-                            if (i > 0) const Divider(color: _border, height: 20),
+                            if (i > 0)
+                              const Divider(color: _border, height: 20),
                             _buildPreviewRow(
                               '${i + 1}. ${_exercises[i].name}',
                               _exercises[i].detail,
@@ -190,7 +236,10 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [_card, Color.alphaBlend(_gold.withValues(alpha: 0.15), _card)],
+          colors: [
+            _card,
+            Color.alphaBlend(_gold.withValues(alpha: 0.15), _card),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -212,7 +261,7 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
               Icon(Icons.auto_awesome, color: _gold, size: 22),
               SizedBox(width: 8),
               Text(
-                'Gemini AI Generated',
+                'Personalized GrindFit Plan',
                 style: TextStyle(
                   color: _gold,
                   fontSize: 13,
@@ -260,7 +309,11 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
               color: _gold.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_amber_rounded, color: _gold, size: 24),
+            child: const Icon(
+              Icons.warning_amber_rounded,
+              color: _gold,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           const Expanded(
@@ -383,7 +436,9 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
                           ),
                           const SizedBox(width: 8),
                           Icon(
-                            hasError ? Icons.refresh_rounded : Icons.arrow_forward,
+                            hasError
+                                ? Icons.refresh_rounded
+                                : Icons.arrow_forward,
                             color: _bg,
                             size: 20,
                           ),

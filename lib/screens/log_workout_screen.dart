@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/app_state.dart';
 import '../models/workout_plan.dart';
-import 'workout_complete_screen.dart';
 import 'manual_log_workout_screen.dart';
-import 'exercise_timer_screen.dart';
+import 'main_navigation_screen.dart';
+
 import 'package:intl/intl.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
@@ -23,7 +27,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   static const Color _gray = Color(0xFF9CA3AF); // Secondary text
 
   int _currentExerciseIndex = 0;
-  
+
   // Kasalukuyang values para sa pinipiling ehersisyo
   int _sets = 3;
   int _reps = 10;
@@ -36,41 +40,54 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  bool _isSavingPlan = false;
 
   // Bawat ehersisyo ay may sarili nang nakaimbak na sets, reps, duration, weight, at notes
-  final List<Map<String, dynamic>> _exercises = [
-    {
-      'name': 'Push Up',
-      'sets': 3,
-      'reps': 10,
-      'duration': 45,
-      'weight': '',
-      'intensity': 'Moderate',
-      'completed': false,
-    },
-    {
-      'name': 'Dumbbell Row',
-      'sets': 3,
-      'reps': 10,
-      'duration': 45,
-      'weight': '',
-      'intensity': 'Moderate',
-      'completed': false,
-    },
-    {
-      'name': 'Shoulder Press',
-      'sets': 3,
-      'reps': 10,
-      'duration': 45,
-      'weight': '',
-      'intensity': 'Moderate',
-      'completed': false,
-    },
-  ];
+  late final List<Map<String, dynamic>> _exercises;
 
   @override
   void initState() {
     super.initState();
+    _exercises =
+        WorkoutPlan.forProfile(
+          goal: AppState.instance.fitnessGoal,
+          environment: AppState.instance.workoutEnvironment,
+          savedOverrides: AppState.instance.workoutPlanOverrides,
+        ).map((exercise) {
+          final sets =
+              int.tryParse(
+                RegExp(
+                      r'(\d+)\s*sets?',
+                      caseSensitive: false,
+                    ).firstMatch(exercise.detail)?.group(1) ??
+                    '',
+              ) ??
+              3;
+          final reps =
+              int.tryParse(
+                RegExp(r'(\d+)').firstMatch(exercise.repsLabel)?.group(1) ?? '',
+              ) ??
+              10;
+          final duration =
+              int.tryParse(
+                RegExp(
+                      r'(\d+)\s*(?:s|sec|secs|second|seconds)\b',
+                      caseSensitive: false,
+                    ).firstMatch(exercise.detail)?.group(1) ??
+                    '',
+              ) ??
+              45;
+          return <String, dynamic>{
+            'name': exercise.name,
+            'sets': sets,
+            'reps': reps,
+            'duration': duration,
+            'weight': '',
+            'intensity': 'Moderate',
+            'completed': false,
+            'imageUrl': exercise.imageUrl,
+          };
+        }).toList();
     _loadExerciseValues(_currentExerciseIndex);
   }
 
@@ -97,9 +114,72 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   void _saveCurrentValues() {
     _exercises[_currentExerciseIndex]['sets'] = _sets;
     _exercises[_currentExerciseIndex]['reps'] = _reps;
-    _exercises[_currentExerciseIndex]['duration'] = int.tryParse(_durationController.text) ?? _duration;
+    _exercises[_currentExerciseIndex]['duration'] =
+        int.tryParse(_durationController.text) ?? _duration;
     _exercises[_currentExerciseIndex]['weight'] = _weightController.text;
     _exercises[_currentExerciseIndex]['intensity'] = _intensity;
+  }
+
+  Map<String, Map<String, int>> _planOverrides() {
+    _saveCurrentValues();
+    return {
+      for (final exercise in _exercises)
+        exercise['name'] as String: {
+          'sets': exercise['sets'] as int,
+          'reps': exercise['reps'] as int,
+          'duration': exercise['duration'] as int,
+        },
+    };
+  }
+
+  Future<void> _savePlanChanges() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showMessage('Sign in before saving workout plan changes.');
+      return;
+    }
+
+    final duration = int.tryParse(_durationController.text.trim());
+    if (duration == null || duration < 1) {
+      _showMessage('Enter a valid duration of at least 1 second.');
+      return;
+    }
+
+    setState(() => _isSavingPlan = true);
+    try {
+      final state = AppState.instance;
+      final overrides = _planOverrides();
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'workoutPlanOverrides': {
+          '${state.fitnessGoal}|${state.workoutEnvironment}': overrides,
+        },
+      }, SetOptions(merge: true));
+      state.updateWorkoutPlanOverrides(
+        goal: state.fitnessGoal,
+        environment: state.workoutEnvironment,
+        overrides: overrides,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Workout saved to your plan.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      MainNavigationScreen.of(context)?.goToTab(1);
+    } on FirebaseException catch (error) {
+      _showMessage(
+        error.message ?? 'Could not save your workout plan. Please try again.',
+      );
+    } finally {
+      if (mounted) setState(() => _isSavingPlan = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+    );
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -159,7 +239,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ManualLogWorkoutScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const ManualLogWorkoutScreen(),
+                ),
               );
             },
           ),
@@ -218,7 +300,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       },
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected ? _card : const Color(0xFF171719),
                           borderRadius: BorderRadius.circular(14),
@@ -237,14 +322,20 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                   height: 24,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: ex['completed'] ? Colors.green : Colors.transparent,
+                                    color: isSelected
+                                        ? Colors.green
+                                        : Colors.transparent,
                                     border: Border.all(
-                                      color: ex['completed'] ? Colors.green : _gray,
-                                      width: 1.5,
+                                      color: isSelected ? Colors.green : _gray,
+                                      width: 2,
                                     ),
                                   ),
-                                  child: ex['completed']
-                                      ? const Icon(Icons.check, size: 14, color: _white)
+                                  child: isSelected
+                                      ? const Icon(
+                                          Icons.check,
+                                          size: 16,
+                                          color: Colors.white,
+                                        )
                                       : null,
                                 ),
                                 const SizedBox(width: 12),
@@ -260,7 +351,11 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                             ),
                             Text(
                               '${ex['sets']} sets • ${ex['duration']}s',
-                              style: const TextStyle(fontSize: 12, color: _gold, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _gold,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -304,13 +399,21 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       children: [
                         const Text(
                           'Duration (sec)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _gray),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _gray,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextField(
                           controller: _durationController,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: _white, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            color: _white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                           decoration: const InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
@@ -339,13 +442,23 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       children: [
                         const Text(
                           'Weight (Optional / kg)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _gray),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _gray,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextField(
                           controller: _weightController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          style: const TextStyle(color: _white, fontWeight: FontWeight.bold, fontSize: 16),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: const TextStyle(
+                            color: _white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                           decoration: const InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
@@ -379,16 +492,27 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                             children: [
                               const Text(
                                 'Workout Date',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _gray),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _gray,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 formattedDate,
-                                style: const TextStyle(color: _white, fontWeight: FontWeight.bold, fontSize: 16),
+                                style: const TextStyle(
+                                  color: _white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ],
                           ),
-                          const Icon(Icons.calendar_month_rounded, color: _gold),
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            color: _gold,
+                          ),
                         ],
                       ),
                     ),
@@ -408,7 +532,11 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       children: [
                         const Text(
                           'Notes (Optional)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _gray),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _gray,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         TextField(
@@ -418,7 +546,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                           decoration: const InputDecoration(
                             isDense: true,
                             border: InputBorder.none,
-                            hintText: 'Add notes about your workout form or feel...',
+                            hintText:
+                                'Add notes about your workout form or feel...',
                             hintStyle: TextStyle(color: Color(0xFF4B5563)),
                           ),
                         ),
@@ -475,8 +604,13 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Start Workout Button
+
+                  const Text(
+                    'Save your changes to update this workout plan. Open Workouts to review the saved plan and start a session.',
+                    style: TextStyle(color: _gray, fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  // Save plan edits here; start sessions from the Workouts tab.
                   SizedBox(
                     width: double.infinity,
                     height: 60,
@@ -500,67 +634,19 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: () {
-                            _saveCurrentValues();
-                            
-                            List<PlanExercise> customExercises = _exercises.map((ex) {
-                              return PlanExercise(
-                                name: ex['name'],
-                                detail: '${ex['sets']} sets • ${ex['reps']} reps • ${ex['duration']}s',
-                                repsLabel: 'reps',
-                                muscles: 'General', 
-                                equipment: 'bodyweight',
-                              );
-                            }).toList();
-
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ExerciseTimerScreen(
-                                  exerciseList: customExercises,
-                                  currentIndex: _currentExerciseIndex,
-                                ),
-                              ),
-                            );
-                          },
-                          child: const Center(
-                            child: Text(
-                              'Start Workout',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: _bg,
-                              ),
-                            ),
+                          onTap: _isSavingPlan ? null : _savePlanChanges,
+                          child: Center(
+                            child: _isSavingPlan
+                                ? const CircularProgressIndicator(color: _bg)
+                                : const Text(
+                                    'Save Workout',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: _bg,
+                                    ),
+                                  ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.green, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        backgroundColor: Colors.green.withValues(alpha: 0.1),
-                      ),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
-                        );
-                      },
-                      child: const Text(
-                        'Finish Without Timer',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.greenAccent,
                         ),
                       ),
                     ),

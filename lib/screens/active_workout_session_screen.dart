@@ -1,22 +1,27 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../models/app_state.dart';
 import 'workout_complete_screen.dart';
 
 class ActiveWorkoutSessionScreen extends StatefulWidget {
   const ActiveWorkoutSessionScreen({super.key});
 
   @override
-  State<ActiveWorkoutSessionScreen> createState() => _ActiveWorkoutSessionScreenState();
+  State<ActiveWorkoutSessionScreen> createState() =>
+      _ActiveWorkoutSessionScreenState();
 }
 
-class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen> {
+class _ActiveWorkoutSessionScreenState
+    extends State<ActiveWorkoutSessionScreen> {
   int _currentExerciseIndex = 0;
   int _sets = 3;
   int _reps = 10;
   int _duration = 45;
   final String _intensity = 'Moderate';
-  
+
   // Optional Weight input controller
   final TextEditingController _weightController = TextEditingController();
 
@@ -31,9 +36,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
   Timer? _restTimer;
 
   final List<Map<String, dynamic>> _exercises = [
-    {'name': '1. Push Up', 'completed': true},
-    {'name': '2. Dumbbell Row', 'completed': false},
-    {'name': '3. Shoulder Press', 'completed': false},
+    {'name': 'Push Up', 'completed': false, 'skipped': false},
+    {'name': 'Dumbbell Row', 'completed': false, 'skipped': false},
+    {'name': 'Shoulder Press', 'completed': false, 'skipped': false},
   ];
 
   @override
@@ -71,9 +76,10 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
 
   void _skipExercise() {
     HapticFeedback.mediumImpact();
+    _saveCurrentExerciseDetails(skipped: true);
     if (_currentExerciseIndex < _exercises.length - 1) {
       setState(() {
-        _exercises[_currentExerciseIndex]['completed'] = true;
+        _exercises[_currentExerciseIndex]['skipped'] = true;
         _currentExerciseIndex++;
         _weightController.clear();
       });
@@ -107,10 +113,36 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
   void _finishWorkout() {
     _workoutTimer.cancel();
     _restTimer?.cancel();
+    _saveCurrentExerciseDetails();
+    final durationMinutes = (_secondsElapsed / 60).ceil();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
+      MaterialPageRoute(
+        builder: (_) => WorkoutCompleteScreen(
+          sessionData: {
+            'title': 'Workout Session',
+            'workoutName': 'Workout Session',
+            'category': AppState.instance.workoutEnvironment,
+            'durationSeconds': _secondsElapsed,
+            'duration': '$durationMinutes min',
+            'intensity': _intensity,
+            'exercises': _exercises
+                .map((exercise) => Map<String, dynamic>.from(exercise))
+                .toList(),
+          },
+        ),
+      ),
     );
+  }
+
+  void _saveCurrentExerciseDetails({bool skipped = false}) {
+    final exercise = _exercises[_currentExerciseIndex];
+    exercise
+      ..['sets'] = _sets
+      ..['reps'] = _reps
+      ..['durationSeconds'] = _duration
+      ..['weight'] = _weightController.text.trim()
+      ..['skipped'] = skipped;
   }
 
   // GrindFit Theme Colors (Black, Gold, White)
@@ -131,7 +163,10 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
         automaticallyImplyLeading: true,
         iconTheme: const IconThemeData(color: _white),
         title: Text(
-          _exercises[_currentExerciseIndex]['name'].replaceFirst(RegExp(r'^\d+\.\s*'), ''),
+          _exercises[_currentExerciseIndex]['name'].replaceFirst(
+            RegExp(r'^\d+\.\s*'),
+            '',
+          ),
           style: const TextStyle(
             color: _white,
             fontWeight: FontWeight.w900,
@@ -148,7 +183,10 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
             tooltip: _isPaused ? 'Resume Workout' : 'Pause Workout',
           ),
           IconButton(
-            icon: const Icon(Icons.skip_next_rounded, color: Colors.orangeAccent),
+            icon: const Icon(
+              Icons.skip_next_rounded,
+              color: Colors.orangeAccent,
+            ),
             onPressed: _skipExercise,
             tooltip: 'Skip Exercise',
           ),
@@ -179,7 +217,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                 color: _card,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isPaused ? Colors.redAccent : (_isResting ? Colors.blueAccent : _border),
+                  color: _isPaused
+                      ? Colors.redAccent
+                      : (_isResting ? Colors.blueAccent : _border),
                   width: 1.2,
                 ),
               ),
@@ -192,9 +232,13 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                       Text(
                         _isPaused
                             ? 'WORKOUT PAUSED'
-                            : (_isResting ? 'REST PERIOD COUNTDOWN' : 'ACTIVE WORKOUT TIME'),
+                            : (_isResting
+                                  ? 'REST PERIOD COUNTDOWN'
+                                  : 'ACTIVE WORKOUT TIME'),
                         style: TextStyle(
-                          color: _isPaused ? Colors.redAccent : (_isResting ? Colors.blueAccent : _gold),
+                          color: _isPaused
+                              ? Colors.redAccent
+                              : (_isResting ? Colors.blueAccent : _gold),
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 1.0,
@@ -217,7 +261,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: _gold),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       onPressed: () {
                         _restTimer?.cancel();
@@ -225,7 +271,13 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                           _isResting = false;
                         });
                       },
-                      child: const Text('Skip Rest', style: TextStyle(color: _gold, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Skip Rest',
+                        style: TextStyle(
+                          color: _gold,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -240,7 +292,10 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: _card,
                   borderRadius: BorderRadius.circular(14),
@@ -259,7 +314,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                           height: 24,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: ex['completed'] ? Colors.green : Colors.transparent,
+                            color: ex['completed']
+                                ? Colors.green
+                                : Colors.transparent,
                             border: Border.all(
                               color: ex['completed'] ? Colors.green : _gray,
                               width: 1.5,
@@ -281,7 +338,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                       ],
                     ),
                     Icon(
-                      isSelected ? Icons.keyboard_arrow_down : Icons.chevron_right,
+                      isSelected
+                          ? Icons.keyboard_arrow_down
+                          : Icons.chevron_right,
                       color: _gray,
                       size: 20,
                     ),
@@ -301,15 +360,24 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
               ),
               child: TextField(
                 controller: _weightController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                style: const TextStyle(color: _white, fontWeight: FontWeight.bold),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: const TextStyle(
+                  color: _white,
+                  fontWeight: FontWeight.bold,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Weight (Optional / kg)',
                   labelStyle: TextStyle(color: _gray, fontSize: 13),
                   hintText: 'e.g., 10 kg',
                   hintStyle: TextStyle(color: Color(0xFF4B5563)),
                   border: InputBorder.none,
-                  prefixIcon: Icon(Icons.fitness_center_rounded, color: _gold, size: 20),
+                  prefixIcon: Icon(
+                    Icons.fitness_center_rounded,
+                    color: _gold,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -414,7 +482,9 @@ class _ActiveWorkoutSessionScreenState extends State<ActiveWorkoutSessionScreen>
                     });
                   },
                   child: Text(
-                    _currentExerciseIndex < _exercises.length - 1 ? 'Complete & Rest (45s)' : 'Finish Workout',
+                    _currentExerciseIndex < _exercises.length - 1
+                        ? 'Complete & Rest (45s)'
+                        : 'Finish Workout',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -64,5 +61,15 @@ class DefaultFirebaseOptions {
     projectId: 'grindfit-app',
     storageBucket: 'grindfit-app.firebasestorage.app',
     iosBundleId: 'com.example.flutterApplication1',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCNyPiUv2EAd-q5clrX8nzH58LFOiuwJf0',
+    appId: '1:868787273216:web:e4232fc7593852e28462e5',
+    messagingSenderId: '868787273216',
+    projectId: 'grindfit-app',
+    authDomain: 'grindfit-app.firebaseapp.com',
+    storageBucket: 'grindfit-app.firebasestorage.app',
+    measurementId: 'G-FCXCLGGXSF',
   );
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
-import 'ai_recommendations_screen.dart';
-import 'analytics_dashboard_screen.dart';
-import 'main_navigation_screen.dart';
-import 'warmup_screen.dart';
+import 'notifications_screen.dart';
+import 'workout_plan_detail_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -28,41 +28,165 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   // Today's checklist
   final Map<String, bool> _checklist = {
-    'Warm-up': true,
-    'Workout': true,
+    'Warm-up': false,
+    'Workout': false,
     'Stretching': false,
   };
 
-  // Manual weight tracking states para sa capstone defense
-  double _currentWeight = 72.0;
-  final double _targetWeight = 65.0;
+  double _currentWeight = AppState.instance.weightKg;
+  double _initialWeight = AppState.instance.weightKg;
+  double _targetWeight = AppState.instance.weightKg;
 
-  void _startWorkout() {
-    final state = AppState.instance;
-    final exercises = WorkoutPlan.forProfile(
-      goal: state.fitnessGoal,
-      environment: state.workoutEnvironment,
-    );
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => WarmupScreen(exerciseList: exercises)),
-    );
+  @override
+  void initState() {
+    super.initState();
+    AppState.instance.addListener(_refreshForAppStateChanges);
+    _loadWeightProgress();
   }
 
-  void _viewPlan() {
-    final shell = MainNavigationScreen.of(context);
-    if (shell != null) {
-      shell.goToTab(1);
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const AiRecommendationsScreen()),
+  @override
+  void dispose() {
+    AppState.instance.removeListener(_refreshForAppStateChanges);
+    super.dispose();
+  }
+
+  void _refreshForAppStateChanges() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadWeightProgress() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final data = doc.data();
+      if (data == null || !mounted) return;
+      setState(() {
+        _currentWeight =
+            (data['weight'] as num?)?.toDouble() ?? AppState.instance.weightKg;
+        _initialWeight =
+            (data['startWeight'] as num?)?.toDouble() ?? _currentWeight;
+        _targetWeight =
+            (data['targetWeight'] as num?)?.toDouble() ?? _currentWeight;
+      });
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'Could not load weight progress.'),
+        ),
       );
     }
   }
 
+  Future<void> _startWorkout() async {
+    final state = AppState.instance;
+    if (state.hasInjuryOrCondition) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: _card,
+          title: const Text(
+            'Health and injury reminder',
+            style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+          ),
+          content: Text(
+            state.injuryDetails.trim().isEmpty
+                ? 'You reported an injury or health condition in your profile. Stop exercising if you feel pain or discomfort, and consult a health professional if needed.'
+                : 'Your profile notes: ${state.injuryDetails}. Stop exercising if you feel pain or discomfort, and consult a health professional if needed.',
+            style: const TextStyle(color: _gray, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: _gray)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: _bg,
+              ),
+              child: const Text('Continue carefully'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    final exercises = WorkoutPlan.forProfile(
+      goal: state.fitnessGoal,
+      environment: state.workoutEnvironment,
+      savedOverrides: state.workoutPlanOverrides,
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkoutPlanDetailScreen(exercises: exercises),
+      ),
+    );
+  }
+
+  void _viewPlan() {
+    final state = AppState.instance;
+    final exercises = WorkoutPlan.forProfile(
+      goal: state.fitnessGoal,
+      environment: state.workoutEnvironment,
+      savedOverrides: state.workoutPlanOverrides,
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkoutPlanDetailScreen(exercises: exercises),
+      ),
+    );
+  }
+
   // Navigation papuntang Recovery kapag pinindot ang Safety Status
-  void _navigateToRecovery() {
+  Future<void> _navigateToRecovery() async {
+    var recentWorkoutDays = <String>{};
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final since = DateTime.now().subtract(const Duration(days: 3));
+        final recent = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('workouts')
+            .where(
+              'timestamp',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(since),
+            )
+            .get();
+        recentWorkoutDays = recent.docs
+            .map((doc) {
+              final timestamp = doc.data()['timestamp'];
+              if (timestamp is! Timestamp) return null;
+              final date = timestamp.toDate();
+              return DateFormat('yyyy-MM-dd').format(date);
+            })
+            .whereType<String>()
+            .toSet();
+      } on FirebaseException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message ?? 'Could not load recovery details.'),
+          ),
+        );
+        return;
+      }
+    }
+
+    final workoutCount = recentWorkoutDays.length;
+    final reason = workoutCount >= 3
+        ? '$workoutCount workouts in the past 4 days.'
+        : '$workoutCount workout in the past 4 days.';
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -82,13 +206,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Rest day recommended',
-              style: TextStyle(
+              workoutCount >= 3 ? 'Rest day recommended' : 'Recovery check-in',
+              style: const TextStyle(
                 color: _gold,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -96,15 +220,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             ),
             SizedBox(height: 8),
             Text(
-              'Dahilan: 3 workouts sa 4 na araw.',
-              style: TextStyle(
+              'Reason: $reason',
+              style: const TextStyle(
                 color: _white,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 8),
+            const Text(
               'Use today to recover with enough sleep, hydration, and gentle stretching.',
               style: TextStyle(color: _gray, fontSize: 13.5),
             ),
@@ -178,14 +302,40 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: () {
+            onPressed: () async {
               final parsed = double.tryParse(controller.text);
-              if (parsed != null && parsed > 0) {
-                setState(() {
-                  _currentWeight = parsed;
-                });
+              final user = FirebaseAuth.instance.currentUser;
+              if (parsed == null || parsed <= 0 || user == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Enter a valid weight and sign in.'),
+                  ),
+                );
+                return;
               }
-              Navigator.pop(context);
+              try {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .set({
+                      'weight': parsed,
+                      'startWeight': _initialWeight,
+                      'weightUpdatedAt': FieldValue.serverTimestamp(),
+                      'updatedAt': FieldValue.serverTimestamp(),
+                    }, SetOptions(merge: true));
+                if (!context.mounted) return;
+                setState(() => _currentWeight = parsed);
+                Navigator.pop(context);
+              } on FirebaseException catch (error) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      error.message ?? 'Could not save your weight.',
+                    ),
+                  ),
+                );
+              }
             },
             child: const Text(
               'Save',
@@ -212,15 +362,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
     final int doneCount = _checklist.values.where((v) => v).length;
 
-    double initialWeight = 72.0;
+    final double initialWeight = _initialWeight;
     double totalDiff = initialWeight - _targetWeight;
     double currentLost = initialWeight - _currentWeight;
     double progressValue = totalDiff > 0
         ? (currentLost / totalDiff).clamp(0.0, 1.0)
         : 0.0;
     double remainingKg = (_currentWeight - _targetWeight).clamp(0.0, 99.0);
-
-    final int scheduledStreakCount = 4;
 
     return Scaffold(
       backgroundColor: _bg,
@@ -249,7 +397,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 children: [
                   _buildHeader(firstName),
                   const SizedBox(height: 18),
-                  _buildStatsCard(scheduledStreakCount),
+                  _buildStatsCard(),
                   const SizedBox(height: 24),
                   _buildSectionHeader(
                     'AI RECOMMENDED WORKOUT',
@@ -330,9 +478,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const AnalyticsDashboardScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             );
           },
           child: Container(
@@ -346,18 +492,15 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                const Icon(Icons.bar_chart_rounded, color: _white, size: 22),
+                const Icon(
+                  Icons.notifications_none_rounded,
+                  color: _white,
+                  size: 22,
+                ),
                 Positioned(
                   top: 10,
                   right: 10,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: _gold,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                  child: _buildUnreadNotificationBadge(),
                 ),
               ],
             ),
@@ -367,7 +510,169 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildStatsCard(int scheduledStreakCount) {
+  Widget _buildUnreadNotificationBadge() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .where('isRead', isEqualTo: false)
+          .limit(1)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint(
+            'Unable to load the unread notification badge: ${snapshot.error}',
+          );
+          return const SizedBox.shrink();
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Container(
+          width: 7,
+          height: 7,
+          decoration: const BoxDecoration(color: _gold, shape: BoxShape.circle),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatsCard() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return _buildStatsContent(minutes: 0, workouts: 0, streak: 0);
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('workouts')
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(
+              DateTime.now().subtract(const Duration(days: 60)),
+            ),
+          )
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border),
+            ),
+            child: const Text(
+              'Could not load workout statistics. Check your connection and try again.',
+              style: TextStyle(color: _gray, fontSize: 13),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return Container(
+            height: 88,
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border),
+            ),
+            child: const Center(child: CircularProgressIndicator(color: _gold)),
+          );
+        }
+
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final weekStart = today.subtract(
+          Duration(days: today.weekday - DateTime.monday),
+        );
+        final workoutDates = <DateTime>[];
+        var minutesThisWeek = 0;
+
+        for (final doc in snapshot.data!.docs) {
+          final data = doc.data();
+          final rawDate =
+              data['timestamp'] ?? data['completedAt'] ?? data['date'];
+          final DateTime? date = switch (rawDate) {
+            Timestamp value => value.toDate(),
+            DateTime value => value,
+            String value => DateTime.tryParse(value),
+            _ => null,
+          };
+          if (date == null) continue;
+
+          final workoutDay = DateTime(date.year, date.month, date.day);
+          workoutDates.add(workoutDay);
+          if (!workoutDay.isBefore(weekStart) && !workoutDay.isAfter(today)) {
+            minutesThisWeek += _durationInMinutes(data);
+          }
+        }
+
+        final scheduledDays = AppState.instance.workoutDays
+            .map(
+              (day) =>
+                  (day.length >= 3 ? day.substring(0, 3) : day).toLowerCase(),
+            )
+            .toSet();
+        var streak = 0;
+        for (var offset = 0; offset < 60; offset++) {
+          final day = today.subtract(Duration(days: offset));
+          final dayLabel = DateFormat('E').format(day).toLowerCase();
+          if (!scheduledDays.contains(dayLabel)) continue;
+          final completed = workoutDates.any((workoutDay) => workoutDay == day);
+          if (day == today && !completed) continue;
+          if (!completed) break;
+          streak++;
+        }
+
+        final workoutsThisWeek = workoutDates
+            .where((date) => !date.isBefore(weekStart) && !date.isAfter(today))
+            .map((date) => DateFormat('yyyy-MM-dd').format(date))
+            .toSet()
+            .length;
+
+        return _buildStatsContent(
+          minutes: minutesThisWeek,
+          workouts: workoutsThisWeek,
+          streak: streak,
+        );
+      },
+    );
+  }
+
+  int _durationInMinutes(Map<String, dynamic> data) {
+    final seconds = data['durationSeconds'];
+    if (seconds is num) return (seconds / 60).round();
+
+    final rawDuration = data['duration'];
+    if (rawDuration is num) return rawDuration.round();
+    if (rawDuration is! String) return 0;
+
+    final value = rawDuration.toLowerCase();
+    final match = RegExp(r'\d+(?:\.\d+)?').firstMatch(value);
+    if (match == null) return 0;
+    final amount = double.tryParse(match.group(0)!) ?? 0;
+    if (value.contains('sec') || value.endsWith('s')) {
+      return (amount / 60).round();
+    }
+    if (value.contains('hour') || value.contains('hr') || value.endsWith('h')) {
+      return (amount * 60).round();
+    }
+    return amount.round();
+  }
+
+  Widget _buildStatsContent({
+    required int minutes,
+    required int workouts,
+    required int streak,
+  }) {
+    final scheduledCount = AppState.instance.workoutDays.length;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
@@ -377,16 +682,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       ),
       child: Row(
         children: [
-          _stat(Icons.timer_rounded, 'Total Mins', '180m', 'This Week'),
-          _verticalDivider(),
-          _stat(Icons.fitness_center_rounded, 'Workouts', '3/4', 'Scheduled'),
+          _stat(Icons.timer_rounded, 'Total Mins', '${minutes}m', 'This Week'),
           _verticalDivider(),
           _stat(
-            Icons.bolt_rounded,
-            'Streak',
-            '$scheduledStreakCount',
-            'Scheduled Days',
+            Icons.fitness_center_rounded,
+            'Workouts',
+            '$workouts/$scheduledCount',
+            'This Week',
           ),
+          _verticalDivider(),
+          _stat(Icons.bolt_rounded, 'Streak', '$streak', 'Scheduled Days'),
         ],
       ),
     );
@@ -471,6 +776,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   Widget _buildWorkoutCard(String summary) {
+    final goal = AppState.instance.fitnessGoal;
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -536,8 +842,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Push Day Strength',
+                        Text(
+                          WorkoutPlan.titleForGoal(goal),
                           maxLines: 2,
                           style: TextStyle(
                             fontSize: 22,
@@ -547,8 +853,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Upper Body Focus',
+                        Text(
+                          WorkoutPlan.focusForGoal(goal),
                           style: TextStyle(
                             fontSize: 13.5,
                             color: _gray,

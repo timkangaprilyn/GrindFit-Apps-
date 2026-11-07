@@ -1,8 +1,13 @@
 import 'dart:math' as math;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../models/app_state.dart';
 import 'workout_history_screen.dart';
-import 'log_workout_screen.dart'; // Siguraduhing ito ang import sa iyong Log/Goal screen
+import 'goal_progress_screen.dart';
+import 'log_workout_screen.dart';
 
 class AnalyticsDashboardScreen extends StatefulWidget {
   const AnalyticsDashboardScreen({super.key});
@@ -18,15 +23,49 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   static const Color _tile = Color(0xFF2A2A2D);
   static const Color _border = Color(0xFF2E2E31);
   static const Color _grid = Color(0xFF2A2A2D);
-  static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _gold = Color(0xFFD3A72F);
+  static const Color _goldBright = Color(0xFFE0BC61);
+  static const Color _goldLight = Color(0xFFE8CB7A);
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
 
   bool _isWeekly = true;
   int? _selectedBar;
+  User? _user;
+  Stream<DocumentSnapshot<Map<String, dynamic>>>? _profileStream;
+  Stream<QuerySnapshot<Map<String, dynamic>>>? _workoutStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToWorkoutData();
+  }
+
+  void _subscribeToWorkoutData() {
+    _user = FirebaseAuth.instance.currentUser;
+    final user = _user;
+    if (user == null) {
+      _profileStream = null;
+      _workoutStream = null;
+      return;
+    }
+
+    final userDocument = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+    _profileStream = userDocument.snapshots();
+    _workoutStream = userDocument
+        .collection('workouts')
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(
+            _subtractMonths(DateTime.now(), 12),
+          ),
+        )
+        .orderBy('timestamp')
+        .snapshots();
+  }
 
   void _setPeriod(bool weekly) {
     if (_isWeekly == weekly) return;
@@ -38,110 +77,477 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String totalSessions = _isWeekly ? '4' : '16';
-    final String avgDuration = _isWeekly ? '45 min' : '42 min';
-    final String periodLabel = _isWeekly ? 'this week' : 'this month';
-
-    final List<double> durationTrend = _isWeekly
-        ? [35, 40, 42, 45, 40, 48, 45]
-        : [38, 40, 42, 41, 44, 42, 45, 43, 46, 44, 45, 42];
-    final List<double> intensityTrend = _isWeekly
-        ? [2, 2, 3, 2, 3, 3, 2]
-        : [2, 2, 3, 2, 3, 2, 3, 3, 2, 3, 3, 2];
-
     return Scaffold(
       backgroundColor: _bg,
-      body: Stack(
+      body: SafeArea(
+        child: _user == null
+            ? _buildDataState(
+                title: 'Sign in to view analytics',
+                message: 'Workout analytics are available for your account.',
+                icon: Icons.person_outline_rounded,
+              )
+            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: _profileStream,
+                builder: (context, profileSnapshot) {
+                  if (profileSnapshot.hasError) {
+                    return _buildRetryState(profileSnapshot.error);
+                  }
+                  if (profileSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return _buildLoadingState();
+                  }
+
+                  final profile = profileSnapshot.data?.data();
+                  final programMonths = _programDuration(profile);
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _workoutStream,
+                    builder: (context, workoutSnapshot) {
+                      if (workoutSnapshot.hasError) {
+                        return _buildRetryState(workoutSnapshot.error);
+                      }
+                      if (workoutSnapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return _buildLoadingState();
+                      }
+
+                      final workouts =
+                          workoutSnapshot.data?.docs
+                              .map((doc) => doc.data())
+                              .toList() ??
+                          const <Map<String, dynamic>>[];
+                      final analytics = _buildAnalytics(
+                        workouts,
+                        programMonths: programMonths,
+                        profile: profile,
+                      );
+                      return _buildDashboard(analytics);
+                    },
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  Widget _buildDashboard(_WorkoutAnalytics analytics) {
+    final periodLabel = _isWeekly ? 'this week' : 'this month';
+    final avgDuration = analytics.periodSessions == 0
+        ? '—'
+        : '${analytics.averageDuration.round()} min';
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            top: -150,
-            right: -130,
-            child: Container(
-              width: 380,
-              height: 380,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _gold.withValues(alpha: 0.18),
-                    _gold.withValues(alpha: 0.0),
-                  ],
+          _buildHeader(),
+          const SizedBox(height: 20),
+          _buildPeriodToggle(),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.fitness_center_rounded,
+                  label: 'Total Sessions',
+                  value: '${analytics.periodSessions}',
+                  caption: periodLabel,
                 ),
               ),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.timer_outlined,
+                  label: 'Avg. Duration',
+                  value: avgDuration,
+                  caption: 'per session',
+                ),
+              ),
+            ],
           ),
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildPeriodToggle(),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.fitness_center_rounded,
-                          label: 'Total Sessions',
-                          value: totalSessions,
-                          caption: periodLabel,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _buildStatCard(
-                          icon: Icons.timer_outlined,
-                          label: 'Avg. Duration',
-                          value: avgDuration,
-                          caption: 'per session',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  _buildFrequencyCard(),
-                  const SizedBox(height: 18),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _buildDurationTrendCard(durationTrend)),
-                      const SizedBox(width: 14),
-                      Expanded(
-                          child: _buildIntensityTrendCard(intensityTrend)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const LogWorkoutScreen()),
-                      );
-                    },
-                    child: _buildProgressToGoalCard(),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildAchievementsCard(),
-                  const SizedBox(height: 18),
-                  _buildHistoryButton(),
-                  const SizedBox(height: 12),
-                ],
+          const SizedBox(height: 18),
+          _buildFrequencyCard(analytics.frequency),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildDurationTrendCard(
+                  analytics.durationTrend,
+                  analytics.trendCounts,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _buildIntensityTrendCard(
+                  analytics.intensityTrend,
+                  analytics.trendCounts,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GoalProgressScreen()),
+              );
+            },
+            child: _buildProgressToGoalCard(analytics),
+          ),
+          const SizedBox(height: 18),
+          _buildAchievementsCard(analytics),
+          const SizedBox(height: 18),
+          if (analytics.totalWorkouts == 0)
+            _buildNoWorkoutsPrompt()
+          else
+            _buildHistoryButton(),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(child: CircularProgressIndicator(color: _gold));
+  }
+
+  Widget _buildRetryState(Object? error) {
+    return _buildDataState(
+      title: 'Analytics unavailable',
+      message: 'Could not load workout data. Check your connection and retry.',
+      icon: Icons.cloud_off_rounded,
+      action: TextButton.icon(
+        onPressed: () => setState(_subscribeToWorkoutData),
+        icon: const Icon(Icons.refresh_rounded, color: _gold),
+        label: const Text('Retry', style: TextStyle(color: _goldBright)),
+      ),
+    );
+  }
+
+  Widget _buildDataState({
+    required String title,
+    required String message,
+    required IconData icon,
+    Widget? action,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 44, color: _gold),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: _white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _gray, height: 1.4),
+            ),
+            if (action != null) ...[const SizedBox(height: 12), action],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoWorkoutsPrompt() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(),
+      child: Column(
+        children: [
+          const Icon(Icons.fitness_center_rounded, color: _gold, size: 32),
+          const SizedBox(height: 8),
+          const Text(
+            'Your analytics start with your first workout',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Log a session to see your real training trends and progress.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _gray, fontSize: 12.5),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LogWorkoutScreen()),
+              );
+            },
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Log a Workout'),
           ),
         ],
       ),
     );
   }
 
+  static DateTime _subtractMonths(DateTime date, int months) {
+    final monthIndex = date.year * 12 + date.month - 1 - months;
+    final year = monthIndex ~/ 12;
+    final month = monthIndex % 12 + 1;
+    final lastDay = DateTime(year, month + 1, 0).day;
+    return DateTime(
+      year,
+      month,
+      math.min(date.day, lastDay),
+      date.hour,
+      date.minute,
+      date.second,
+    );
+  }
+
+  int _programDuration(Map<String, dynamic>? profile) {
+    final savedDuration = profile?['programDurationMonths'];
+    final months = savedDuration is num
+        ? savedDuration.toInt()
+        : AppState.instance.programDurationMonths;
+    return const [3, 6, 12].contains(months) ? months : 3;
+  }
+
+  DateTime? _workoutDate(Map<String, dynamic> workout) {
+    final timestamp = workout['timestamp'];
+    if (timestamp is Timestamp) return timestamp.toDate().toLocal();
+    if (timestamp is DateTime) return timestamp.toLocal();
+    if (timestamp is String) return DateTime.tryParse(timestamp)?.toLocal();
+    return null;
+  }
+
+  int _durationInMinutes(Map<String, dynamic> workout) {
+    final duration = workout['duration'];
+    if (duration is num) return math.max(0, duration.round());
+    if (duration is String) {
+      final hours = RegExp(
+        r'(\d+)\s*h(?:ours?)?(?:\s*(\d+)\s*m(?:in(?:utes?)?)?)?',
+        caseSensitive: false,
+      ).firstMatch(duration);
+      if (hours != null) {
+        return (int.tryParse(hours.group(1)!) ?? 0) * 60 +
+            (int.tryParse(hours.group(2) ?? '') ?? 0);
+      }
+      final match = RegExp(r'\d+').firstMatch(duration);
+      if (match != null) return int.tryParse(match.group(0)!) ?? 0;
+    }
+    return 0;
+  }
+
+  Set<String> _exerciseNames(Map<String, dynamic> workout) {
+    final names = <String>{};
+
+    void addExercise(dynamic exercise) {
+      final name = exercise is String
+          ? exercise
+          : exercise is Map
+          ? exercise['name']?.toString() ?? exercise['exercise']?.toString()
+          : null;
+      if (name != null && name.trim().isNotEmpty) {
+        names.add(name.trim().toLowerCase());
+      }
+    }
+
+    final exercises = workout['exercises'];
+    if (exercises is Iterable) {
+      for (final exercise in exercises) {
+        addExercise(exercise);
+      }
+    } else if (exercises is Map) {
+      for (final exercise in exercises.values) {
+        addExercise(exercise);
+      }
+    } else {
+      final exerciseNames = workout['exerciseNames'];
+      if (exerciseNames is Iterable) {
+        for (final exercise in exerciseNames) {
+          addExercise(exercise);
+        }
+      } else {
+        addExercise(workout['exercise']);
+      }
+    }
+    return names;
+  }
+
+  double _intensityValue(Map<String, dynamic> workout) {
+    switch (workout['feedback']?.toString().toLowerCase()) {
+      case 'easy':
+        return 1;
+      case 'just right':
+        return 2;
+      case 'hard':
+        return 3;
+    }
+
+    final intensity = workout['intensity'];
+    if (intensity is num) return intensity.toDouble().clamp(1, 3).toDouble();
+    switch (intensity?.toString().toLowerCase()) {
+      case 'low':
+      case 'light':
+        return 1;
+      case 'high':
+        return 3;
+      default:
+        return 2;
+    }
+  }
+
+  _WorkoutAnalytics _buildAnalytics(
+    List<Map<String, dynamic>> workouts, {
+    required int programMonths,
+    required Map<String, dynamic>? profile,
+  }) {
+    final now = DateTime.now();
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month);
+    final periodStart = _isWeekly ? weekStart : monthStart;
+    final programStart = _subtractMonths(now, programMonths);
+    final validWorkouts = workouts
+        .map((workout) => (workout: workout, date: _workoutDate(workout)))
+        .where((entry) => entry.date != null)
+        .toList();
+    final periodWorkouts = validWorkouts
+        .where(
+          (entry) =>
+              !entry.date!.isBefore(periodStart) && !entry.date!.isAfter(now),
+        )
+        .toList();
+    final programWorkouts = validWorkouts
+        .where(
+          (entry) =>
+              !entry.date!.isBefore(programStart) && !entry.date!.isAfter(now),
+        )
+        .toList();
+
+    final bucketCount = _isWeekly ? 7 : 5;
+    final frequency = List<int>.filled(bucketCount, 0);
+    final durationTotals = List<double>.filled(bucketCount, 0);
+    final intensityTotals = List<double>.filled(bucketCount, 0);
+    final trendCounts = List<int>.filled(bucketCount, 0);
+
+    for (final entry in periodWorkouts) {
+      final date = entry.date!;
+      final bucket = _isWeekly ? date.weekday - 1 : (date.day - 1) ~/ 7;
+      if (bucket < 0 || bucket >= bucketCount) continue;
+      frequency[bucket]++;
+      durationTotals[bucket] += _durationInMinutes(entry.workout);
+      intensityTotals[bucket] += _intensityValue(entry.workout);
+      trendCounts[bucket]++;
+    }
+
+    final durationTrend = List<double>.generate(
+      bucketCount,
+      (index) => trendCounts[index] == 0
+          ? 0
+          : durationTotals[index] / trendCounts[index],
+    );
+    final intensityTrend = List<double>.generate(
+      bucketCount,
+      (index) => trendCounts[index] == 0
+          ? 0
+          : intensityTotals[index] / trendCounts[index],
+    );
+    final durationTotal = periodWorkouts.fold<int>(
+      0,
+      (total, entry) => total + _durationInMinutes(entry.workout),
+    );
+    final configuredDays = profile?['workoutDays'];
+    final workoutDaysPerWeek =
+        configuredDays is List && configuredDays.isNotEmpty
+        ? configuredDays.length
+        : AppState.instance.workoutDays.length;
+    final programTargetSessions =
+        (programMonths * 30.4375 / 7 * workoutDaysPerWeek).round();
+    final workoutDates =
+        validWorkouts
+            .where((entry) => !entry.date!.isAfter(now))
+            .map(
+              (entry) => DateTime(
+                entry.date!.year,
+                entry.date!.month,
+                entry.date!.day,
+              ),
+            )
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+    final distinctExercises = validWorkouts
+        .expand((entry) => _exerciseNames(entry.workout))
+        .toSet()
+        .length;
+
+    var streakDays = 0;
+    if (workoutDates.isNotEmpty) {
+      final today = DateTime(now.year, now.month, now.day);
+      final mostRecent = workoutDates.first;
+      if (mostRecent == today ||
+          mostRecent == today.subtract(const Duration(days: 1))) {
+        var expected = mostRecent;
+        for (final workoutDay in workoutDates) {
+          if (workoutDay != expected) break;
+          streakDays++;
+          expected = expected.subtract(const Duration(days: 1));
+        }
+      }
+    }
+
+    return _WorkoutAnalytics(
+      periodSessions: periodWorkouts.length,
+      averageDuration: periodWorkouts.isEmpty
+          ? 0
+          : durationTotal / periodWorkouts.length,
+      frequency: frequency,
+      durationTrend: durationTrend,
+      intensityTrend: intensityTrend,
+      trendCounts: trendCounts,
+      programMonths: programMonths,
+      programSessions: programWorkouts.length,
+      programTargetSessions: programTargetSessions,
+      totalWorkouts: validWorkouts.length,
+      streakDays: streakDays,
+      distinctExercises: distinctExercises,
+    );
+  }
+
   Widget _buildHeader() {
+    final canGoBack = Navigator.of(context).canPop();
     return Row(
       children: [
+        if (canGoBack) ...[
+          IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back_rounded, color: _white),
+          ),
+          const SizedBox(width: 4),
+        ],
         const Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,16 +573,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             ],
           ),
         ),
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _border),
-          ),
-          child: const Icon(Icons.insights_rounded, color: _gold, size: 24),
-        ),
       ],
     );
   }
@@ -195,8 +591,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             child: _buildToggleTab('Weekly', _isWeekly, () => _setPeriod(true)),
           ),
           Expanded(
-            child:
-                _buildToggleTab('Monthly', !_isWeekly, () => _setPeriod(false)),
+            child: _buildToggleTab(
+              'Monthly',
+              !_isWeekly,
+              () => _setPeriod(false),
+            ),
           ),
         ],
       ),
@@ -213,19 +612,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         padding: const EdgeInsets.symmetric(vertical: 11),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(colors: [_goldLight, _gold])
-              : null,
+          color: isSelected ? _gold : Colors.transparent,
           borderRadius: BorderRadius.circular(11),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.28),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
         ),
         child: Text(
           label,
@@ -240,17 +628,17 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   BoxDecoration _cardDecoration({double radius = 20}) => BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _border, width: 1.2),
-      );
+    color: _card,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: _border, width: 0.8),
+  );
 
   Widget _iconTile(IconData icon, {double size = 36, double iconSize = 18}) {
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: _gold.withValues(alpha: 0.14),
+        color: _gold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(size * 0.32),
       ),
       child: Icon(icon, color: _gold, size: iconSize),
@@ -326,16 +714,18 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildFrequencyCard() {
+  Widget _buildFrequencyCard(List<int> values) {
     final List<String> labels = _isWeekly
         ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        : const ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'];
-    final List<int> values =
-        _isWeekly ? const [1, 0, 1, 0, 1, 1, 0] : const [4, 4, 4, 4];
+        : const ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5'];
 
-    final int defaultIndex = _isWeekly ? DateTime.now().weekday - 1 : 3;
-    final int selected =
-        (_selectedBar ?? defaultIndex).clamp(0, values.length - 1);
+    final int defaultIndex = _isWeekly
+        ? DateTime.now().weekday - 1
+        : (DateTime.now().day - 1) ~/ 7;
+    final int selected = (_selectedBar ?? defaultIndex).clamp(
+      0,
+      values.length - 1,
+    );
 
     final int maxVal = values.reduce(math.max);
     final int maxY = math.max(4, (((maxVal + 1) / 2).ceil()) * 2);
@@ -377,12 +767,14 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               ),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: _gold.withValues(alpha: 0.14),
+                  color: _gold.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _gold.withValues(alpha: 0.35)),
+                  border: Border.all(color: _border),
                 ),
                 child: Text(
                   '${labels[selected]} · ${values[selected]}',
@@ -460,7 +852,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                         child: Align(
                                           alignment: Alignment.bottomCenter,
                                           child: _buildBar(
-                                            height: values[i] / maxY * plotH * t,
+                                            height:
+                                                values[i] / maxY * plotH * t,
                                             width: _isWeekly ? 18 : 38,
                                             selected: i == selected,
                                           ),
@@ -506,56 +899,76 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     required double width,
     required bool selected,
   }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Container(
       width: width,
       height: math.max(height, 0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: selected
-              ? const [_goldLight, _gold]
-              : [_gold.withValues(alpha: 0.55), _gold.withValues(alpha: 0.22)],
-        ),
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(8),
-          bottom: Radius.circular(3),
-        ),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: _gold.withValues(alpha: 0.35),
-                  blurRadius: 14,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
+        color: selected ? _gold : _gold.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }
 
-  Widget _buildDurationTrendCard(List<double> data) {
-    final double diff = data.last - data.first;
-    final bool up = diff >= 0;
+  Widget _buildDurationTrendCard(List<double> data, List<int> counts) {
+    final populated = [
+      for (var index = 0; index < counts.length; index++)
+        if (counts[index] > 0) index,
+    ];
+    if (populated.isEmpty) {
+      return _buildTrendCard(
+        title: 'Duration Trend',
+        valueText: '—',
+        deltaText: 'No sessions yet',
+        up: true,
+        data: data,
+        chartKey: 'duration_$_isWeekly',
+        hasData: false,
+      );
+    }
+
+    final first = populated.first;
+    final last = populated.last;
+    final diff = data[last] - data[first];
+    final up = diff >= 0;
     return _buildTrendCard(
       title: 'Duration Trend',
-      valueText: '${data.last.toInt()} min',
+      valueText: '${data[last].round()} min',
       deltaText: '${up ? '+' : ''}${diff.toInt()} min',
-      up: up,
+      up: diff >= 0,
       data: data,
       chartKey: 'duration_$_isWeekly',
     );
   }
 
-  Widget _buildIntensityTrendCard(List<double> data) {
-    final double avg = data.reduce((a, b) => a + b) / data.length;
+  Widget _buildIntensityTrendCard(List<double> data, List<int> counts) {
+    final populated = [
+      for (var index = 0; index < counts.length; index++)
+        if (counts[index] > 0) index,
+    ];
+    if (populated.isEmpty) {
+      return _buildTrendCard(
+        title: 'Intensity Trend',
+        valueText: '—',
+        deltaText: 'No sessions yet',
+        up: true,
+        data: data,
+        chartKey: 'intensity_$_isWeekly',
+        hasData: false,
+      );
+    }
+
+    final totalCount = counts.fold<int>(0, (total, value) => total + value);
+    final weightedTotal = List<int>.generate(
+      data.length,
+      (index) => index,
+    ).fold<double>(0, (total, index) => total + data[index] * counts[index]);
+    final avg = weightedTotal / totalCount;
     final String level = avg < 1.7
         ? 'Low'
         : avg < 2.5
-            ? 'Moderate'
-            : 'High';
-    final double diff = data.last - data.first;
+        ? 'Moderate'
+        : 'High';
+    final diff = data[populated.last] - data[populated.first];
     return _buildTrendCard(
       title: 'Intensity Trend',
       valueText: level,
@@ -573,6 +986,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     required bool up,
     required List<double> data,
     required String chartKey,
+    bool hasData = true,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -627,28 +1041,46 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           SizedBox(
             height: 64,
             width: double.infinity,
-            child: TweenAnimationBuilder<double>(
-              key: ValueKey(chartKey),
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 900),
-              curve: Curves.easeOutCubic,
-              builder: (context, t, _) => CustomPaint(
-                painter: _SmoothLinePainter(
-                  data: data,
-                  color: _gold,
-                  gridColor: _grid,
-                  progress: t,
-                ),
-              ),
-            ),
+            child: hasData
+                ? TweenAnimationBuilder<double>(
+                    key: ValueKey(chartKey),
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, t, _) => CustomPaint(
+                      painter: _SmoothLinePainter(
+                        data: data,
+                        color: _gold,
+                        gridColor: _grid,
+                        progress: t,
+                      ),
+                    ),
+                  )
+                : const Center(
+                    child: Text(
+                      'No workout data',
+                      style: TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressToGoalCard() {
-    const double progress = 0.75;
+  Widget _buildProgressToGoalCard(_WorkoutAnalytics analytics) {
+    final progress = analytics.programTargetSessions == 0
+        ? 0.0
+        : (analytics.programSessions / analytics.programTargetSessions)
+              .clamp(0.0, 1.0)
+              .toDouble();
+    final remainingSessions = math.max(
+      0,
+      analytics.programTargetSessions - analytics.programSessions,
+    );
+    final progressCaption = remainingSessions == 0
+        ? '${analytics.programMonths}-month program target reached'
+        : '$remainingSessions sessions to go in your ${analytics.programMonths}-month plan';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _cardDecoration(),
@@ -686,11 +1118,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             ),
           ),
           const SizedBox(width: 18),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Progress to Goal',
                   style: TextStyle(
                     fontSize: 16,
@@ -698,19 +1130,23 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     color: _white,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  '9 / 12 weeks',
-                  style: TextStyle(
+                  '${analytics.programSessions} / ${analytics.programTargetSessions} sessions',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: _goldBright,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  '3 weeks to go — keep it up!',
-                  style: TextStyle(
+                  progressCaption,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                     color: _gray,
@@ -725,7 +1161,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildAchievementsCard() {
+  Widget _buildAchievementsCard(_WorkoutAnalytics analytics) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _cardDecoration(),
@@ -745,17 +1181,26 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             children: [
               Expanded(
                 child: _buildAchievementItem(
-                    Icons.local_fire_department_rounded, '7 Day', 'Streak'),
+                  Icons.local_fire_department_rounded,
+                  '${analytics.streakDays} Day',
+                  'Streak',
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _buildAchievementItem(
-                    Icons.bolt_rounded, '16', 'Workouts'),
+                  Icons.bolt_rounded,
+                  '${analytics.totalWorkouts}',
+                  '12-Mo Workouts',
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _buildAchievementItem(
-                    Icons.emoji_events_rounded, 'Goal', 'Progress'),
+                  Icons.fitness_center_rounded,
+                  '${analytics.distinctExercises}',
+                  'Exercises',
+                ),
               ),
             ],
           ),
@@ -777,9 +1222,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _gold.withValues(alpha: 0.16),
+              color: _gold.withValues(alpha: 0.10),
               shape: BoxShape.circle,
-              border: Border.all(color: _gold.withValues(alpha: 0.4)),
             ),
             child: Icon(icon, color: _gold, size: 21),
           ),
@@ -808,10 +1252,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   Widget _buildHistoryButton() {
     return Material(
-      color: _gold.withValues(alpha: 0.08),
+      color: _card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: _gold.withValues(alpha: 0.55), width: 1.2),
+        side: const BorderSide(color: _border, width: 0.8),
       ),
       child: InkWell(
         customBorder: RoundedRectangleBorder(
@@ -839,14 +1283,47 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   ),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: _goldBright, size: 26),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: _goldBright,
+                size: 26,
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _WorkoutAnalytics {
+  const _WorkoutAnalytics({
+    required this.periodSessions,
+    required this.averageDuration,
+    required this.frequency,
+    required this.durationTrend,
+    required this.intensityTrend,
+    required this.trendCounts,
+    required this.programMonths,
+    required this.programSessions,
+    required this.programTargetSessions,
+    required this.totalWorkouts,
+    required this.streakDays,
+    required this.distinctExercises,
+  });
+
+  final int periodSessions;
+  final double averageDuration;
+  final List<int> frequency;
+  final List<double> durationTrend;
+  final List<double> intensityTrend;
+  final List<int> trendCounts;
+  final int programMonths;
+  final int programSessions;
+  final int programTargetSessions;
+  final int totalWorkouts;
+  final int streakDays;
+  final int distinctExercises;
 }
 
 class _SmoothLinePainter extends CustomPainter {
@@ -905,7 +1382,9 @@ class _SmoothLinePainter extends CustomPainter {
       ..close();
 
     canvas.save();
-    canvas.clipRect(Rect.fromLTWH(0, -8, size.width * progress, size.height + 16));
+    canvas.clipRect(
+      Rect.fromLTWH(0, -8, size.width * progress, size.height + 16),
+    );
 
     canvas.drawPath(
       fill,
@@ -913,7 +1392,7 @@ class _SmoothLinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [color.withValues(alpha: 0.28), color.withValues(alpha: 0.0)],
+          colors: [color.withValues(alpha: 0.10), color.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
@@ -930,9 +1409,7 @@ class _SmoothLinePainter extends CustomPainter {
 
     if (progress > 0.98) {
       final end = pts.last;
-      canvas.drawCircle(
-          end, 7, Paint()..color = color.withValues(alpha: 0.25));
-      canvas.drawCircle(end, 4, Paint()..color = color);
+      canvas.drawCircle(end, 3.5, Paint()..color = color);
       canvas.drawCircle(end, 1.6, Paint()..color = const Color(0xFF1C1C1E));
     }
   }

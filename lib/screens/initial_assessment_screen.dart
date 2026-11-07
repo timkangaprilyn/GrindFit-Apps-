@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
 import 'fitness_goal_screen.dart';
@@ -28,14 +29,18 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
   // Toggle field icons visibility
   static const bool _showFieldIcons = true;
 
-  late final _nameController =
-      TextEditingController(text: AppState.instance.fullName);
-  late final _ageController =
-      TextEditingController(text: AppState.instance.age.toString());
-  late final _heightController =
-      TextEditingController(text: AppState.instance.heightCm.toStringAsFixed(0));
-  late final _weightController =
-      TextEditingController(text: AppState.instance.weightKg.toStringAsFixed(0));
+  late final _nameController = TextEditingController(
+    text: AppState.instance.fullName,
+  );
+  late final _ageController = TextEditingController(
+    text: AppState.instance.age.toString(),
+  );
+  late final _heightController = TextEditingController(
+    text: AppState.instance.heightCm.toStringAsFixed(0),
+  );
+  late final _weightController = TextEditingController(
+    text: AppState.instance.weightKg.toStringAsFixed(0),
+  );
   final _injuryController = TextEditingController();
 
   String? _selectedGender; // Optional gender state
@@ -80,7 +85,10 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
     final weightText = _weightController.text.trim();
 
     // Validation for empty fields and realistic values
-    if (fullName.isEmpty || ageText.isEmpty || heightText.isEmpty || weightText.isEmpty) {
+    if (fullName.isEmpty ||
+        ageText.isEmpty ||
+        heightText.isEmpty ||
+        weightText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required profile fields.'),
@@ -130,6 +138,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
       heightCm: height,
       weightKg: weight,
       fitnessLevel: _fitnessLevel,
+      gender: _selectedGender,
+      hasInjuryOrCondition: _hasInjuryOrCondition,
+      injuryDetails: _injuryController.text.trim(),
     );
 
     Navigator.push(
@@ -316,18 +327,17 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      _gold.withAlpha(55),
-                      _gold.withAlpha(0),
-                    ],
+                    colors: [_gold.withAlpha(55), _gold.withAlpha(0)],
                   ),
                 ),
               ),
             ),
             SafeArea(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -351,7 +361,10 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    const OnboardingStepIndicator(currentStep: 1, totalSteps: 5),
+                    const OnboardingStepIndicator(
+                      currentStep: 1,
+                      totalSteps: 5,
+                    ),
                     const SizedBox(height: 32),
 
                     RichText(
@@ -391,7 +404,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                       cursorColor: _gold,
                       textInputAction: TextInputAction.next,
                       decoration: _inputDecoration(
-                          'Juan Dela Cruz', Icons.person_outline),
+                        'Juan Dela Cruz',
+                        Icons.person_outline,
+                      ),
                     ),
                     const SizedBox(height: 22),
 
@@ -411,7 +426,10 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                 cursorColor: _gold,
                                 keyboardType: TextInputType.number,
                                 textInputAction: TextInputAction.next,
-                                decoration: _inputDecoration('20', Icons.calendar_month_outlined),
+                                decoration: _inputDecoration(
+                                  '20',
+                                  Icons.calendar_month_outlined,
+                                ),
                               ),
                             ],
                           ),
@@ -425,7 +443,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                               const SizedBox(height: 10),
                               Container(
                                 height: 58,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _card,
                                   borderRadius: BorderRadius.circular(16),
@@ -435,9 +455,20 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                   child: DropdownButton<String>(
                                     value: _selectedGender,
                                     dropdownColor: _card,
-                                    hint: const Text('Select', style: TextStyle(color: _hint, fontSize: 14)),
-                                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _gold),
-                                    items: ['Male', 'Female', 'Other'].map((String value) {
+                                    hint: const Text(
+                                      'Select',
+                                      style: TextStyle(
+                                        color: _hint,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: _gold,
+                                    ),
+                                    items: ['Male', 'Female', 'Other'].map((
+                                      String value,
+                                    ) {
                                       return DropdownMenuItem<String>(
                                         value: value,
                                         child: Text(value, style: textStyle),
@@ -474,8 +505,10 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                 cursorColor: _gold,
                                 keyboardType: TextInputType.number,
                                 textInputAction: TextInputAction.next,
-                                decoration:
-                                    _inputDecoration('170', Icons.straighten),
+                                decoration: _inputDecoration(
+                                  '170',
+                                  Icons.straighten,
+                                ),
                               ),
                             ],
                           ),
@@ -486,7 +519,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _label(
-                                  Icons.monitor_weight_outlined, 'Weight (kg)'),
+                                Icons.monitor_weight_outlined,
+                                'Weight (kg)',
+                              ),
                               const SizedBox(height: 10),
                               TextField(
                                 controller: _weightController,
@@ -494,7 +529,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                 cursorColor: _gold,
                                 keyboardType: TextInputType.number,
                                 decoration: _inputDecoration(
-                                    '62', Icons.monitor_weight_outlined),
+                                  '62',
+                                  Icons.monitor_weight_outlined,
+                                ),
                               ),
                             ],
                           ),
@@ -511,15 +548,22 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                       onTap: _pickFitnessLevel,
                       child: InputDecorator(
                         decoration:
-                            _inputDecoration('', Icons.signal_cellular_alt)
-                                .copyWith(
-                          suffixIcon: const Padding(
-                            padding: EdgeInsets.only(right: 12),
-                            child: Icon(Icons.keyboard_arrow_down, color: _gray),
-                          ),
-                          suffixIconConstraints:
-                              const BoxConstraints(minWidth: 0, minHeight: 0),
-                        ),
+                            _inputDecoration(
+                              '',
+                              Icons.signal_cellular_alt,
+                            ).copyWith(
+                              suffixIcon: const Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: _gray,
+                                ),
+                              ),
+                              suffixIconConstraints: const BoxConstraints(
+                                minWidth: 0,
+                                minHeight: 0,
+                              ),
+                            ),
                         child: Text(_fitnessLevel, style: textStyle),
                       ),
                     ),
@@ -565,16 +609,37 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                             TextField(
                               controller: _injuryController,
                               cursorColor: _gold,
-                              style: const TextStyle(fontSize: 14, color: _white),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: _white,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Please specify (e.g., lower back pain, knee injury)',
-                                hintStyle: const TextStyle(color: _hint, fontSize: 13),
+                                hintStyle: const TextStyle(
+                                  color: _hint,
+                                  fontSize: 13,
+                                ),
                                 filled: true,
                                 fillColor: _bg,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _border)),
-                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _border)),
-                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _gold, width: 1.5)),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: _gold,
+                                    width: 1.5,
+                                  ),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -583,16 +648,26 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.amber.withAlpha(20),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.amber.withAlpha(80)),
+                                border: Border.all(
+                                  color: Colors.amber.withAlpha(80),
+                                ),
                               ),
                               child: const Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                                  Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.amber,
+                                    size: 20,
+                                  ),
                                   SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       'Injury Alert: We will adjust your workout recommendations accordingly for your safety.',
-                                      style: TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.w500),
+                                      style: TextStyle(
+                                        color: Colors.amberAccent,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],

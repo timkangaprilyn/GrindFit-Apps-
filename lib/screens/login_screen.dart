@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../models/app_state.dart';
 import 'register_screen.dart';
-import 'home_dashboard_screen.dart';
 import 'initial_assessment_screen.dart';
 import 'forgot_password_screen.dart'; // <--- Ito ang tamang file name (walang _2)
+import 'main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,9 +29,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
+
   bool _isPasswordObscured = true;
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
+
+  bool get _isLoading => _isEmailLoading || _isGoogleLoading;
 
   @override
   void dispose() {
@@ -61,69 +66,23 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isEmailLoading = true);
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: password);
 
       final user = userCredential.user;
       if (user == null) throw Exception('User not found');
-
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      if (!mounted) return;
-
-      if (doc.exists) {
-        final data = doc.data();
-        final role = data?['role'] ?? 'user';
-        final setupCompleted = data?['setupCompleted'] ?? false;
-
-        if (role == 'admin' || role == 'trainer') {
-          await FirebaseAuth.instance.signOut();
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Admin or trainer accounts must use the web portal.'),
-              backgroundColor: Colors.orangeAccent,
-            ),
-          );
-          setState(() => _isLoading = false);
-          return;
-        }
-
-        if (setupCompleted == true) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const InitialAssessmentScreen()),
-            (route) => false,
-          );
-        }
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const InitialAssessmentScreen()),
-          (route) => false,
-        );
-      }
+      await _routeSignedInUser(user);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message = 'An error occurred during login.';
-      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+      if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
+        message =
+            'Email or password is incorrect. If you created this account with Google, tap “Continue with Google” instead.';
+      } else if (e.code == 'user-not-found') {
         message = 'No account found with this email, or incorrect password.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Incorrect password.';
       } else if (e.code == 'invalid-email') {
         message = 'The email address format is invalid.';
       }
@@ -136,69 +95,92 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isEmailLoading = false);
     }
+  }
+
+  Future<void> _routeSignedInUser(User user) async {
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+    var doc = await userRef.get();
+
+    if (!doc.exists) {
+      await userRef.set({
+        'uid': user.uid,
+        'fullName': user.displayName ?? '',
+        'email': user.email ?? '',
+        'role': 'member',
+        'setupCompleted': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      doc = await userRef.get();
+    }
+
+    final data = doc.data();
+    AppState.instance.loadProfile(data, fallbackName: user.displayName);
+    final role = data?['role'] as String? ?? 'member';
+    if (role == 'admin' || role == 'trainer') {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Admin and trainer accounts must use the GrindFit Admin web portal, not the mobile app.',
+          ),
+          backgroundColor: Colors.amber,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    final Widget destination = data?['setupCompleted'] == true
+        ? const MainNavigationScreen()
+        : const InitialAssessmentScreen();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => destination),
+      (route) => false,
+    );
   }
 
   // Google Sign-In Logic
   Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
+    setState(() => _isGoogleLoading = true);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _isLoading = false);
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
       final user = userCredential.user;
-
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-        if (!userDoc.exists) {
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'uid': user.uid,
-            'fullName': user.displayName ?? 'Google User',
-            'email': user.email ?? '',
-            'role': 'user',
-            'setupCompleted': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        final docData = userDoc.data();
-        final setupCompleted = docData != null ? (docData['setupCompleted'] ?? false) : false;
-
-        if (!mounted) return;
-
-        if (setupCompleted == true) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const InitialAssessmentScreen()),
-            (route) => false,
-          );
-        }
+      if (user == null) {
+        throw Exception('Google sign-in did not return a user.');
       }
+      await _routeSignedInUser(user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In Error: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('Google Sign-In Error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -234,13 +216,20 @@ class _LoginScreenState extends State<LoginScreen> {
           obscureText: obscureText,
           keyboardType: keyboardType,
           cursorColor: _gold,
-          style: const TextStyle(fontSize: 15, color: _white, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontSize: 15,
+            color: _white,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: _hint, fontSize: 15),
             filled: true,
             fillColor: _card,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 20,
+            ),
             prefixIcon: Padding(
               padding: const EdgeInsets.only(left: 16, right: 12),
               child: Icon(icon, color: _gold, size: 22),
@@ -306,17 +295,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [
-                      _gold.withAlpha(50),
-                      _gold.withAlpha(0),
-                    ],
+                    colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
                   ),
                 ),
               ),
             ),
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 10.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -328,8 +317,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           letterSpacing: -0.5,
                         ),
                         children: [
-                          TextSpan(text: 'Welcome ', style: TextStyle(color: _white)),
-                          TextSpan(text: 'Back', style: TextStyle(color: _gold)),
+                          TextSpan(
+                            text: 'Welcome ',
+                            style: TextStyle(color: _white),
+                          ),
+                          TextSpan(
+                            text: 'Back',
+                            style: TextStyle(color: _gold),
+                          ),
                         ],
                       ),
                     ),
@@ -361,7 +356,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: _isPasswordObscured,
                       suffix: IconButton(
                         icon: Icon(
-                          _isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _isPasswordObscured
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: _gray,
                         ),
                         onPressed: () {
@@ -372,6 +369,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    const Text(
+                      'Created your account with Google? Sign in with Google below. Google passwords are not shared with apps.',
+                      style: TextStyle(
+                        color: _gray,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
                     Align(
                       alignment: Alignment.centerRight,
@@ -379,7 +385,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const ForgotPasswordScreen(),
+                            ),
                           );
                         },
                         child: const Text(
@@ -419,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(16),
                             onTap: _isLoading ? null : _handleLogin,
                             child: Center(
-                              child: _isLoading
+                              child: _isEmailLoading
                                   ? const SizedBox(
                                       width: 26,
                                       height: 26,
@@ -429,7 +437,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     )
                                   : const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           'Log In',
@@ -440,7 +449,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                         ),
                                         SizedBox(width: 12),
-                                        Icon(Icons.arrow_forward_rounded, color: _bg, size: 22),
+                                        Icon(
+                                          Icons.arrow_forward_rounded,
+                                          color: _bg,
+                                          size: 22,
+                                        ),
                                       ],
                                     ),
                             ),
@@ -455,7 +468,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(child: Divider(color: _border)),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text('or', style: TextStyle(color: _gray, fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            'or',
+                            style: TextStyle(
+                              color: _gray,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                         Expanded(child: Divider(color: _border)),
                       ],
@@ -475,25 +495,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           backgroundColor: _card,
                         ),
                         onPressed: _isLoading ? null : _handleGoogleSignIn,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/images/google_logo.png',
-                              height: 24,
-                              width: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Continue with Google',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: _white,
+                        child: _isGoogleLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: _gold,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/google_logo.png',
+                                    height: 24,
+                                    width: 24,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: _white,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -509,7 +538,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
                             );
                           },
                           child: const Text(

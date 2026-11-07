@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+
 import 'main_navigation_screen.dart';
 
 class WorkoutHistoryScreen extends StatefulWidget {
@@ -28,8 +29,13 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
   String _selectedMonth = 'All Months';
   final int _currentIndex = 3; // Naka-link sa Analytics tab
 
-  final List<String> _categories = const ['All', 'Gym', 'Home', 'Outdoor'];
-  
+  final List<String> _categories = const [
+    'All',
+    'Gym',
+    'Home (no equipment)',
+    'Outdoor',
+  ];
+
   // Listahan ng mga buwan para sa Filter
   final List<String> _months = const [
     'All Months',
@@ -44,7 +50,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     'September',
     'October',
     'November',
-    'December'
+    'December',
   ];
 
   // ───────────────────────── Helpers ─────────────────────────
@@ -52,6 +58,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
   IconData _categoryIcon(String category) {
     switch (category) {
       case 'Home':
+      case 'Home (no equipment)':
         return Icons.home_rounded;
       case 'Outdoor':
         return Icons.directions_run_rounded;
@@ -176,12 +183,15 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                             .orderBy('timestamp', descending: true)
                             .snapshots(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return const Center(
-                                child: CircularProgressIndicator(color: _gold));
+                              child: CircularProgressIndicator(color: _gold),
+                            );
                           }
 
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
                             return _buildEmptyState('No workouts logged yet.');
                           }
 
@@ -189,23 +199,32 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                           final docs = snapshot.data!.docs.where((doc) {
                             final data = doc.data() as Map<String, dynamic>;
                             final category = data['category'] ?? 'Gym';
-                            
+
                             // Petsa para sa Month filter
                             DateTime date = DateTime.now();
                             if (data['timestamp'] is Timestamp) {
                               date = (data['timestamp'] as Timestamp).toDate();
                             } else if (data['date'] != null) {
                               try {
-                                date = DateFormat('MMM dd, yyyy').parse(data['date']);
+                                date = DateFormat('MMM dd, yyyy')
+                                    .parse(data['date']);
                               } catch (_) {}
                             }
 
                             final monthName = DateFormat('MMMM').format(date);
 
-                            bool matchCategory = _selectedCategory == 'All' ||
-                                category.toString().toLowerCase() == _selectedCategory.toLowerCase();
-                            bool matchMonth = _selectedMonth == 'All Months' ||
-                                monthName.toLowerCase() == _selectedMonth.toLowerCase();
+                            final normalizedCategory =
+                                category.toString().toLowerCase() == 'home'
+                                ? 'home (no equipment)'
+                                : category.toString().toLowerCase();
+                            bool matchCategory =
+                                _selectedCategory == 'All' ||
+                                normalizedCategory ==
+                                    _selectedCategory.toLowerCase();
+                            bool matchMonth =
+                                _selectedMonth == 'All Months' ||
+                                monthName.toLowerCase() ==
+                                    _selectedMonth.toLowerCase();
 
                             return matchCategory && matchMonth;
                           }).toList();
@@ -214,7 +233,8 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                           int totalMinutes = 0;
                           for (var doc in docs) {
                             final data = doc.data() as Map<String, dynamic>;
-                            final durStr = data['duration']?.toString() ?? '0 min';
+                            final durStr =
+                                data['duration']?.toString() ?? '0 min';
                             totalMinutes += _parseMinutes(durStr);
                           }
 
@@ -224,30 +244,64 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                               const SizedBox(height: 10),
                               Expanded(
                                 child: docs.isEmpty
-                                    ? _buildEmptyState('No workouts found for the selected filter.')
+                                    ? _buildEmptyState(
+                                        'No workouts found for the selected filter.',
+                                      )
                                     : ListView.builder(
                                         physics: const BouncingScrollPhysics(),
-                                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          20,
+                                          8,
+                                          20,
+                                          20,
+                                        ),
                                         itemCount: docs.length,
                                         itemBuilder: (context, index) {
-                                          final data = docs[index].data() as Map<String, dynamic>;
-                                          
+                                          final data =
+                                              docs[index].data()
+                                                  as Map<String, dynamic>;
+
                                           // Format ng totoong petsa mula Firestore
-                                          String formattedDate = 'Recently';
+                                          String formattedDate =
+                                              'Date unavailable';
                                           if (data['timestamp'] is Timestamp) {
-                                            formattedDate = DateFormat('MMM dd, yyyy')
-                                                .format((data['timestamp'] as Timestamp).toDate());
+                                            formattedDate =
+                                                DateFormat('MMM dd, yyyy')
+                                                    .format(
+                                                      (data['timestamp']
+                                                              as Timestamp)
+                                                          .toDate(),
+                                                    );
                                           } else if (data['date'] != null) {
-                                            formattedDate = data['date'].toString();
+                                            formattedDate = data['date']
+                                                .toString();
                                           }
 
                                           final workoutMap = {
                                             'date': formattedDate,
-                                            'title': data['title']?.toString() ?? data['workoutName']?.toString() ?? 'Workout Session',
-                                            'category': data['category']?.toString() ?? 'Gym',
-                                            'duration': data['duration']?.toString() ?? '45 min',
-                                            'intensity': data['intensity']?.toString() ?? 'Moderate',
-                                            'notes': data['notes']?.toString() ?? '',
+                                            'title':
+                                                data['title']?.toString() ??
+                                                data['workoutName']
+                                                    ?.toString() ??
+                                                'Workout Session',
+                                            'category':
+                                                data['category']?.toString() ??
+                                                'Gym',
+                                            'duration':
+                                                data['duration']?.toString() ??
+                                                '45 min',
+                                            'intensity':
+                                                data['intensity']?.toString() ??
+                                                'Moderate',
+                                            'notes':
+                                                data['notes']?.toString() ?? '',
+                                            'exercises':
+                                                data['exercises'] is List
+                                                ? data['exercises'] as List
+                                                : const <dynamic>[],
+                                            'feedback':
+                                                data['feedback']?.toString() ??
+                                                '',
                                           };
 
                                           return _buildWorkoutCard(workoutMap);
@@ -356,7 +410,10 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                 value: _selectedMonth, // Inayos dito: 'value' gamit sa halip na 'initialValue'
                 dropdownColor: _card,
                 borderRadius: BorderRadius.circular(16),
-                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _gold),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: _gold,
+                ),
                 style: const TextStyle(
                   color: _goldBright,
                   fontWeight: FontWeight.bold,
@@ -467,7 +524,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   // ───────────────────────── Workout Card ─────────────────────────
 
-  Widget _buildWorkoutCard(Map<String, String> workout) {
+  Widget _buildWorkoutCard(Map<String, dynamic> workout) {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(20),
       side: const BorderSide(color: _border, width: 1.2),
@@ -501,8 +558,9 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                           ],
                         ),
                         borderRadius: BorderRadius.circular(14),
-                        border:
-                            Border.all(color: _gold.withValues(alpha: 0.35)),
+                        border: Border.all(
+                          color: _gold.withValues(alpha: 0.35),
+                        ),
                       ),
                       child: Icon(
                         _categoryIcon(workout['category']!),
@@ -535,8 +593,11 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded,
-                        color: _muted, size: 26),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: _muted,
+                      size: 26,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -690,7 +751,8 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (_) => MainNavigationScreen(initialIndex: index)),
+              builder: (_) => MainNavigationScreen(initialIndex: index),
+            ),
           );
         },
         type: BottomNavigationBarType.fixed,
@@ -698,21 +760,35 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         elevation: 0,
         selectedItemColor: _goldBright,
         unselectedItemColor: _muted,
-        selectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+        ),
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded), label: 'Home'),
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.fitness_center), label: 'Workouts'),
+            icon: Icon(Icons.fitness_center),
+            label: 'Workouts',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded), label: 'Log'),
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Log',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Analytics',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded), label: 'Profile'),
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -756,8 +832,12 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     );
   }
 
-  void _showDetailsModal(BuildContext context, Map<String, String> workout) {
+  void _showDetailsModal(BuildContext context, Map<String, dynamic> workout) {
     final String notes = workout['notes'] ?? '';
+    final exercises = (workout['exercises'] as List<dynamic>? ?? const [])
+        .whereType<Map>()
+        .map((exercise) => Map<String, dynamic>.from(exercise))
+        .toList();
 
     showModalBottomSheet(
       context: context,
@@ -820,16 +900,78 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  _detailTile(Icons.place_outlined, 'Category',
-                      workout['category']!),
+                  _detailTile(
+                    Icons.place_outlined,
+                    'Category',
+                    workout['category']!,
+                  ),
                   const SizedBox(width: 10),
                   _detailTile(
-                      Icons.timer_outlined, 'Duration', workout['duration']!),
+                    Icons.timer_outlined,
+                    'Duration',
+                    workout['duration']!,
+                  ),
                   const SizedBox(width: 10),
-                  _detailTile(Icons.bolt_rounded, 'Intensity',
-                      workout['intensity']!),
+                  _detailTile(
+                    Icons.bolt_rounded,
+                    'Intensity',
+                    workout['intensity']!,
+                  ),
                 ],
               ),
+              if (exercises.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text(
+                  'Exercises',
+                  style: TextStyle(
+                    color: _white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final exercise in exercises)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _tile,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            exercise['name']?.toString() ?? 'Exercise',
+                            style: const TextStyle(
+                              color: _white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps'
+                            '${exercise['weight']?.toString().isNotEmpty == true ? ' • ${exercise['weight']} kg' : ''}'
+                            '${exercise['skipped'] == true ? ' • Skipped' : ''}',
+                            style: const TextStyle(color: _gray, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+              if ((workout['feedback'] as String?)?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Workout feedback: ${workout['feedback']}',
+                  style: const TextStyle(
+                    color: _goldBright,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Container(
                 width: double.infinity,
@@ -844,7 +986,11 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.check_circle_rounded, color: _gold, size: 20),
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: _gold,
+                          size: 20,
+                        ),
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(

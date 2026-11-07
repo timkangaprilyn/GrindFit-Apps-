@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+
 import 'register_screen.dart';
 import 'login_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  final String? notice;
+
+  const WelcomeScreen({super.key, this.notice});
 
   // GrindFit palette: Black + Gold + White + Gray
   static const Color _black = Color(0xFF050505);
@@ -31,11 +34,7 @@ class WelcomeScreen extends StatelessWidget {
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
                   errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Icon(
-                      Icons.fitness_center,
-                      size: 80,
-                      color: _gold,
-                    ),
+                    child: Icon(Icons.fitness_center, size: 80, color: _gold),
                   ),
                 ),
 
@@ -150,6 +149,29 @@ class WelcomeScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (notice != null) ...[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 18),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2412),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _gold.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        child: Text(
+                          notice!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _white,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
                     // Tagline
                     const Text(
                       'TRACK  •  ADAPT  •  ACHIEVE',

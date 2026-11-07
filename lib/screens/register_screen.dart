@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../models/app_state.dart';
 import 'login_screen.dart';
 import 'initial_assessment_screen.dart';
-import 'home_dashboard_screen.dart';
+import 'main_navigation_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -31,7 +33,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordObscured = true;
   bool _isConfirmPasswordObscured = true;
   bool _agreedToPrivacy = false;
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
+
+  bool get _isLoading => _isEmailLoading || _isGoogleLoading;
 
   @override
   void dispose() {
@@ -60,10 +65,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (fullName.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (fullName.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Mangyaring punan ang lahat ng kinakailangang impormasyon.'),
+          content: Text('Please complete all required fields.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -73,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (password != confirmPassword) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Hindi nagtutugma ang password at confirm password.'),
+          content: Text('Password and confirmation do not match.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -83,31 +91,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_agreedToPrivacy) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Kailangang sumang-ayon sa Data Privacy Act of 2012 (RA 10173).'),
+          content: Text(
+            'You must agree to the Data Privacy Act of 2012 (RA 10173).',
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() => _isEmailLoading = true);
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
 
       final user = userCredential.user;
       if (user != null) {
         await user.updateDisplayName(fullName);
+        AppState.instance.loadProfile({
+          'fullName': fullName,
+          'email': email,
+        }, fallbackName: fullName);
 
         // Firestore document creation
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'uid': user.uid,
           'fullName': fullName,
           'email': email,
-          'role': 'user',
+          'role': 'member',
           'setupCompleted': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -121,7 +133,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Na-rehistro na ang iyong account! Mangyaring i-verify ang iyong email.'),
+          content: Text(
+            'Your account has been created. Please verify your email.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -132,13 +146,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      String message = 'May naganap na error sa pag-rehistro.';
+      String message = 'An error occurred while creating your account.';
       if (e.code == 'weak-password') {
-        message = 'Mahina ang password na iyong inilagay.';
+        message = 'The password is too weak.';
       } else if (e.code == 'email-already-in-use') {
-        message = 'Mayroon nang account na nakarehistro sa email na ito.';
+        message = 'An account already exists for this email.';
       } else if (e.code == 'invalid-email') {
-        message = 'Invalid ang format ng email address.';
+        message = 'The email address format is invalid.';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
@@ -149,69 +163,89 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isEmailLoading = false);
     }
   }
 
   // Google Sign-In Logic for Register Screen
   Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
+    setState(() => _isGoogleLoading = true);
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        setState(() => _isLoading = false);
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
       final user = userCredential.user;
-
-      if (user != null) {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-        if (!userDoc.exists) {
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'uid': user.uid,
-            'fullName': user.displayName ?? 'Google User',
-            'email': user.email ?? '',
-            'role': 'user',
-            'setupCompleted': false,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        final docData = userDoc.data();
-        final setupCompleted = docData != null ? (docData['setupCompleted'] ?? false) : false;
-
-        if (!mounted) return;
-
-        if (setupCompleted == true) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const InitialAssessmentScreen()),
-            (route) => false,
-          );
-        }
+      if (user == null) {
+        throw Exception('Google sign-in did not return a user.');
       }
+
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      var userDoc = await userRef.get();
+
+      if (!userDoc.exists) {
+        await userRef.set({
+          'uid': user.uid,
+          'fullName': user.displayName ?? 'Google User',
+          'email': user.email ?? '',
+          'role': 'member',
+          'setupCompleted': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        userDoc = await userRef.get();
+      }
+
+      final docData = userDoc.data();
+      AppState.instance.loadProfile(docData, fallbackName: user.displayName);
+      final role = docData?['role'] as String? ?? 'member';
+      if (role == 'admin' || role == 'trainer') {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Admin and trainer accounts must use the GrindFit Admin web portal, not the mobile app.',
+            ),
+            backgroundColor: Colors.amber,
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      final Widget destination = docData?['setupCompleted'] == true
+          ? const MainNavigationScreen()
+          : const InitialAssessmentScreen();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => destination),
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google Sign-In Error: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('Google Sign-In Error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -251,13 +285,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           textInputAction: textInputAction,
           onSubmitted: onSubmitted,
           cursorColor: _gold,
-          style: const TextStyle(fontSize: 15, color: _white, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontSize: 15,
+            color: _white,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: _hint, fontSize: 15),
             filled: true,
             fillColor: _card,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 20,
+            ),
             prefixIcon: Padding(
               padding: const EdgeInsets.only(left: 16, right: 12),
               child: Icon(icon, color: _gold, size: 22),
@@ -326,17 +367,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    _gold.withAlpha(50),
-                    _gold.withAlpha(0),
-                  ],
+                  colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
                 ),
               ),
             ),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 10.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -379,7 +420,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textInputAction: TextInputAction.next,
                     suffix: IconButton(
                       icon: Icon(
-                        _isPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        _isPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: _gray,
                       ),
                       onPressed: () {
@@ -403,12 +446,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                     suffix: IconButton(
                       icon: Icon(
-                        _isConfirmPasswordObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        _isConfirmPasswordObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: _gray,
                       ),
                       onPressed: () {
                         setState(() {
-                          _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                          _isConfirmPasswordObscured =
+                              !_isConfirmPasswordObscured;
                         });
                       },
                     ),
@@ -470,7 +516,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(16),
                           onTap: _isLoading ? null : _handleRegister,
                           child: Center(
-                            child: _isLoading
+                            child: _isEmailLoading
                                 ? const SizedBox(
                                     width: 26,
                                     height: 26,
@@ -491,7 +537,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 12),
-                                      Icon(Icons.arrow_forward_rounded, color: _bg, size: 22),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: _bg,
+                                        size: 22,
+                                      ),
                                     ],
                                   ),
                           ),
@@ -506,12 +556,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Expanded(child: Divider(color: _border)),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('or', style: TextStyle(color: _gray, fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'or',
+                          style: TextStyle(
+                            color: _gray,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                       Expanded(child: Divider(color: _border)),
                     ],
                   ),
                   const SizedBox(height: 24),
+                  const Center(
+                    child: Text(
+                      'Google accounts do not need a GrindFit password. Continue with Google to create or access your account.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _gray, fontSize: 12, height: 1.4),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // Continue with Google Button
                   SizedBox(
@@ -526,25 +591,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         backgroundColor: _card,
                       ),
                       onPressed: _isLoading ? null : _handleGoogleSignIn,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/images/google_logo.png',
-                            height: 24,
-                            width: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Continue with Google',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: _white,
+                      child: _isGoogleLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: _gold,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/images/google_logo.png',
+                                  height: 24,
+                                  width: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Continue with Google',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: _white,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -560,7 +634,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
                           );
                         },
                         child: const Text(

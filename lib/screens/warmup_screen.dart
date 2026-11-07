@@ -1,42 +1,52 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../models/workout_plan.dart';
+import '../widgets/workout_image.dart';
 import 'exercise_timer_screen.dart';
 
 class WarmupScreen extends StatefulWidget {
   final List<PlanExercise> exerciseList;
 
-  const WarmupScreen({
-    super.key,
-    required this.exerciseList,
-  });
+  const WarmupScreen({super.key, required this.exerciseList});
 
   @override
   State<WarmupScreen> createState() => _WarmupScreenState();
 }
 
 class _WarmupScreenState extends State<WarmupScreen> {
-  int _currentStep = 0;
+  static const int _restDurationSeconds = 15;
 
-  final List<Map<String, String>> _warmupSteps = [
+  int _currentStep = 0;
+  Timer? _stepTimer;
+  late int _secondsRemaining = _stepDuration;
+  bool _isTimerRunning = false;
+  bool _isResting = false;
+
+  final List<Map<String, dynamic>> _warmupSteps = [
     {
       'title': 'Arm Circles',
-      'duration': '30 Seconds',
+      'durationSeconds': 30,
       'instruction': 'Stand tall and make small circles with your arms, gradually increasing the circle size to warm up shoulder joints.',
-      'image': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80',
+      'image': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=max&w=900&q=80',
     },
     {
       'title': 'Dynamic Torso Twists',
-      'duration': '30 Seconds',
+      'durationSeconds': 30,
       'instruction': 'Gently twist your torso from side to side to loosen up your spine and core muscles.',
-      'image': 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=crop&w=800&q=80',
+      'image': 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?auto=format&fit=max&w=900&q=80',
     },
     {
       'title': 'Light Jog in Place',
-      'duration': '45 Seconds',
+      'durationSeconds': 45,
       'instruction': 'Jog lightly on the spot to elevate your heart rate and prepare your lower body.',
-      'image': 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=800&q=80',
+      'image': 'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=max&w=900&q=80',
     },
   ];
+
+  int get _stepDuration => _warmupSteps[_currentStep]['durationSeconds'] as int;
 
   static const Color _bg = Color(0xFF121212);
   static const Color _card = Color(0xFF1C1C1E);
@@ -45,23 +55,199 @@ class _WarmupScreenState extends State<WarmupScreen> {
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
 
-  void _nextStep() {
+  @override
+  void dispose() {
+    _stepTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _stepTimer?.cancel();
+    _isTimerRunning = true;
+    _stepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_secondsRemaining <= 1) {
+        timer.cancel();
+        HapticFeedback.mediumImpact();
+        if (_isResting) {
+          _advanceAfterRest();
+        } else {
+          _beginRest();
+        }
+        return;
+      }
+      setState(() => _secondsRemaining--);
+    });
+  }
+
+  void _pauseOrResumeTimer() {
+    if (_isTimerRunning) {
+      _stepTimer?.cancel();
+      setState(() => _isTimerRunning = false);
+      return;
+    }
+    setState(() => _isTimerRunning = true);
+    _startCountdown();
+  }
+
+  void _resetTimer() {
+    _stepTimer?.cancel();
     setState(() {
-      if (_currentStep < _warmupSteps.length - 1) {
-        _currentStep++;
-      } else {
-        // Kapag tapos na ang warmup, pumunta na sa ExerciseTimerScreen dalang ang buong exercise list!
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ExerciseTimerScreen(
-              exerciseList: widget.exerciseList,
-              currentIndex: 0,
+      _secondsRemaining = _stepDuration;
+      _isTimerRunning = false;
+      _isResting = false;
+    });
+    _startCountdown();
+  }
+
+  void _beginRest() {
+    setState(() {
+      _isResting = true;
+      _secondsRemaining = _restDurationSeconds;
+      _isTimerRunning = true;
+    });
+    _startCountdown();
+  }
+
+  void _advanceAfterRest() {
+    _stepTimer?.cancel();
+    if (_currentStep == _warmupSteps.length - 1) {
+      _startMainWorkout();
+      return;
+    }
+    setState(() {
+      _currentStep++;
+      _secondsRemaining = _stepDuration;
+      _isResting = false;
+      _isTimerRunning = true;
+    });
+    _startCountdown();
+  }
+
+  void _startMainWorkout() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExerciseTimerScreen(
+          exerciseList: widget.exerciseList,
+          currentIndex: 0,
+        ),
+      ),
+    );
+  }
+
+  String _formatTime(int seconds) => '00:${seconds.toString().padLeft(2, '0')}';
+
+  Widget _buildTimerCard() {
+    final totalSeconds = _isResting ? _restDurationSeconds : _stepDuration;
+    final progress = 1 - (_secondsRemaining / totalSeconds);
+    final actionLabel = _isTimerRunning ? 'Pause timer' : 'Resume timer';
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _gold.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 76,
+            height: 76,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 6,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: _border,
+                    valueColor: const AlwaysStoppedAnimation<Color>(_gold),
+                  ),
+                ),
+                Text(
+                  _formatTime(_secondsRemaining),
+                  style: TextStyle(
+                    color: _white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      }
-    });
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isResting ? 'Rest and recover' : 'Move at your pace',
+                  style: const TextStyle(
+                    color: _white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isResting
+                      ? 'The next step starts automatically.'
+                      : 'A $_restDurationSeconds-second rest follows automatically.',
+                  style: const TextStyle(color: _gray, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _pauseOrResumeTimer,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _gold,
+                        foregroundColor: _bg,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      icon: Icon(
+                        _isTimerRunning
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 18,
+                      ),
+                      label: Text(
+                        actionLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: _resetTimer,
+                      tooltip: 'Reset timer',
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.replay_rounded, color: _gray),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -74,12 +260,22 @@ class _WarmupScreenState extends State<WarmupScreen> {
         backgroundColor: _card,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _white, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: _white,
+            size: 18,
+          ),
           onPressed: () => Navigator.maybePop(context),
         ),
         title: Text(
-          'Warm-up (${_currentStep + 1}/${_warmupSteps.length})',
-          style: const TextStyle(color: _gold, fontWeight: FontWeight.w900, fontSize: 16),
+          _isResting
+              ? 'Rest (${_currentStep + 1}/${_warmupSteps.length})'
+              : 'Warm-up (${_currentStep + 1}/${_warmupSteps.length})',
+          style: const TextStyle(
+            color: _gold,
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+          ),
         ),
         centerTitle: true,
       ),
@@ -94,7 +290,9 @@ class _WarmupScreenState extends State<WarmupScreen> {
                 return Expanded(
                   child: Container(
                     height: 4,
-                    margin: EdgeInsets.symmetric(horizontal: index == 0 ? 0 : 4),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: index == 0 ? 0 : 4,
+                    ),
                     decoration: BoxDecoration(
                       color: index <= _currentStep ? _gold : _border,
                       borderRadius: BorderRadius.circular(2),
@@ -107,16 +305,26 @@ class _WarmupScreenState extends State<WarmupScreen> {
 
             Center(
               child: Text(
-                step['title']!,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: _white),
+                _isResting ? 'Rest and Recover' : step['title'] as String,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: _white,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 8),
             Center(
               child: Text(
-                step['duration']!,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _gold),
+                _isResting
+                    ? '$_restDurationSeconds seconds'
+                    : '${step['durationSeconds']} second guided warm-up',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: _gold,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -131,16 +339,18 @@ class _WarmupScreenState extends State<WarmupScreen> {
                   color: _card,
                   border: Border.all(color: _border),
                 ),
-                child: Image.network(
-                  step['image']!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Icon(Icons.fitness_center, color: _gold, size: 50),
-                  ),
+                child: WorkoutImage(
+                  imageUrl: step['image']!,
+                  backgroundColor: _card,
+                  iconColor: _gold,
+                  iconSize: 50,
                 ),
               ),
             ),
             const SizedBox(height: 24),
+
+            _buildTimerCard(),
+            const SizedBox(height: 20),
 
             // Instructions Box
             Container(
@@ -155,12 +365,20 @@ class _WarmupScreenState extends State<WarmupScreen> {
                 children: [
                   const Text(
                     'Instructions',
-                    style: TextStyle(color: _gold, fontWeight: FontWeight.w900, fontSize: 14),
+                    style: TextStyle(
+                      color: _gold,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     step['instruction']!,
-                    style: const TextStyle(color: _gray, fontSize: 14, height: 1.4),
+                    style: const TextStyle(
+                      color: _gray,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -179,13 +397,19 @@ class _WarmupScreenState extends State<WarmupScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: _gold,
               foregroundColor: _bg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 0,
             ),
-            onPressed: _nextStep,
+            onPressed: _isResting ? _advanceAfterRest : _beginRest,
             child: Text(
-              _currentStep < _warmupSteps.length - 1 ? 'Next Warm-up Step' : 'Start Main Workout',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.black),
+              _isResting ? 'Skip Rest' : 'Skip to Rest',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
             ),
           ),
         ),

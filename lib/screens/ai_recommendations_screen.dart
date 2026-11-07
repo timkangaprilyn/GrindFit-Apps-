@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'app_state.dart';
+
+import '../models/app_state.dart';
+import '../models/workout_plan.dart';
 import 'rest_day_screen.dart';
+import '../widgets/workout_image.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
 
   @override
-  State<AiRecommendationsScreen> createState() => _AiRecommendationsScreenState();
+  State<AiRecommendationsScreen> createState() =>
+      _AiRecommendationsScreenState();
 }
 
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
@@ -21,13 +25,34 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   int _selectedTab = 0; // 0: Today, 1: This Week, 2: Next Week
 
   @override
+  void initState() {
+    super.initState();
+    AppState.instance.addListener(_refreshForAppStateChanges);
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.removeListener(_refreshForAppStateChanges);
+    super.dispose();
+  }
+
+  void _refreshForAppStateChanges() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final int currentDay = AppState.instance.currentDayIndex;
-    
+
     // Consistent default goal across screens
-    final String goal = AppState.instance.fitnessGoal.isNotEmpty 
-        ? AppState.instance.fitnessGoal 
+    final String goal = AppState.instance.fitnessGoal.isNotEmpty
+        ? AppState.instance.fitnessGoal
         : "Muscle Gain / Strength";
+    final exercises = WorkoutPlan.forProfile(
+      goal: goal,
+      environment: AppState.instance.workoutEnvironment,
+      savedOverrides: AppState.instance.workoutPlanOverrides,
+    );
 
     // Alamin kung pwede pang mag-pop (kung binuksan ito mula sa ibang screen gaya ng notification)
     final bool canPop = Navigator.canPop(context);
@@ -41,7 +66,11 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
         automaticallyImplyLeading: canPop,
         leading: canPop
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _white, size: 18),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: _white,
+                  size: 18,
+                ),
                 onPressed: () => Navigator.pop(context),
               )
             : null,
@@ -89,7 +118,10 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                     decoration: BoxDecoration(
                       color: _card,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _gold.withValues(alpha: 0.4), width: 1.2),
+                      border: Border.all(
+                        color: _gold.withValues(alpha: 0.4),
+                        width: 1.2,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: _gold.withValues(alpha: 0.1),
@@ -103,8 +135,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.auto_awesome, color: _gold, size: 20),
-                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Goal: $goal',
@@ -116,6 +146,15 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${WorkoutPlan.titleForGoal(goal)} is tailored to your goal and workout setting.',
+                          style: const TextStyle(
+                            color: _gray,
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -135,7 +174,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const RestDayScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const RestDayScreen(),
+                        ),
                       );
                     },
                     child: Container(
@@ -151,7 +192,11 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.self_improvement_rounded, color: _gold, size: 24),
+                              Icon(
+                                Icons.self_improvement_rounded,
+                                color: _gold,
+                                size: 24,
+                              ),
                               SizedBox(width: 12),
                               Text(
                                 'View Rest Day / Recovery Mode',
@@ -180,7 +225,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                             decoration: BoxDecoration(
                               color: _selectedTab == 0 ? _gold : _card,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: _selectedTab == 0 ? _gold : _border),
+                              border: Border.all(
+                                color: _selectedTab == 0 ? _gold : _border,
+                              ),
                             ),
                             child: Text(
                               'Today',
@@ -203,7 +250,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                             decoration: BoxDecoration(
                               color: _selectedTab == 1 ? _gold : _card,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: _selectedTab == 1 ? _gold : _border),
+                              border: Border.all(
+                                color: _selectedTab == 1 ? _gold : _border,
+                              ),
                             ),
                             child: Text(
                               'This Week',
@@ -226,7 +275,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                             decoration: BoxDecoration(
                               color: _selectedTab == 2 ? _gold : _card,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: _selectedTab == 2 ? _gold : _border),
+                              border: Border.all(
+                                color: _selectedTab == 2 ? _gold : _border,
+                              ),
                             ),
                             child: Text(
                               'Next Week',
@@ -243,44 +294,18 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  if (currentDay == 1) ...[
-                    const Text(
-                      'Day 1 - Upper Body Strength (Today)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _white),
+                  Text(
+                    'Day $currentDay - Your Workout',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: _white,
                     ),
-                    const SizedBox(height: 12),
-                    _buildExerciseCard('Push Up', '3 sets • 10-12 reps • 45s', 'Builds upper body strength'),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final exercise in exercises) ...[
+                    _buildExerciseCard(exercise),
                     const SizedBox(height: 10),
-                    _buildExerciseCard('Dumbbell Row', '3 sets • 10-12 reps • 45s', 'Improves posture & back strength'),
-                    const SizedBox(height: 10),
-                    _buildExerciseCard('Shoulder Press', '3 sets • 10 reps • 45s', 'Builds shoulder stability'),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Day 2 - Lower Body (Tomorrow)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _white),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildExerciseCard('Squat', '3 sets • 12 reps • 45s', 'Builds leg strength & stability'),
-                    const SizedBox(height: 10),
-                    _buildExerciseCard('Lunges', '3 sets • 10 reps each leg', 'Improves balance and leg definition'),
-                  ] else ...[
-                    const Text(
-                      'Day 2 - Lower Body Power (Today)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _white),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildExerciseCard('Squat', '4 sets • 10 reps • 60s', 'Builds core and leg power'),
-                    const SizedBox(height: 10),
-                    _buildExerciseCard('Romanian Deadlift', '3 sets • 10-12 reps • 45s', 'Targets hamstrings and glutes'),
-                    const SizedBox(height: 10),
-                    _buildExerciseCard('Calf Raises', '3 sets • 15 reps • 30s', 'Strengthens lower legs'),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Day 3 - Core & Cardio (Tomorrow)',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _white),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildExerciseCard('Plank', '3 sets • 45s hold', 'Core stability'),
                   ],
                   const SizedBox(height: 30),
                 ],
@@ -292,7 +317,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     );
   }
 
-  Widget _buildExerciseCard(String title, String subtitle, String description) {
+  Widget _buildExerciseCard(PlanExercise exercise) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -302,13 +327,18 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _gold.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: WorkoutImage(
+                imageUrl: exercise.imageUrl ?? '',
+                backgroundColor: _bg,
+                iconColor: _gold,
+                iconSize: 24,
+              ),
             ),
-            child: const Icon(Icons.fitness_center, color: _gold, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -316,18 +346,30 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: _white),
+                  exercise.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: _white,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _gold),
+                  exercise.detail,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _gold,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  description,
-                  style: const TextStyle(fontSize: 11, color: _gray, fontWeight: FontWeight.w500),
+                  '${exercise.muscles} • ${exercise.equipment}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: _gray,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

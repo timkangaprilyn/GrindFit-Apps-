@@ -31,9 +31,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
 
   // State Variables
   String _goalTitle = 'Weight Loss / Maintenance';
-  double _startWeight = 75.0; // Simula
-  double _currentWeight = 62.0; // Kasalukuyan
-  double _targetWeight = 60.0; // Target
+  double _startWeight = 0;
+  double _currentWeight = 0;
+  double _targetWeight = 0;
   DateTime _lastUpdatedDate = DateTime.now();
   bool _isLoading = true;
 
@@ -77,9 +77,13 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
               }
               if (data['targetWeight'] is num) {
                 _targetWeight = (data['targetWeight'] as num).toDouble();
+              } else {
+                _targetWeight = _currentWeight;
               }
-              if (data['updatedAt'] is Timestamp) {
-                _lastUpdatedDate = (data['updatedAt'] as Timestamp).toDate();
+              final weightUpdatedAt =
+                  data['weightUpdatedAt'] ?? data['updatedAt'];
+              if (weightUpdatedAt is Timestamp) {
+                _lastUpdatedDate = weightUpdatedAt.toDate();
               }
             });
           }
@@ -105,7 +109,10 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
         final Map<String, dynamic> updateData = {
           'updatedAt': FieldValue.serverTimestamp(),
         };
-        if (newWeight != null) updateData['weight'] = newWeight;
+        if (newWeight != null) {
+          updateData['weight'] = newWeight;
+          updateData['weightUpdatedAt'] = FieldValue.serverTimestamp();
+        }
         if (newStart != null) updateData['startWeight'] = newStart;
         if (newTarget != null) updateData['targetWeight'] = newTarget;
         if (newGoal != null) updateData['fitnessGoal'] = newGoal;
@@ -120,24 +127,14 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
     }
   }
 
-  // History points para sa Weight Chart
+  // Show only stored start and current measurements; do not invent history.
   List<double> get _weightHistory {
-    final double dir = _targetWeight >= _startWeight ? 1 : -1;
-    final double step = (_currentWeight - _startWeight).abs() / 3;
-    return [
-      _startWeight,
-      _startWeight + (dir * step * 1),
-      _startWeight + (dir * step * 2),
-      _currentWeight,
-    ];
+    return [_startWeight, _currentWeight];
   }
 
-  // Totoong petsa labels (nakaraang mga linggo patungong kasalukuyan)
+  // The start point has no stored date; the current point uses its saved date.
   List<String> get _dateLabels {
-    return List.generate(4, (index) {
-      final date = _lastUpdatedDate.subtract(Duration(days: (3 - index) * 7));
-      return DateFormat('MMM d').format(date);
-    });
+    return ['Start', DateFormat('MMM d').format(_lastUpdatedDate)];
   }
 
   // ───────────────────────── Build ─────────────────────────
@@ -745,15 +742,17 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   onPressed: () async {
                     final double? newW = double.tryParse(weightController.text);
                     if (newW != null && newW > 0) {
+                      final baseline = _startWeight > 0
+                          ? _startWeight
+                          : newW;
                       setState(() {
                         _currentWeight = newW;
+                        _startWeight = baseline;
                         _lastUpdatedDate = DateTime.now();
                       });
-                      // Isinasama ang startWeight para hindi ito mag-reset
-                      // sa susunod na load.
                       await _saveUserDataToFirestore(
                         newWeight: newW,
-                        newStart: _startWeight,
+                        newStart: baseline,
                       );
                     }
                     if (!sheetContext.mounted) return;

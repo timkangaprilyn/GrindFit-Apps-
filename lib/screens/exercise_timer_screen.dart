@@ -3,19 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/app_state.dart';
 import '../models/workout_plan.dart';
+import '../widgets/workout_image.dart';
 import 'workout_complete_screen.dart';
 
 class ExerciseTimerScreen extends StatefulWidget {
   final List<PlanExercise> exerciseList;
   final int currentIndex;
   final int totalWorkoutMinutes;
+  final Map<String, dynamic>? sessionData;
 
   const ExerciseTimerScreen({
     super.key,
     required this.exerciseList,
     this.currentIndex = 0,
     this.totalWorkoutMinutes = 15,
+    this.sessionData,
   }) : assert(exerciseList.length > 0);
 
   @override
@@ -37,6 +41,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
   int _restSecondsRemaining = 45;
   bool _isResting = false;
   bool _hasFinished = false;
+  final Map<int, int> _completedSets = {};
 
   Timer? _workoutTimer;
   Timer? _activeTimer;
@@ -110,6 +115,11 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
   }
 
   void _startRestOrAdvance() {
+    _completedSets.update(
+      _currentIndex,
+      (completed) => completed + 1,
+      ifAbsent: () => 1,
+    );
     if (_currentSet < _totalSets ||
         _currentIndex < widget.exerciseList.length - 1) {
       _startRestTimer();
@@ -191,9 +201,61 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
     _workoutTimer?.cancel();
     _activeTimer?.cancel();
     _restTimer?.cancel();
+    final elapsedSeconds =
+        widget.totalWorkoutMinutes * 60 - _totalTimeRemaining;
+    final storedExercises =
+        (widget.sessionData?['exercises'] as List<dynamic>?)
+            ?.whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList() ??
+        const <Map<String, dynamic>>[];
+    final exercises = widget.exerciseList.asMap().entries.map((entry) {
+      final index = entry.key;
+      final exercise = entry.value;
+      final storedExercise = storedExercises
+          .cast<Map<String, dynamic>?>()
+          .firstWhere(
+            (item) => item?['name'] == exercise.name,
+            orElse: () => null,
+          );
+      final setMatch = RegExp(
+        r'(\d+)\s*sets?',
+        caseSensitive: false,
+      ).firstMatch(exercise.detail);
+      final repsMatch = RegExp(r'(\d+)').firstMatch(exercise.repsLabel);
+      return {
+        'name': exercise.name,
+        'sets': _completedSets[index] ?? 0,
+        'plannedSets': int.tryParse(setMatch?.group(1) ?? '') ?? 3,
+        'reps':
+            (storedExercise?['reps'] as num?)?.toInt() ??
+            int.tryParse(repsMatch?.group(1) ?? '') ??
+            0,
+        'repsLabel': exercise.repsLabel,
+        'durationSeconds':
+            (storedExercise?['duration'] as num?)?.toInt() ??
+            _setDurationSeconds,
+        'weight': storedExercise?['weight']?.toString() ?? '',
+        'completed': (_completedSets[index] ?? 0) > 0,
+        'skipped': false,
+      };
+    }).toList();
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
+      MaterialPageRoute(
+        builder: (_) => WorkoutCompleteScreen(
+          sessionData: {
+            ...?widget.sessionData,
+            'title': 'Workout Session',
+            'workoutName': 'Workout Session',
+            'category': AppState.instance.workoutEnvironment,
+            'durationSeconds': elapsedSeconds,
+            'duration': '${(elapsedSeconds / 60).ceil()} min',
+            'intensity': 'Moderate',
+            'exercises': exercises,
+          },
+        ),
+      ),
     );
   }
 
@@ -297,27 +359,15 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                       borderRadius: BorderRadius.circular(20),
                       child: AspectRatio(
                         aspectRatio: 1.65,
-                        child: exercise.imageUrl == null
-                            ? const ColoredBox(
-                                color: _card,
-                                child: Icon(
-                                  Icons.fitness_center_rounded,
-                                  color: _gold,
-                                  size: 56,
-                                ),
-                              )
-                            : Image.network(
-                                exercise.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => const ColoredBox(
-                                  color: _card,
-                                  child: Icon(
-                                    Icons.fitness_center_rounded,
-                                    color: _gold,
-                                    size: 56,
-                                  ),
-                                ),
-                              ),
+                        child: ColoredBox(
+                          color: _card,
+                          child: WorkoutImage(
+                            imageUrl: exercise.imageUrl ?? '',
+                            backgroundColor: _card,
+                            iconColor: _gold,
+                            iconSize: 56,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

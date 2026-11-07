@@ -1,13 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'analytics_dashboard_screen.dart';
-import 'home_dashboard_screen.dart';
-import 'ai_recommendations_screen.dart';
 import 'log_workout_screen.dart';
-import 'profile_screen.dart';
 import 'rest_day_screen.dart';
 import 'ai_recommendation_update_screen.dart';
+import 'workout_history_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -27,59 +27,250 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   final DateTime _today = DateTime.now();
   final List<Map<String, dynamic>> _notifications = [];
-  int _currentIndex = 4;
   String _selectedFilter = 'All';
+  bool _isLoading = true;
+  String? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _notifications.addAll([
-      {
-        'title': 'Workout Reminder',
-        'subtitle': 'Time for your scheduled workout',
-        'date': _today,
-        'type': 'Reminders',
-        'icon': Icons.fitness_center_rounded,
-        'isRead': false,
-        'route': 'log',
-      },
-      {
-        'title': 'Rest Day Alert',
-        'subtitle': 'It’s time to rest and recover',
-        'date': _today.subtract(const Duration(days: 1)),
-        'type': 'Reminders',
-        'icon': Icons.self_improvement_rounded,
-        'isRead': false,
-        'route': 'rest',
-      },
-      {
-        'title': 'New Recommendation',
-        'subtitle': 'Your plan has been updated',
-        'date': _today.subtract(const Duration(days: 2)),
-        'type': 'Updates',
-        'icon': Icons.auto_awesome_rounded,
-        'isRead': true,
-        'route': 'ai',
-      },
-      {
-        'title': 'Goal Milestone',
-        'subtitle': 'You completed 10 workouts!',
-        'date': _today.subtract(const Duration(days: 4)),
-        'type': 'Updates',
-        'icon': Icons.emoji_events_rounded,
-        'isRead': true,
-        'route': 'analytics',
-      },
-      {
-        'title': 'Workout Reminder',
-        'subtitle': 'Don’t forget your workout',
-        'date': _today.subtract(const Duration(days: 6)),
-        'type': 'Reminders',
-        'icon': Icons.fitness_center_rounded,
-        'isRead': false,
-        'route': 'log',
-      },
-    ]);
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _isLoading = false;
+        _notifications.clear();
+      });
+      return;
+    }
+
+    try {
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      final profileDoc = await userRef.get();
+      final profile = profileDoc.data() ?? const <String, dynamic>{};
+      final rawSettings = profile['notificationSettings'];
+      final settings = rawSettings is Map
+          ? rawSettings
+          : const <String, dynamic>{};
+      final workoutEnabled = settings['workout'] is bool
+          ? settings['workout'] as bool
+          : true;
+      final restEnabled = settings['rest'] is bool
+          ? settings['rest'] as bool
+          : true;
+      final achievementsEnabled = settings['achievements'] is bool
+          ? settings['achievements'] as bool
+          : true;
+      final result = await userRef
+          .collection('notifications')
+          .orderBy('timestamp', descending: true)
+          .limit(50)
+          .get();
+      final notifications = result.docs
+          .map((doc) {
+            final data = doc.data();
+            final rawDate = data['timestamp'];
+            final DateTime? date = switch (rawDate) {
+              Timestamp value => value.toDate(),
+              DateTime value => value,
+              String value => DateTime.tryParse(value),
+              _ => DateTime.tryParse(data['date']?.toString() ?? ''),
+            };
+            return {
+              ...data,
+              'id': doc.id,
+              'title': data['title']?.toString() ?? 'Notification',
+              'subtitle': data['subtitle']?.toString() ?? '',
+              'date': date,
+              'type': data['type']?.toString() ?? 'Updates',
+              'icon': _iconForType(data['type']?.toString()),
+              'isRead': data['isRead'] == true,
+              'route': data['route']?.toString() ?? 'analytics',
+            };
+          })
+          .where((item) {
+            return switch (item['type']) {
+              'Reminders' => workoutEnabled,
+              'Recovery' => restEnabled,
+              'Achievements' => achievementsEnabled,
+              _ => true,
+            };
+          })
+          .toList();
+      if (workoutEnabled) {
+        final workoutReminder = await _ensureWorkoutReminder(user, profile);
+        if (workoutReminder != null) notifications.insert(0, workoutReminder);
+      }
+      final recoveryNotification = restEnabled
+          ? await _ensureRecoveryNotification(user)
+          : null;
+      if (recoveryNotification != null &&
+          !notifications.any(
+            (item) => item['id'] == recoveryNotification['id'],
+          )) {
+        notifications.insert(0, recoveryNotification);
+      }
+      if (!mounted) return;
+      setState(() {
+        _notifications
+          ..clear()
+          ..addAll(notifications);
+        _isLoading = false;
+        _loadError = null;
+      });
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError =
+            error.message ?? 'Could not load notifications. Please try again.';
+      });
+    }
+  }
+
+  Future<Map<String, dynamic>?> _ensureWorkoutReminder(
+    User user,
+    Map<String, dynamic> profile,
+  ) async {
+    final today = DateTime.now();
+    final todayKey = DateFormat('yyyy-MM-dd').format(today);
+    final weekdays = profile['workoutDays'];
+    if (weekdays is! List ||
+        !weekdays.whereType<String>().contains(DateFormat('E').format(today))) {
+      return null;
+    }
+
+    final userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final workoutsToday = await userRef
+        .collection('workouts')
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
+        .get();
+    final completedToday = workoutsToday.docs.any((doc) {
+      final timestamp = doc.data()['timestamp'];
+      return timestamp is Timestamp &&
+          timestamp.toDate().isBefore(startOfDay.add(const Duration(days: 1)));
+    });
+    if (completedToday) return null;
+
+    final notificationId = 'workout-reminder-$todayKey';
+    final notificationRef = userRef
+        .collection('notifications')
+        .doc(notificationId);
+    final existingNotification = await notificationRef.get();
+    if (existingNotification.exists) return null;
+
+    const title = 'Workout Reminder';
+    final subtitle =
+        'It is a planned workout day. Open GrindFit to start your session.';
+    await notificationRef.set({
+      'title': title,
+      'subtitle': subtitle,
+      'type': 'Reminders',
+      'route': 'log',
+      'isRead': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    return {
+      'id': notificationId,
+      'title': title,
+      'subtitle': subtitle,
+      'type': 'Reminders',
+      'icon': _iconForType('Reminders'),
+      'isRead': false,
+      'route': 'log',
+      'date': today,
+    };
+  }
+
+  Future<Map<String, dynamic>?> _ensureRecoveryNotification(User user) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final workouts = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('workouts')
+        .where(
+          'timestamp',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(
+            today.subtract(const Duration(days: 6)),
+          ),
+        )
+        .get();
+
+    final workoutDays = workouts.docs
+        .map((doc) => doc.data()['timestamp'])
+        .whereType<Timestamp>()
+        .map((timestamp) {
+          final date = timestamp.toDate();
+          return DateTime(date.year, date.month, date.day);
+        })
+        .toSet();
+
+    var streakStart = today;
+    if (!workoutDays.contains(streakStart)) {
+      streakStart = today.subtract(const Duration(days: 1));
+    }
+
+    var streak = 0;
+    for (
+      var day = streakStart;
+      workoutDays.contains(day);
+      day = day.subtract(const Duration(days: 1))
+    ) {
+      streak++;
+    }
+    if (streak < 5) return null;
+
+    final notificationId = 'recovery-${DateFormat('yyyy-MM-dd').format(today)}';
+    final notificationRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .doc(notificationId);
+    final existingNotification = await notificationRef.get();
+    if (existingNotification.exists) return null;
+
+    final subtitle =
+        "You've trained $streak days in a row. Take a rest day to recover.";
+    await notificationRef.set({
+      'title': 'Rest Day Alert',
+      'subtitle': subtitle,
+      'type': 'Recovery',
+      'route': 'rest',
+      'isRead': false,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    return {
+      'id': notificationId,
+      'title': 'Rest Day Alert',
+      'subtitle': subtitle,
+      'type': 'Recovery',
+      'icon': _iconForType('Recovery'),
+      'isRead': false,
+      'route': 'rest',
+      'date': now,
+    };
+  }
+
+  IconData _iconForType(String? type) {
+    return switch (type) {
+      'Reminders' => Icons.fitness_center_rounded,
+      'Recovery' => Icons.self_improvement_rounded,
+      'Achievements' => Icons.emoji_events_rounded,
+      _ => Icons.auto_awesome_rounded,
+    };
   }
 
   List<Map<String, dynamic>> get filteredNotifications {
@@ -87,9 +278,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ? _notifications
         : _notifications.where((n) => n['type'] == _selectedFilter).toList();
     final sorted = List<Map<String, dynamic>>.from(items);
-    sorted.sort(
-      (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
-    );
+    sorted.sort((a, b) {
+      final aDate = a['date'] as DateTime?;
+      final bDate = b['date'] as DateTime?;
+      if (aDate == null) return bDate == null ? 0 : 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
     return sorted;
   }
 
@@ -100,19 +295,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return DateFormat('EEE, MMM d').format(date);
   }
 
-  void _markAllAsRead() {
-    setState(() {
+  Future<void> _markAllAsRead() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final notifications = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications');
       for (final item in _notifications) {
-        item['isRead'] = true;
+        if (item['isRead'] == true) continue;
+        batch.update(notifications.doc(item['id'] as String), {'isRead': true});
       }
-    });
+      await batch.commit();
+      if (mounted) {
+        setState(() {
+          for (final item in _notifications) {
+            item['isRead'] = true;
+          }
+        });
+      }
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.message ?? 'Could not mark notifications as read.',
+            ),
+          ),
+        );
+      }
+    }
   }
 
-  void _markAsRead(int index) {
-    setState(() {
-      final item = filteredNotifications[index];
-      item['isRead'] = true;
-    });
+  Future<void> _markAsRead(Map<String, dynamic> item) async {
+    if (item['isRead'] == true) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .doc(item['id'] as String)
+          .update({'isRead': true});
+      if (mounted) setState(() => item['isRead'] = true);
+    } on FirebaseException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.message ?? 'Could not mark the notification as read.',
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _openNotification(Map<String, dynamic> item) {
@@ -138,10 +377,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
         break;
       case 'log':
-      default:
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const LogWorkoutScreen()),
+        );
+        break;
+      case 'history':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WorkoutHistoryScreen()),
+        );
+        break;
+      default:
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AnalyticsDashboardScreen()),
         );
         break;
     }
@@ -159,6 +409,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor: _card,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () => Navigator.maybePop(context),
+          icon: const Icon(Icons.arrow_back_rounded, color: _white),
+          tooltip: 'Back',
+        ),
         title: const Text(
           'Notifications',
           style: TextStyle(
@@ -169,12 +424,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
         actions: [
           if (unreadCount > 0)
-            TextButton(
+            IconButton(
               onPressed: _markAllAsRead,
-              child: const Text(
-                'Mark all as read',
-                style: TextStyle(color: _gold, fontWeight: FontWeight.w800),
-              ),
+              tooltip: 'Mark all as read',
+              icon: const Icon(Icons.done_all_rounded, color: _gold),
             ),
         ],
         bottom: PreferredSize(
@@ -186,42 +439,87 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             color: _card,
-            child: Row(
-              children: ['All', 'Reminders', 'Updates'].map((filter) {
-                final isSelected = _selectedFilter == filter;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedFilter = filter),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected ? _gold : const Color(0xFF2C2F36),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? _gold : _border),
-                      ),
-                      child: Text(
-                        filter,
-                        style: TextStyle(
-                          color: isSelected ? _bg : _white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
+                children:
+                    [
+                      'All',
+                      'Reminders',
+                      'Updates',
+                      'Recovery',
+                      'Achievements',
+                    ].map((filter) {
+                      final isSelected = _selectedFilter == filter;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedFilter = filter),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? _gold
+                                  : const Color(0xFF2C2F36),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? _gold : _border,
+                              ),
+                            ),
+                            child: Text(
+                              filter,
+                              style: TextStyle(
+                                color: isSelected ? _bg : _white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                      );
+                    }).toList(),
+              ),
             ),
           ),
           const SizedBox(height: 10),
           Expanded(
-            child: filteredNotifications.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: _gold))
+                : _loadError != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _loadError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: _gray),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _isLoading = true;
+                                _loadError = null;
+                              });
+                              _loadNotifications();
+                            },
+                            child: const Text(
+                              'Try again',
+                              style: TextStyle(color: _gold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : filteredNotifications.isEmpty
                 ? Center(
                     child: Container(
                       width: double.infinity,
@@ -259,8 +557,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const AnalyticsDashboardScreen(),
+                                builder: (_) => _selectedFilter == 'Recovery'
+                                    ? const RestDayScreen()
+                                    : const AnalyticsDashboardScreen(),
                               ),
                             ),
                             style: ElevatedButton.styleFrom(
@@ -270,7 +569,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text('View Analytics'),
+                            child: Text(
+                              _selectedFilter == 'Recovery'
+                                  ? 'View Recovery Tips'
+                                  : 'View Analytics',
+                            ),
                           ),
                         ],
                       ),
@@ -298,10 +601,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                         ),
                         child: ListTile(
+                          isThreeLine: true,
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                            horizontal: 14,
+                            vertical: 6,
                           ),
+                          minLeadingWidth: 36,
                           leading: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
@@ -335,10 +640,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const SizedBox(height: 2),
                               Text(
                                 item['subtitle'],
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: _gray,
@@ -347,42 +655,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatDate(item['date'] as DateTime),
+                                item['date'] is DateTime
+                                    ? _formatDate(item['date'] as DateTime)
+                                    : 'Date unavailable',
                                 style: const TextStyle(
                                   fontSize: 10,
                                   color: _muted,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.chevron_right, color: _gray),
                               if (!isRead)
                                 TextButton(
-                                  onPressed: () => _markAsRead(
-                                    filteredNotifications.indexOf(item),
-                                  ),
+                                  onPressed: () => _markAsRead(item),
                                   style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 0),
+                                    alignment: Alignment.centerLeft,
+                                    padding: const EdgeInsets.only(top: 6),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'Mark as read',
                                     style: TextStyle(
                                       color: _gold,
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
                             ],
                           ),
+                          trailing: Icon(
+                            isRead ? Icons.chevron_right : Icons.circle,
+                            color: isRead ? _gray : _gold,
+                            size: isRead ? 22 : 9,
+                          ),
                           onTap: () {
                             if (!isRead) {
-                              _markAsRead(filteredNotifications.indexOf(item));
+                              _markAsRead(item);
                             }
                             _openNotification(item);
                           },
@@ -390,80 +700,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       );
                     },
                   ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        backgroundColor: _card,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeDashboardScreen()),
-            );
-          } else if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AiRecommendationsScreen(),
-              ),
-            );
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LogWorkoutScreen()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AnalyticsDashboardScreen(),
-              ),
-            );
-          } else if (index == 5) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            );
-          }
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: _gold,
-        unselectedItemColor: _gray,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 11,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 11,
-        ),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center),
-            label: 'Workouts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_rounded),
-            label: 'Log',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_rounded),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
           ),
         ],
       ),

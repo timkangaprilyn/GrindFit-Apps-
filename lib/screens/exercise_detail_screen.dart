@@ -1,7 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+
+import '../models/app_state.dart';
 import 'workout_complete_screen.dart';
 
 class ExerciseDetailScreen extends StatefulWidget {
@@ -24,13 +27,48 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
   // Timers para sa Automatic Progression
   int _activeSecondsRemaining = 30; // 30 segundo bawat active set
   Timer? _activeTimer;
-  
+
   bool _isResting = false;
   int _restSecondsRemaining = 45; // 45 segundo rest period
   Timer? _restTimer;
 
   int _currentSet = 1;
   final int _totalSets = 3;
+
+  void _finishWorkout() {
+    _activeTimer?.cancel();
+    _restTimer?.cancel();
+    final reps =
+        int.tryParse(
+          RegExp(r'\d+').firstMatch(widget.setsReps)?.group(0) ?? '',
+        ) ??
+        0;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WorkoutCompleteScreen(
+          sessionData: {
+            'title': widget.exerciseName,
+            'workoutName': widget.exerciseName,
+            'category': AppState.instance.workoutEnvironment,
+            'durationSeconds': _totalSets * 30,
+            'duration': '${(_totalSets * 30 / 60).ceil()} min',
+            'intensity': 'Moderate',
+            'exercises': [
+              {
+                'name': widget.exerciseName,
+                'sets': _currentSet,
+                'reps': reps,
+                'weight': '',
+                'completed': true,
+                'skipped': false,
+              },
+            ],
+          },
+        ),
+      ),
+    );
+  }
 
   // Video Player Controller
   VideoPlayerController? _videoController;
@@ -69,38 +107,38 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
     return 'https://assets.mixkit.co/videos/preview/mixkit-man-doing-push-ups-in-a-gym-42999-large.mp4';
   }
 
-  // 3 Hakbang para sa Tamang Porma (Dynamic batay sa ehersisyo)
+  // Three exercise-specific steps for proper form.
   List<String> _getStepsForExercise(String name) {
     final lower = name.toLowerCase();
     if (lower.contains('push')) {
       return [
-        'Panatilihing tuwid ang katawan mula ulo hanggang sakong.',
-        'Ilagay ang mga kamay nang medyo mas malawak kaysa sa balikat.',
-        'Ibaba ang dibdib malapit sa sahig, pagkatapos ay itulak paitaas.'
+        'Keep your body in a straight line from head to heels.',
+        'Place your hands slightly wider than shoulder-width apart.',
+        'Lower your chest toward the floor, then push back up.',
       ];
     } else if (lower.contains('squat')) {
       return [
-        'Ihiwalay ang mga paa ayon sa lapad ng balikat, i-tighten ang core.',
-        'Umupo pabalik at pababa nang nakadikit ang mga sakong sa sahig.',
-        'Itulak ang katawan pataas gamit ang mga sakong para bumalik sa simula.'
+        'Stand with your feet shoulder-width apart and brace your core.',
+        'Sit your hips back and down while keeping your heels on the floor.',
+        'Drive through your heels to return to the starting position.',
       ];
     } else if (lower.contains('plank')) {
       return [
-        'Ihanay ang mga siko nang direkta sa ilalim ng mga balikat.',
-        'I-engage ang core at glutes para hindi lumubog ang likod.',
-        'Huminga nang tuloy-tuloy sa buong tagal ng paghawak.'
+        'Place your elbows directly beneath your shoulders.',
+        'Engage your core and glutes to keep your back from sagging.',
+        'Breathe steadily for the entire hold.',
       ];
     } else if (lower.contains('row')) {
       return [
-        'I-hinge ang balakang pabalik at panatilihing tuwid ang likod.',
-        'Hilahin ang bigat patungo sa balakang habang pinipiga ang likod.',
-        'Ibaba nang may kontrol pabalik sa panimulang posisyon.'
+        'Hinge at your hips and keep your back straight.',
+        'Pull the weight toward your hip while squeezing your back muscles.',
+        'Lower the weight with control to the starting position.',
       ];
     }
     return [
-      'Posisyonan ang katawan sa tamang simula at panatilihin ang tikas.',
-      'Isagawa ang galaw nang may kontrol at wastong paghinga.',
-      'Tapusin ang buong range of motion nang ligtas.'
+      'Set up in a stable starting position and maintain good posture.',
+      'Move with control and breathe steadily.',
+      'Complete the full range of motion safely.',
     ];
   }
 
@@ -146,10 +184,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
           });
           _startActiveSetTimer();
         } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
-          );
+          _finishWorkout();
         }
       }
     });
@@ -269,13 +304,20 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     ),
                     const SizedBox(height: 14),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        color: _isResting ? Colors.blue.withValues(alpha: 0.15) : _gold.withValues(alpha: 0.15),
+                        color: _isResting
+                            ? Colors.blue.withValues(alpha: 0.15)
+                            : _gold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        _isResting ? 'REST PERIOD' : 'SET $_currentSet OF $_totalSets (ACTIVE)',
+                        _isResting
+                            ? 'REST PERIOD'
+                            : 'SET $_currentSet OF $_totalSets (ACTIVE)',
                         style: TextStyle(
                           color: _isResting ? Colors.blueAccent : _gold,
                           fontWeight: FontWeight.bold,
@@ -285,7 +327,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      _isResting ? '$_restSecondsRemaining s' : '${_activeSecondsRemaining}s',
+                      _isResting
+                          ? '$_restSecondsRemaining s'
+                          : '${_activeSecondsRemaining}s',
                       style: const TextStyle(
                         fontSize: 48,
                         fontWeight: FontWeight.w900,
@@ -293,15 +337,21 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                       ),
                     ),
                     Text(
-                      _isResting ? 'rest countdown (auto-progress)' : 'active workout countdown',
-                      style: const TextStyle(color: _gray, fontSize: 12, fontWeight: FontWeight.w500),
+                      _isResting
+                          ? 'rest countdown (auto-progress)'
+                          : 'active workout countdown',
+                      style: const TextStyle(
+                        color: _gray,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
               const Text(
-                '3 Hakbang para sa Tamang Porma',
+                '3 Steps for Proper Form',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
@@ -318,7 +368,9 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Expanded(child: _buildMetricBox('Sets', '$_currentSet/$_totalSets')),
+                  Expanded(
+                    child: _buildMetricBox('Sets', '$_currentSet/$_totalSets'),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(child: _buildMetricBox('Reps', widget.setsReps)),
                   const SizedBox(width: 8),
@@ -358,10 +410,7 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
                   });
                   _startActiveSetTimer();
                 } else {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WorkoutCompleteScreen()),
-                  );
+                  _finishWorkout();
                 }
               }
             },
@@ -406,7 +455,11 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
         children: [
           Text(
             '$number. ',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _gold),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: _gold,
+            ),
           ),
           Expanded(
             child: Text(
@@ -429,11 +482,22 @@ class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: _gray, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: _gray,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900, color: _white),
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+              color: _white,
+            ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
