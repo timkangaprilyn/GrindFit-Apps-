@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'rest_day_screen.dart';
 import '../widgets/workout_image.dart';
+import '../widgets/exercise_actions.dart';
+import '../services/offline_store.dart';
+import '../services/ai_workout_service.dart';
+
+import 'package:cloud_functions/cloud_functions.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
@@ -14,6 +20,21 @@ class AiRecommendationsScreen extends StatefulWidget {
 }
 
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
+  final TextEditingController _requestController = TextEditingController();
+  bool _saving = false;
+  static const _focuses = [
+    'Full Body',
+    'Upper Body',
+    'Lower Body',
+    'Chest at Triceps',
+    'Back at Biceps',
+    'Shoulders',
+    'Legs at Glutes',
+    'Core',
+    'Cardio',
+    'No Equipment',
+    'Limited Mobility',
+  ];
   // Black + Gold + White palette
   static const Color _bg = Color(0xFF121212); // Charcoal background
   static const Color _card = Color(0xFF1C1C1E); // Card surface
@@ -27,11 +48,13 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   @override
   void initState() {
     super.initState();
+    _requestController.text = AppState.instance.workoutRequest;
     AppState.instance.addListener(_refreshForAppStateChanges);
   }
 
   @override
   void dispose() {
+    _requestController.dispose();
     AppState.instance.removeListener(_refreshForAppStateChanges);
     super.dispose();
   }
@@ -39,6 +62,170 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   void _refreshForAppStateChanges() {
     if (mounted) setState(() {});
   }
+
+  Future<void> _savePreferences(Map<String, dynamic> values) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await OfflineStore.instance.saveProfile(values);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save preferences on this device.'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveBuilder(String focus, {bool generate = false}) async {
+    final request = _requestController.text.trim();
+    if (request.length > 500) return;
+    setState(() => _saving = true);
+    AppState.instance.updateWorkoutRequest(request, focus);
+    await _savePreferences({'workoutRequest': request, 'workoutFocus': focus});
+    if (generate) {
+      try {
+        final generated = await AiWorkoutService().generate();
+        final state = AppState.instance;
+        state.setGeneratedPlan(generated.plan, 'AI-generated plan');
+        await _savePreferences({
+          'generatedPlan': generated.plan.map((e) => e.toMap()).toList(),
+          'generatedContext': state.generatedContext,
+          'planSource': state.planSource,
+          'exerciseSwaps': <String, String>{},
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(generated.reason)));
+        }
+      } on FirebaseFunctionsException catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'AI is unavailable right now. Your on-device plan is ready; try AI again when connected.',
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Could not create an AI plan. Your on-device plan is ready.',
+              ),
+            ),
+          );
+        }
+      }
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _showCheckIn() async {
+    var sleep = AppState.instance.sleepHours;
+    var energy = AppState.instance.energyLevel;
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: _card,
+          title: const Text('Daily check-in', style: TextStyle(color: _white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Sleep: $sleep hours',
+                style: const TextStyle(color: _white),
+              ),
+              Slider(
+                value: sleep.toDouble(),
+                min: 0,
+                max: 12,
+                divisions: 12,
+                onChanged: (v) => setDialogState(() => sleep = v.round()),
+              ),
+              Text(
+                'Energy: $energy / 5',
+                style: const TextStyle(color: _white),
+              ),
+              Slider(
+                value: energy.toDouble(),
+                min: 1,
+                max: 5,
+                divisions: 4,
+                onChanged: (v) => setDialogState(() => energy = v.round()),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true) return;
+    AppState.instance.updateCheckIn(sleep, energy);
+    await _savePreferences({
+      'sleepHours': sleep,
+      'energyLevel': energy,
+      'checkInDate': AppState.instance.checkInDate,
+    });
+  }
+
+  Future<void> _showSwap(PlanExercise exercise) async {
+    final choices = WorkoutPlan.alternativesFor(
+      exercise,
+      environment: AppState.instance.workoutEnvironment,
+    );
+    if (choices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No matching alternative in this workout setting.'),
+        ),
+      );
+      return;
+    }
+    final choice = await showModalBottomSheet<PlanExercise>(
+      context: context,
+      backgroundColor: _card,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(
+              title: Text('Replace exercise', style: TextStyle(color: _gold)),
+            ),
+            for (final option in choices)
+              ListTile(
+                title: Text(option.name, style: const TextStyle(color: _white)),
+                subtitle: Text(
+                  '${option.muscles} • ${option.equipment}',
+                  style: const TextStyle(color: _gray),
+                ),
+                onTap: () => Navigator.pop(context, option),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+    AppState.instance.swapExercise(exercise.name, choice.name);
+    await _savePreferences({'exerciseSwaps': AppState.instance.exerciseSwaps});
+  }
+
+  void _showFormGuide(PlanExercise exercise) =>
+      showExerciseForm(context, exercise);
 
   @override
   Widget build(BuildContext context) {
@@ -48,11 +235,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     final String goal = AppState.instance.fitnessGoal.isNotEmpty
         ? AppState.instance.fitnessGoal
         : "Muscle Gain / Strength";
-    final exercises = WorkoutPlan.forProfile(
-      goal: goal,
-      environment: AppState.instance.workoutEnvironment,
-      savedOverrides: AppState.instance.workoutPlanOverrides,
-    );
+    final exercises = AppState.instance.recommendedPlan;
 
     // Alamin kung pwede pang mag-pop (kung binuksan ito mula sa ibang screen gaya ng notification)
     final bool canPop = Navigator.canPop(context);
@@ -113,6 +296,10 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildPersonalization(),
+                  const SizedBox(height: 20),
+                  _buildMealSuggestions(goal),
+                  const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -374,7 +561,165 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: _gray),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.swap_horiz, color: _gold),
+                tooltip: 'Replace exercise',
+                onPressed: () => _showSwap(exercise),
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline, color: _gray),
+                tooltip: 'Form guide',
+                onPressed: () => _showFormGuide(exercise),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalization() {
+    final state = AppState.instance;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Build your workout',
+            style: TextStyle(
+              color: _white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Uses your ${state.workoutEnvironment} setting, ${state.workoutDays.length} days/week and ${state.sessionDuration} sessions.',
+            style: const TextStyle(color: _gray),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _requestController,
+            maxLength: 500,
+            maxLines: 3,
+            style: const TextStyle(color: _white),
+            decoration: const InputDecoration(
+              hintText: 'Describe your goal or limits in your own words',
+            ),
+          ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 2,
+            children: [
+              for (final focus in _focuses)
+                ChoiceChip(
+                  label: Text(focus),
+                  selected: state.workoutFocus == focus,
+                  onSelected: (_) => _saveBuilder(focus),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _saving
+                ? null
+                : () => _saveBuilder(state.workoutFocus, generate: true),
+            child: Text(_saving ? 'Building…' : 'Generate workout'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _showCheckIn,
+            icon: const Icon(Icons.bedtime_outlined),
+            label: Text(
+              state.checkInDate ==
+                      DateTime.now().toLocal().toIso8601String().substring(
+                        0,
+                        10,
+                      )
+                  ? 'Sleep ${state.sleepHours}h • Energy ${state.energyLevel}/5'
+                  : 'Daily sleep and energy check-in',
+            ),
+          ),
+          if (state.needsRecovery)
+            const Text(
+              'Low sleep or energy today: a gentle mobility session is recommended.',
+              style: TextStyle(color: _gold),
+            ),
+          if (state.adaptationReason.isNotEmpty)
+            Text(state.adaptationReason, style: const TextStyle(color: _gold)),
+          const SizedBox(height: 6),
+          Text(
+            state.generatedContext == state.planContext
+                ? state.planSource
+                : 'On-device plan • Available offline',
+            style: const TextStyle(color: _gray, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealSuggestions(String goal) {
+    final weightLoss = goal.toLowerCase().contains('loss');
+    final strength =
+        goal.toLowerCase().contains('muscle') ||
+        goal.toLowerCase().contains('strength');
+    final meals = weightLoss
+        ? const [
+            'Breakfast: boiled egg, banana, and water',
+            'Lunch: grilled chicken, vegetables, and rice',
+            'Dinner: tofu and vegetable stir-fry',
+          ]
+        : strength
+        ? const [
+            'Breakfast: eggs, rice, and banana',
+            'Lunch: chicken adobo, rice, and vegetables',
+            'Dinner: tofu, munggo, and rice',
+          ]
+        : const [
+            'Breakfast: egg, pandesal, and banana',
+            'Lunch: monggo with malunggay and rice',
+            'Dinner: chicken, vegetables, and rice',
+          ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Budget-friendly Pinoy meals',
+            style: TextStyle(
+              color: _white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text('Simple ideas for $goal', style: const TextStyle(color: _gray)),
+          const SizedBox(height: 8),
+          for (final meal in meals)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text('• $meal', style: const TextStyle(color: _white)),
+            ),
+          const Text(
+            'Adjust portions to your needs, allergies, and budget.',
+            style: TextStyle(color: _gray, fontSize: 11),
+          ),
         ],
       ),
     );

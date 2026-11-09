@@ -7,6 +7,8 @@ import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'notifications_screen.dart';
 import 'workout_plan_detail_screen.dart';
+import 'member_features_screen.dart';
+import 'meal_recommendations_screen.dart';
 
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
@@ -118,11 +120,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       if (confirmed != true || !mounted) return;
     }
 
-    final exercises = WorkoutPlan.forProfile(
-      goal: state.fitnessGoal,
-      environment: state.workoutEnvironment,
-      savedOverrides: state.workoutPlanOverrides,
-    );
+    final exercises = state.recommendedPlan;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -133,11 +131,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   void _viewPlan() {
     final state = AppState.instance;
-    final exercises = WorkoutPlan.forProfile(
-      goal: state.fitnessGoal,
-      environment: state.workoutEnvironment,
-      savedOverrides: state.workoutPlanOverrides,
-    );
+    final exercises = state.recommendedPlan;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -396,6 +390,39 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(firstName),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.auto_awesome, color: _gold),
+                      title: const Text('Your GrindFit tools'),
+                      subtitle: const Text(
+                        'XP • Challenge • Coach notes • Meals • Voice • Recovery',
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: _gold),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MemberFeaturesScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.restaurant_menu, color: _gold),
+                      title: const Text('Meal Recommendations'),
+                      subtitle: const Text(
+                        'Pinoy meal ideas • Budget • Favorites',
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: _gold),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MealRecommendationsScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 18),
                   _buildStatsCard(),
                   const SizedBox(height: 24),

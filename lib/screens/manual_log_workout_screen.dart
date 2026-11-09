@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'main_navigation_screen.dart';
+import '../services/offline_store.dart';
 
 class ManualLogWorkoutScreen extends StatefulWidget {
   const ManualLogWorkoutScreen({super.key});
@@ -36,6 +37,7 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
   String _intensity = 'Moderate';
   String _environment = AppState.instance.workoutEnvironment;
   bool _isSaving = false;
+  String? _workoutId;
   bool _isAddingToPlan = false;
 
   final List<String> _exercises = [
@@ -116,7 +118,8 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
       if (matchingBaseExercise.isNotEmpty) {
         scopeData[matchingBaseExercise.first.name] = values;
       } else {
-        final customExercises = (scopeData['customExercises'] as List?)
+        final customExercises =
+            (scopeData['customExercises'] as List?)
                 ?.whereType<Map>()
                 .map(Map<String, dynamic>.from)
                 .toList() ??
@@ -126,10 +129,7 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
               exercise['name'] is String &&
               normalize(exercise['name'] as String) == normalizedSelection,
         );
-        final customExercise = {
-          'name': _selectedExercise,
-          ...values,
-        };
+        final customExercise = {'name': _selectedExercise, ...values};
         if (matchingCustomIndex == -1) {
           customExercises.add(customExercise);
         } else {
@@ -160,7 +160,8 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
       );
     } on FirebaseException catch (error) {
       _showMessage(
-        error.message ?? 'Could not update your workout plan. Please try again.',
+        error.message ??
+            'Could not update your workout plan. Please try again.',
       );
     } finally {
       if (mounted) setState(() => _isAddingToPlan = false);
@@ -198,22 +199,10 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
       final userRef = FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid);
-      final profileDoc = await userRef.get();
-      final rawNotificationSettings = profileDoc
-          .data()?['notificationSettings'];
-      final notificationSettings = rawNotificationSettings is Map
-          ? rawNotificationSettings
-          : const <String, dynamic>{};
-      final achievementsEnabled = notificationSettings['achievements'] is bool
-          ? notificationSettings['achievements'] as bool
-          : true;
-      final existingWorkoutCount = achievementsEnabled
-          ? (await userRef.collection('workouts').count().get()).count ?? 0
-          : 0;
-      final workoutRef = userRef.collection('workouts').doc();
-      final notificationRef = userRef.collection('notifications').doc();
-      final batch = FirebaseFirestore.instance.batch()
-        ..set(workoutRef, {
+      _workoutId ??= userRef.collection('workouts').doc().id;
+      await OfflineStore.instance.write(
+        'users/${user.uid}/workouts/$_workoutId',
+        {
           'title': _selectedExercise,
           'workoutName': _selectedExercise,
           'category': _environment,
@@ -222,38 +211,27 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
           'intensity': _intensity,
           'exercises': exercises,
           'notes': _notesController.text.trim(),
-          'timestamp': Timestamp.fromDate(date),
-          'createdAt': FieldValue.serverTimestamp(),
-        })
-        ..set(notificationRef, {
+          'timestamp': date,
+          'createdAt': DateTime.now(),
+          'manual': true,
+        },
+      );
+      await OfflineStore.instance.write(
+        'users/${user.uid}/notifications/workout-$_workoutId',
+        {
           'title': 'Workout logged',
-          'subtitle': 'Your manual workout is in workout history.',
+          'subtitle': 'Your workout is saved on this device and will sync when connected.',
           'type': 'Updates',
           'route': 'history',
           'isRead': false,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      final totalWorkouts = existingWorkoutCount + 1;
-      if (achievementsEnabled &&
-          const [1, 5, 10, 25, 50, 100].contains(totalWorkouts)) {
-        batch.set(
-          userRef.collection('notifications').doc('milestone-$totalWorkouts'),
-          {
-            'title': 'Workout milestone',
-            'subtitle': totalWorkouts == 1
-                ? 'You logged your first workout.'
-                : 'You have logged $totalWorkouts workouts.',
-            'type': 'Achievements',
-            'route': 'analytics',
-            'isRead': false,
-            'timestamp': FieldValue.serverTimestamp(),
-          },
-        );
-      }
-      await batch.commit();
+          'timestamp': DateTime.now(),
+        },
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workout saved successfully.')),
+        const SnackBar(
+          content: Text('Workout saved on this device. Syncs when connected.'),
+        ),
       );
       Navigator.pushAndRemoveUntil(
         context,
@@ -262,10 +240,8 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
         ),
         (route) => false,
       );
-    } on FirebaseException catch (error) {
-      _showMessage(
-        error.message ?? 'Could not save the workout. Please try again.',
-      );
+    } catch (_) {
+      _showMessage('Could not save the workout on this device. Please retry.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -376,11 +352,7 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Add to Workout Plan adds this exercise to your recommended session. Log Completed Workout saves it as a finished session in Analytics.',
-                    style: TextStyle(
-                      color: _gray,
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
+                    style: TextStyle(color: _gray, fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
                   Row(

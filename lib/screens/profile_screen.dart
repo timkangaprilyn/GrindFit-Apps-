@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/app_state.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import '../widgets/phone_notification_controls.dart';
 
 // Walang sariling bottomNavigationBar dito: ang MainNavigationScreen (shell)
 // ang may hawak ng iisang navbar.
@@ -1829,6 +1830,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               const SizedBox(height: 10),
+              const PhoneNotificationControls(),
+              const SizedBox(height: 16),
               _goldButton('View Notifications', () {
                 Navigator.pop(ctx);
                 Navigator.push(

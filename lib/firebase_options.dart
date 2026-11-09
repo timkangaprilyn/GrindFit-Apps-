@@ -47,11 +47,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCuwS_agBfdUbOtNtei0tGWPBATYMISE0Y',
-    appId: '1:868787273216:android:d79dd46836b465868462e5',
-    messagingSenderId: '868787273216',
-    projectId: 'grindfit-app',
-    storageBucket: 'grindfit-app.firebasestorage.app',
+    apiKey: 'AIzaSyDpHjfNaQgoOMJG1mZSpWiTv8eLZ5DtiQE',
+    appId: '1:68225699592:android:5981cb8e25b59050aba6bd',
+    messagingSenderId: '68225699592',
+    projectId: 'grindfit-34b02',
+    storageBucket: 'grindfit-34b02.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

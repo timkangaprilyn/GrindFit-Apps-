@@ -1,8 +1,11 @@
+import {memberPage, csvCell} from './admin-utils.mjs';
+import {setupInterface, renderExtras} from './admin-interface.js';
+import {firebaseConfig, supabaseConfig} from './admin-config.js';
+import {requestAdminData} from './admin-cloud.mjs';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
@@ -17,18 +20,11 @@ import {
   orderBy,
   query,
   setDoc,
+  addDoc,
+  updateDoc,
+  serverTimestamp,
   where,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCNyPiUv2EAd-q5clrX8nzH58LFOiuwJf0",
-  authDomain: "grindfit-app.firebaseapp.com",
-  projectId: "grindfit-app",
-  storageBucket: "grindfit-app.firebasestorage.app",
-  messagingSenderId: "868787273216",
-  appId: "1:868787273216:web:e4232fc7593852e28462e5",
-  measurementId: "G-FCXCLGGXSF",
-};
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -38,6 +34,7 @@ const state = {
   user: null,
   isAdmin: false,
   members: [],
+  page: 1,
   settings: { inactiveDays: 14, injuryThreshold: 3 },
 };
 
@@ -45,6 +42,87 @@ const loginView = $("loginView");
 const adminView = $("adminView");
 const pageError = $("pageError");
 const memberDialog = $("memberDialog");
+let cloudRequestVersion = 0;
+let connectionVersion = 0;
+
+async function checkSupabase() {
+  const owner = state.user?.uid;
+  const version = ++connectionVersion;
+  const status = $('supabaseConnection');
+  if (!state.isAdmin) {
+    status.textContent = 'Admin access required · trainer view uses Firebase';
+    status.removeAttribute('data-state');
+    return;
+  }
+  status.textContent = 'Checking Supabase tables…';
+  status.removeAttribute('data-state');
+  try {
+    const token = await state.user.getIdToken();
+    const result = await requestAdminData({config: supabaseConfig, token, body: {action: 'status'}});
+    if (state.user?.uid !== owner || version !== connectionVersion) return;
+    const ready = result.analytics?.available === true && result.meals?.available === true;
+    status.textContent = ready ? 'Connected · analytics and meal tables available' : 'Connected · some tables unavailable; check deployment';
+    status.dataset.state = ready ? 'ready' : 'error';
+  } catch (error) {
+    if (state.user?.uid !== owner || version !== connectionVersion) return;
+    status.textContent = error.message;
+    status.dataset.state = 'error';
+  }
+}
+
+async function loadCloudMember(uid) {
+  const version = ++cloudRequestVersion;
+  const owner = state.user?.uid;
+  const status = $('cloudMemberStatus');
+  const target = $('cloudMemberData');
+  target.replaceChildren();
+  $('retryCloudMember').disabled = !state.isAdmin;
+  if (!state.isAdmin || !owner) {
+    status.textContent = 'A verified admin account is required to read Supabase member data.';
+    return;
+  }
+  status.textContent = 'Loading saved forecasts and meal preferences…';
+  $('retryCloudMember').disabled = true;
+  try {
+    const token = await state.user.getIdToken();
+    const data = await requestAdminData({config: supabaseConfig, token, body: {action: 'member', member_uid: uid}});
+    if (version !== cloudRequestVersion || activeMemberUid !== uid || state.user?.uid !== owner) return;
+    const rows = Array.isArray(data.analytics?.rows) ? data.analytics.rows : [];
+    const latest = rows[0];
+    const metrics = latest?.metrics || {};
+    const number = (v) => Number.isFinite(v) ? v.toFixed(1) : 'Not enough history';
+    const cells = [];
+    if (data.analytics?.available !== true) cells.push(['Analytics', 'Table unavailable. Check Supabase deployment.']);
+    else if (!latest) cells.push(['Analytics', 'No saved snapshot yet. Ask the member to open Analytics in the updated app.']);
+    else {
+      cells.push(['Snapshot date', latest.local_date], ['Scheduled days completed', `${metrics.completed_days ?? 0} / ${metrics.scheduled_days ?? 0}`],
+        ['Next week · estimated workout days', number(metrics.next_week_estimate)], ['Month end · estimated workout days', number(metrics.month_estimate)]);
+    }
+    const meal = data.meals?.rows?.[0];
+    const prefs = meal?.preferences;
+    if (data.meals?.available !== true) cells.push(['Meal preferences', 'Table unavailable. Check Supabase deployment.']);
+    else if (!prefs) cells.push(['Meal preferences', 'No saved preferences yet. The member can save them in Meal Recommendations.']);
+    else {
+      cells.push(['Ingredient budget per meal', `₱${prefs.budget} · illustrative estimate`], ['Meal options', prefs.plant_only ? 'Plant-based only' : 'All diets'],
+        ['Excluded ingredients', Array.isArray(prefs.excluded) && prefs.excluded.length ? prefs.excluded.join(', ') : 'None selected'],
+        ['Favorite meals', Array.isArray(prefs.favorites) && prefs.favorites.length ? prefs.favorites.map((id) => id.replaceAll('-', ' ')).join(', ') : 'None saved']);
+    }
+    target.innerHTML = `<div class="detail-grid">${cells.map(([label, value]) => `<div class="detail-cell"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('')}</div>`;
+    if (latest) {
+      const basis = document.createElement('p'); basis.className = 'cloud-caption';
+      basis.textContent = `${metrics.basis || ''} Forecasts are activity estimates, not body-composition or medical predictions.`;
+      target.append(basis);
+    }
+    status.textContent = 'Read from Supabase · saved member data; current device-only changes may not be synced yet.';
+  } catch (error) {
+    if (version !== cloudRequestVersion || activeMemberUid !== uid || state.user?.uid !== owner) return;
+    status.textContent = error.message;
+  } finally {
+    if (version === cloudRequestVersion && state.user?.uid === owner) $('retryCloudMember').disabled = false;
+  }
+}
+
+$('retryCloudMember').addEventListener('click', () => { if (activeMemberUid) loadCloudMember(activeMemberUid); });
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -174,7 +252,7 @@ async function loadMembers() {
   const fourWeeksAgo = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
   const endOfNow = new Date(now.getTime() + 1);
   const weekStart = startOfWeek(now);
-  state.members = await Promise.all(memberProfiles.map(async (profile) => {
+  return Promise.all(memberProfiles.map(async (profile) => {
     const [workouts, lastWorkout] = await Promise.all([
       getMemberWorkouts(profile.id, fourWeeksAgo, endOfNow),
       getLatestWorkoutDate(profile.id, endOfNow),
@@ -260,6 +338,7 @@ function renderDashboard() {
     ? `<div class="risk-list">${risks.map((member) => `<div class="risk-row"><strong>${escapeHtml(member.fullName || member.email || "Member")}</strong><span>${escapeHtml(member.injuryAlert ? member.injuryDetails || "Health condition noted; review profile before training." : `${member.fourDayCount} workouts in four days; recovery review threshold reached.`)}</span></div>`).join("")}</div>`
     : '<div class="empty-state">No injury, health, or high-frequency recovery alerts.</div>';
   renderMembers();
+  renderExtras(members, {escapeHtml, workoutDate, formatDate, openMember, inactiveDays: state.settings.inactiveDays});
 }
 
 function renderMembers() {
@@ -270,27 +349,18 @@ function renderMembers() {
   if (inactiveOption) {
     inactiveOption.textContent = `No workout in last ${state.settings.inactiveDays} days`;
   }
-  let members = state.members.filter((member) => {
-    if (filter === "risk" && !member.injuryAlert && !member.recoveryAlert) return false;
-    if (filter === "inactive" &&
-        member.lastWorkout &&
-        member.lastWorkout >= new Date(Date.now() - state.settings.inactiveDays * 24 * 60 * 60 * 1000)) return false;
-    const searchable = `${member.fullName ?? ""} ${member.email ?? ""} ${normalizeGoalLabel(member.fitnessGoal)}`.toLowerCase();
-    return searchable.includes(search);
+  const result = memberPage(state.members.map((m) => ({...m, fitnessGoal: normalizeGoalLabel(m.fitnessGoal)})), {
+    search, filter, sort, page: state.page, inactiveDays: state.settings.inactiveDays,
   });
-  members = [...members].sort((a, b) => {
-    if (sort === "name") return String(a.fullName ?? "").localeCompare(String(b.fullName ?? ""));
-    if (sort === "weekly") return b.weeklyCount - a.weeklyCount;
-    if (sort === "risk") {
-      return Number(b.injuryAlert || b.recoveryAlert) -
-        Number(a.injuryAlert || a.recoveryAlert);
-    }
-    return (b.lastWorkout?.getTime() ?? 0) - (a.lastWorkout?.getTime() ?? 0);
-  });
-
+  state.page = result.page;
+  const members = result.items;
+  $("memberCount").textContent = result.total ? `Showing ${(result.page - 1) * result.pageSize + 1}–${Math.min(result.page * result.pageSize, result.total)} of ${result.total} matching members` : 'No matching members';
+  $("pageNumber").textContent = `Page ${result.page} of ${result.pages}`;
+  $("previousPage").disabled = result.page <= 1;
+  $("nextPage").disabled = result.page >= result.pages;
   $("memberRows").innerHTML = members.length
     ? members.map((member) => `<tr data-member-id="${escapeHtml(member.id)}">
-        <td><div class="member-name">${escapeHtml(member.fullName || "Unnamed member")}</div><div class="member-email">${escapeHtml(member.email || "No email")}</div></td>
+        <td><button type="button" class="member-open"><div class="member-name">${escapeHtml(member.fullName || "Unnamed member")}</div><div class="member-email">${escapeHtml(member.email || "No email")}</div></button></td>
         <td>${escapeHtml(normalizeGoalLabel(member.fitnessGoal))}</td>
         <td>${escapeHtml(formatDate(member.lastWorkout))}</td>
         <td>${member.weeklyCount}</td>
@@ -304,8 +374,20 @@ function renderMembers() {
 }
 
 async function openMember(uid) {
+  const owner = state.user?.uid;
+  if (!owner) return;
   const member = state.members.find((item) => item.id === uid);
   if (!member) return;
+  activeMemberUid = uid;
+  loadCloudMember(uid);
+  editingNoteId = null;
+  $("coachNoteText").value = "";
+  $("cancelCoachEditButton").hidden = true;
+  $("coachNoteStatus").textContent = "";
+  $("coachAssignment").hidden = !state.isAdmin;
+  $("trainerUid").value = member.trainerUid || "";
+  $("saveCoachNoteButton").disabled = !state.isAdmin && member.trainerUid !== state.user?.uid;
+  loadCoachNotes(uid);
   $("detailName").textContent = member.fullName || member.email || "Member";
   $("detailSummary").innerHTML = [
     ["Fitness goal", normalizeGoalLabel(member.fitnessGoal)],
@@ -330,7 +412,7 @@ async function openMember(uid) {
       new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
       new Date(Date.now() + 1),
     );
-    if (!memberDialog.open) return;
+    if (!memberDialog.open || activeMemberUid !== uid || state.user?.uid !== owner) return;
     $("detailWorkouts").innerHTML = workouts.length
       ? workouts.map((workout) => {
         const exerciseList = Array.isArray(workout.exercises)
@@ -343,20 +425,33 @@ async function openMember(uid) {
       }).join("")
       : '<div class="empty-state">No workout sessions recorded in the last 90 days.</div>';
   } catch (error) {
-    if (memberDialog.open) {
+    if (memberDialog.open && activeMemberUid === uid && state.user?.uid === owner) {
       $("detailWorkouts").innerHTML = `<div class="error">${escapeHtml(error.message || "Could not load workout details.")}</div>`;
     }
   }
 }
 
 async function refreshDashboard() {
+  if (!state.user) return;
+  const owner = state.user.uid;
   showError("");
   $("refreshButton").disabled = true;
+  $("lastUpdated").textContent = 'Refreshing member activity…';
   try {
-    await loadMembers();
+    const members = await loadMembers();
+    if (state.user?.uid !== owner) return;
+    state.members = members;
     renderDashboard();
+    $("firebaseConnection").textContent = 'Connected · latest member data loaded';
+    $("firebaseConnection").dataset.state = 'ready';
+    checkSupabase();
+    $("lastUpdated").textContent = `Last refreshed ${new Intl.DateTimeFormat('en-PH', {hour: 'numeric', minute: '2-digit'}).format(new Date())} · Manual refresh`;
   } catch (error) {
+    if (state.user?.uid !== owner) return;
     showError(error.message || "Unable to load member data. Verify admin access and retry.");
+    $("firebaseConnection").textContent = 'Could not refresh · check staff access and connection';
+    $("firebaseConnection").dataset.state = 'error';
+    $("lastUpdated").textContent = 'Refresh failed · previously loaded data may be out of date';
   } finally {
     $("refreshButton").disabled = false;
   }
@@ -440,7 +535,7 @@ async function exportReport() {
         ]);
       }
     }
-    const csv = rows.map((row) => row.map((field) => `"${String(field ?? "").replaceAll('"', '""')}"`).join(",")).join("\r\n");
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     link.download = `grindfit-workouts-${from}-to-${to}.csv`;
@@ -458,6 +553,7 @@ function showAdmin() {
   loginView.hidden = true;
   adminView.hidden = false;
   $("adminEmail").textContent = state.user.email || "";
+  $("staffRole").textContent = state.isAdmin ? 'Admin' : 'Trainer';
 }
 
 function showLogin(message = "") {
@@ -470,11 +566,27 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) {
     state.user = null;
     state.isAdmin = false;
+    state.members = [];
+    activeMemberUid = null;
+    editingNoteId = null;
+    memberDialog.close();
+    $("password").value = '';
+    $("coachNoteText").value = '';
+    cloudRequestVersion++;
+    connectionVersion++;
+    $("cloudMemberData").replaceChildren();
+    $("firebaseConnection").textContent = 'Sign in to verify connection';
+    $("supabaseConnection").textContent = 'Sign in with admin access to verify';
+    $("firebaseConnection").removeAttribute('data-state');
+    $("supabaseConnection").removeAttribute('data-state');
+    renderDashboard();
+    $("lastUpdated").textContent = 'Sign in to load member data';
     showLogin();
     return;
   }
   try {
     const token = await user.getIdTokenResult(true);
+    if (auth.currentUser?.uid !== user.uid) return;
     if (token.claims.admin !== true && token.claims.trainer !== true) {
       state.isAdmin = false;
       await signOut(auth);
@@ -515,48 +627,89 @@ $("loginForm").addEventListener("submit", async (event) => {
   }
 });
 
-$("resetPasswordButton").addEventListener("click", async () => {
-  const email = $("email").value.trim();
-  if (!email) {
-    $("loginError").textContent = "Ilagay muna ang email address para makapagpadala ng password reset link.";
-    $("email").focus();
-    return;
-  }
-  $("resetPasswordButton").disabled = true;
-  $("loginError").textContent = "";
-  try {
-    await sendPasswordResetEmail(auth, email);
-    $("loginError").textContent = "Kung may account ang email na ito, ipinadala na ang password reset link.";
-  } catch (error) {
-    $("loginError").textContent = error.code === "auth/invalid-email"
-      ? "Pakisuri ang email address."
-      : error.code === "auth/network-request-failed"
-        ? "Walang koneksyon sa Firebase. Suriin ang internet at subukan ulit."
-        : error.message || "Hindi naipadala ang password reset link.";
-  } finally {
-    $("resetPasswordButton").disabled = false;
-  }
-});
-
 $("logoutButton").addEventListener("click", () => signOut(auth));
 $("refreshButton").addEventListener("click", refreshDashboard);
-$("memberSearch").addEventListener("input", renderMembers);
-$("memberFilter").addEventListener("change", renderMembers);
-$("memberSort").addEventListener("change", renderMembers);
+function resetMemberPage() { state.page = 1; renderMembers(); }
+$("memberSearch").addEventListener("input", resetMemberPage);
+$("memberFilter").addEventListener("change", resetMemberPage);
+$("memberSort").addEventListener("change", resetMemberPage);
 $("saveSettingsButton").addEventListener("click", saveSettings);
 $("exportButton").addEventListener("click", exportReport);
 $("closeDialog").addEventListener("click", () => memberDialog.close());
-document.querySelectorAll(".nav-button").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
-    document.querySelectorAll(".page-view").forEach((view) => { view.hidden = true; });
-    button.classList.add("active");
-    $(button.dataset.view).hidden = false;
-  });
-});
+setupInterface({onPage: (delta) => { state.page += delta; renderMembers(); }, onClear: resetMemberPage});
 
 const reportTo = new Date();
 const reportFrom = new Date();
 reportFrom.setDate(reportTo.getDate() - 29);
 $("reportFrom").value = toLocalDateInput(reportFrom);
 $("reportTo").value = toLocalDateInput(reportTo);
+
+let activeMemberUid = null;
+let editingNoteId = null;
+async function loadCoachNotes(uid) {
+  $("coachNotes").textContent = "Loading notes…";
+  try {
+    const result = await getDocs(query(collection(db, "users", uid, "coach_notes"), orderBy("updatedAt", "desc"), limit(20)));
+    if (activeMemberUid !== uid) return;
+    $("coachNotes").replaceChildren();
+    if (result.empty) $("coachNotes").textContent = "No coach notes yet.";
+    for (const snapshot of result.docs) {
+      const note = snapshot.data();
+      const row = document.createElement("article");
+      row.className = "detail-workout";
+      const text = document.createElement("p");
+      text.textContent = note.text || "";
+      row.append(text);
+      if (state.isAdmin || note.authorUid === state.user?.uid) {
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "button subtle";
+        edit.textContent = "Edit note";
+        edit.addEventListener("click", () => {
+          editingNoteId = snapshot.id;
+          $("coachNoteText").value = note.text || "";
+          $("cancelCoachEditButton").hidden = false;
+        });
+        row.append(edit);
+      }
+      $("coachNotes").append(row);
+    }
+  } catch (error) {
+    if (activeMemberUid === uid) $("coachNotes").textContent = "Notes unavailable. Check trainer assignment and deployed rules.";
+  }
+}
+$("saveCoachNoteButton").addEventListener("click", async () => {
+  const uid = activeMemberUid;
+  const text = $("coachNoteText").value.trim();
+  if (!uid || !text || text.length > 2000) return;
+  $("saveCoachNoteButton").disabled = true;
+  try {
+    if (editingNoteId) await updateDoc(doc(db, "users", uid, "coach_notes", editingNoteId), { text, updatedAt: serverTimestamp() });
+    else await addDoc(collection(db, "users", uid, "coach_notes"), { text, authorUid: state.user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    if (activeMemberUid !== uid) return;
+    editingNoteId = null;
+    $("coachNoteText").value = "";
+    $("cancelCoachEditButton").hidden = true;
+    $("coachNoteStatus").textContent = "Note saved. The member can read it in the app.";
+    await loadCoachNotes(uid);
+  } catch (error) { $("coachNoteStatus").textContent = error.message || "Could not save note."; }
+  finally { $("saveCoachNoteButton").disabled = false; }
+});
+$("cancelCoachEditButton").addEventListener("click", () => {
+  editingNoteId = null;
+  $("coachNoteText").value = "";
+  $("cancelCoachEditButton").hidden = true;
+});
+$("assignTrainerButton").addEventListener("click", async () => {
+  if (!state.isAdmin || !activeMemberUid) return;
+  const uid = activeMemberUid;
+  $("assignTrainerButton").disabled = true;
+  try {
+    const trainerUid = $("trainerUid").value.trim();
+    await updateDoc(doc(db, "users", uid), { trainerUid });
+    const member = state.members.find((item) => item.id === uid);
+    if (member) member.trainerUid = trainerUid;
+    $("coachNoteStatus").textContent = "Trainer assignment saved.";
+  } catch (error) { $("coachNoteStatus").textContent = error.message || "Could not save assignment."; }
+  finally { $("assignTrainerButton").disabled = false; }
+});

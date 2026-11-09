@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
+import '../services/google_auth_service.dart';
 
 import '../models/app_state.dart';
 import 'register_screen.dart';
@@ -79,8 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       String message = 'An error occurred during login.';
       if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
-        message =
-            'Email or password is incorrect. If you created this account with Google, tap “Continue with Google” instead.';
+        message = 'Email or password is incorrect. If you created this account with Google, tap “Continue with Google” instead.';
       } else if (e.code == 'user-not-found') {
         message = 'No account found with this email, or incorrect password.';
       } else if (e.code == 'invalid-email') {
@@ -147,35 +147,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Google Sign-In Logic
   Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
     setState(() => _isGoogleLoading = true);
     try {
-      final googleSignIn = GoogleSignIn();
-      await googleSignIn.signOut();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(
-        credential,
-      );
-      final user = userCredential.user;
+      final user = await GoogleAuthService().signIn();
       if (user == null) {
-        throw Exception('Google sign-in did not return a user.');
+        return;
       }
       await _routeSignedInUser(user);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Google Sign-In Error: $e'),
+          content: Text(GoogleAuthService.errorMessage(e)),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -371,11 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 8),
                     const Text(
                       'Created your account with Google? Sign in with Google below. Google passwords are not shared with apps.',
-                      style: TextStyle(
-                        color: _gray,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
+                      style: TextStyle(color: _gray, fontSize: 12, height: 1.4),
                     ),
                     const SizedBox(height: 8),
 

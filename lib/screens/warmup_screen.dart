@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/workout_plan.dart';
+import '../models/app_state.dart';
 import '../widgets/workout_image.dart';
+import '../services/voice_coach.dart';
 import 'exercise_timer_screen.dart';
 
 class WarmupScreen extends StatefulWidget {
@@ -57,6 +59,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
 
   @override
   void dispose() {
+    VoiceCoach.instance.stop();
     _stepTimer?.cancel();
     super.dispose();
   }
@@ -68,6 +71,11 @@ class _WarmupScreenState extends State<WarmupScreen> {
   }
 
   void _startCountdown() {
+    VoiceCoach.instance.say(
+      _isResting
+          ? 'Rest for fifteen seconds.'
+          : 'Warm up. ${_warmupSteps[_currentStep]['title']}.',
+    );
     _stepTimer?.cancel();
     _isTimerRunning = true;
     _stepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -140,6 +148,15 @@ class _WarmupScreenState extends State<WarmupScreen> {
         builder: (_) => ExerciseTimerScreen(
           exerciseList: widget.exerciseList,
           currentIndex: 0,
+          totalWorkoutMinutes:
+              (int.tryParse(
+                        RegExp(r'\d+')
+                                .firstMatch(AppState.instance.sessionDuration)
+                                ?.group(0) ??
+                            '',
+                      ) ??
+                      30)
+                  .clamp(5, 120),
         ),
       ),
     );

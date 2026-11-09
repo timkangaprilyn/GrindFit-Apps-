@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../models/app_state.dart';
 import 'main_navigation_screen.dart';
+import '../services/offline_store.dart';
+import '../services/voice_coach.dart';
+import '../widgets/workout_share_card.dart';
+import '../models/fitness_features.dart';
 
 class WorkoutCompleteScreen extends StatefulWidget {
   const WorkoutCompleteScreen({super.key, this.sessionData});
@@ -29,104 +33,104 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
   bool _isSaving = true;
   String? _saveError;
   DocumentReference<Map<String, dynamic>>? _workoutDocument;
-  DocumentReference<Map<String, dynamic>>? _notificationDocument;
+  final DateTime _completedAt = DateTime.now();
+  int _streak = 1;
 
   @override
   void initState() {
     super.initState();
     _saveWorkout();
+    VoiceCoach.instance.say('Workout complete. Great work, Grinder.');
   }
 
   Future<void> _saveWorkout() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-          _saveError = 'Sign in to save this workout to your history.';
-        });
-      }
+      setState(() {
+        _isSaving = false;
+        _saveError = 'Sign in to save this workout.';
+      });
       return;
     }
-
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
     try {
-      final session = <String, dynamic>{
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
+      _workoutDocument ??= userRef.collection('workouts').doc();
+      final durationSeconds =
+          (widget.sessionData?['durationSeconds'] as num?)?.toInt() ?? 0;
+      await OfflineStore.instance.write(_workoutDocument!.path, {
         ...?widget.sessionData,
         'title': widget.sessionData?['title'] ?? 'Workout Session',
         'workoutName': widget.sessionData?['workoutName'] ?? 'Workout Session',
         'category':
             widget.sessionData?['category'] ??
             AppState.instance.workoutEnvironment,
-        'duration': widget.sessionData?['duration'] ?? '0 min',
+        'duration':
+            widget.sessionData?['duration'] ??
+            '${(durationSeconds / 60).ceil()} min',
+        'durationSeconds': durationSeconds,
         'intensity': widget.sessionData?['intensity'] ?? 'Moderate',
         'exercises': widget.sessionData?['exercises'] ?? <dynamic>[],
         'fitnessGoal': AppState.instance.fitnessGoal,
         'feedback': _selectedFeedback,
         'timestamp': widget.sessionData?['timestamp'] is DateTime
-            ? Timestamp.fromDate(widget.sessionData!['timestamp'] as DateTime)
-            : FieldValue.serverTimestamp(),
-      };
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
-      final profileDoc = await userRef.get();
-      final rawNotificationSettings = profileDoc
-          .data()?['notificationSettings'];
-      final notificationSettings = rawNotificationSettings is Map
-          ? rawNotificationSettings
-          : const <String, dynamic>{};
-      final achievementsEnabled = notificationSettings['achievements'] is bool
-          ? notificationSettings['achievements'] as bool
-          : true;
-      final existingWorkoutCount = achievementsEnabled
-          ? (await userRef.collection('workouts').count().get()).count ?? 0
-          : 0;
-      _workoutDocument ??= userRef.collection('workouts').doc();
-      _notificationDocument ??= userRef.collection('notifications').doc();
-      final batch = FirebaseFirestore.instance.batch()
-        ..set(_workoutDocument!, session)
-        ..set(_notificationDocument!, {
+            ? widget.sessionData!['timestamp']
+            : _completedAt,
+        'createdAt': _completedAt,
+      });
+      await OfflineStore.instance.saveProfile({
+        'lastWorkoutFeedback': _selectedFeedback,
+      });
+      await OfflineStore.instance.write(
+        'users/${user.uid}/notifications/workout-${_workoutDocument!.id}',
+        {
           'title': 'Workout completed',
-          'subtitle':
-              'Your ${session['duration']} session is in workout history.',
+          'subtitle': 'Your session is saved. Great work showing up today!',
           'type': 'Updates',
           'route': 'history',
           'isRead': false,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      final totalWorkouts = existingWorkoutCount + 1;
-      if (achievementsEnabled &&
-          const [1, 5, 10, 25, 50, 100].contains(totalWorkouts)) {
-        final achievementRef = userRef
-            .collection('notifications')
-            .doc('milestone-$totalWorkouts');
-        batch.set(achievementRef, {
-          'title': 'Workout milestone',
-          'subtitle': totalWorkouts == 1
-              ? 'You completed your first workout.'
-              : 'You have completed $totalWorkouts workouts.',
-          'type': 'Achievements',
-          'route': 'analytics',
-          'isRead': false,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
-      await batch.commit();
+          'timestamp': _completedAt,
+        },
+      );
+      AppState.instance.updateFeedback(_selectedFeedback);
       AppState.instance.completeWorkoutSession();
       if (mounted) setState(() => _isSaving = false);
-    } on FirebaseException catch (error) {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-          _saveError =
-              error.message ?? 'Could not save the workout. Please try again.';
-        });
+      // Cached history only: saving never waits for a network read.
+      try {
+        final cached = await userRef
+            .collection('workouts')
+            .get(const GetOptions(source: Source.cache));
+        final dates =
+            cached.docs
+                .map((d) => d.data()['timestamp'])
+                .whereType<Timestamp>()
+                .map((t) => localDay(t.toDate().toLocal()))
+                .toSet()
+              ..add(localDay(_completedAt));
+        var day = DateTime(
+          _completedAt.year,
+          _completedAt.month,
+          _completedAt.day,
+        );
+        var streak = 0;
+        while (dates.contains(localDay(day))) {
+          streak++;
+          day = DateTime(day.year, day.month, day.day - 1);
+        }
+        if (mounted) setState(() => _streak = streak);
+      } catch (_) {
+        /* No cached history yet. */
       }
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _isSaving = false;
-          _saveError = 'Could not save the workout: $error';
+          _saveError = 'Could not save on this device. Please retry.';
         });
       }
     }
@@ -134,22 +138,24 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
 
   Future<void> _selectFeedback(String feedback) async {
     setState(() => _selectedFeedback = feedback);
-    final document = _workoutDocument;
-    if (document == null) return;
+    AppState.instance.updateFeedback(feedback);
+    if (_workoutDocument == null) return;
     try {
-      await document.update({'feedback': feedback});
-    } on FirebaseException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message ?? 'Could not save workout feedback.'),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save workout feedback: $error')),
-      );
+      await OfflineStore.instance.write(_workoutDocument!.path, {
+        'feedback': feedback,
+      }, merge: true);
+      await OfflineStore.instance.saveProfile({
+        'lastWorkoutFeedback': feedback,
+        'adaptationReason': AppState.instance.adaptationReason,
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save feedback on this device.'),
+          ),
+        );
+      }
     }
   }
 
@@ -342,6 +348,22 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                     const SizedBox(height: 24),
 
                     // ADAPTIVE FEEDBACK SECTION (Easy, Just right o Hard?)
+                    WorkoutShareCard(
+                      duration: duration,
+                      calories:
+                          (4 *
+                                  3.5 *
+                                  AppState.instance.weightKg /
+                                  200 *
+                                  ((widget.sessionData?['durationSeconds']
+                                              as num?)
+                                          ?.toDouble() ??
+                                      0) /
+                                  60)
+                              .round(),
+                      streak: _streak,
+                    ),
+                    const SizedBox(height: 18),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(18),
@@ -415,7 +437,7 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                       )
                     else
                       const Text(
-                        'Workout and feedback saved to your history.',
+                        'Saved on this device. Syncs to your history when connected.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,

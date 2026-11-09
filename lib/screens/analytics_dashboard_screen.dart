@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/app_state.dart';
+import '../models/workout_insights.dart';
+import '../widgets/workout_insights_card.dart';
+import '../widgets/analytics_cloud_sync.dart';
 import 'workout_history_screen.dart';
 import 'goal_progress_screen.dart';
 import 'log_workout_screen.dart';
@@ -54,7 +57,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     final userDocument = FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid);
-    _profileStream = userDocument.snapshots();
+    _profileStream = userDocument.snapshots(includeMetadataChanges: true);
     _workoutStream = userDocument
         .collection('workouts')
         .where(
@@ -64,7 +67,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           ),
         )
         .orderBy('timestamp')
-        .snapshots();
+        .snapshots(includeMetadataChanges: true);
   }
 
   void _setPeriod(bool weekly) {
@@ -120,7 +123,64 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         programMonths: programMonths,
                         profile: profile,
                       );
-                      return _buildDashboard(analytics);
+                      final rawDays = profile?['workoutDays'];
+                      final days = rawDays is List
+                          ? rawDays.map((d) => d.toString())
+                          : AppState.instance.workoutDays;
+                      const names = [
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                        'Sun',
+                      ];
+                      final created = profile?['createdAt'];
+                      final insights = WorkoutInsights(
+                        now: DateTime.now(),
+                        workouts: workouts
+                            .where((w) => _workoutDate(w) != null)
+                            .map(
+                              (w) => InsightWorkout(
+                                _workoutDate(w)!,
+                                _durationInMinutes(w),
+                              ),
+                            ),
+                        scheduledWeekdays: days
+                            .map(
+                              (d) =>
+                                  names.indexWhere(
+                                    (name) => d.toLowerCase().startsWith(
+                                      name.toLowerCase(),
+                                    ),
+                                  ) +
+                                  1,
+                            )
+                            .toSet(),
+                        joinedAt: created is Timestamp
+                            ? created.toDate()
+                            : null,
+                      );
+                      final checkInToday =
+                          profile?['checkInDate'] ==
+                          DateTime.now().toIso8601String().substring(0, 10);
+                      final lowRecovery =
+                          checkInToday &&
+                          ((profile?['sleepHours'] as num? ?? 8) < 6 ||
+                              (profile?['energyLevel'] as num? ?? 3) <= 2);
+                      return _buildDashboard(
+                        analytics,
+                        insights,
+                        lowRecovery,
+                        workoutSnapshot.data?.metadata.isFromCache == true ||
+                            profileSnapshot.data?.metadata.isFromCache ==
+                                true ||
+                            workoutSnapshot.data?.metadata.hasPendingWrites ==
+                                true ||
+                            profileSnapshot.data?.metadata.hasPendingWrites ==
+                                true,
+                      );
                     },
                   );
                 },
@@ -129,7 +189,12 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
-  Widget _buildDashboard(_WorkoutAnalytics analytics) {
+  Widget _buildDashboard(
+    _WorkoutAnalytics analytics,
+    WorkoutInsights insights,
+    bool lowRecovery,
+    bool fromCache,
+  ) {
     final periodLabel = _isWeekly ? 'this week' : 'this month';
     final avgDuration = analytics.periodSessions == 0
         ? '—'
@@ -168,6 +233,22 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           ),
           const SizedBox(height: 18),
           _buildFrequencyCard(analytics.frequency),
+          const SizedBox(height: 18),
+          if (fromCache) ...[
+            const Text(
+              'Offline / cached logs · estimates may change after sync',
+              style: TextStyle(color: _gray, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+          ],
+          WorkoutInsightsCard(insights: insights, lowRecovery: lowRecovery),
+          const SizedBox(height: 8),
+          AnalyticsCloudSync(
+            key: ValueKey(_user!.uid),
+            ownerUid: _user!.uid,
+            insights: insights,
+            sourceCached: fromCache,
+          ),
           const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,7 +527,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
         )
         .toList();
 
-    final bucketCount = _isWeekly ? 7 : 5;
+    final bucketCount = _isWeekly
+        ? 7
+        : DateTime(now.year, now.month + 1, 0).day;
     final frequency = List<int>.filled(bucketCount, 0);
     final durationTotals = List<double>.filled(bucketCount, 0);
     final intensityTotals = List<double>.filled(bucketCount, 0);
@@ -454,7 +537,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
     for (final entry in periodWorkouts) {
       final date = entry.date!;
-      final bucket = _isWeekly ? date.weekday - 1 : (date.day - 1) ~/ 7;
+      final bucket = _isWeekly ? date.weekday - 1 : date.day - 1;
       if (bucket < 0 || bucket >= bucketCount) continue;
       frequency[bucket]++;
       durationTotals[bucket] += _durationInMinutes(entry.workout);
@@ -717,11 +800,11 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   Widget _buildFrequencyCard(List<int> values) {
     final List<String> labels = _isWeekly
         ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        : const ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5'];
+        : List.generate(values.length, (index) => '${index + 1}');
 
     final int defaultIndex = _isWeekly
         ? DateTime.now().weekday - 1
-        : (DateTime.now().day - 1) ~/ 7;
+        : DateTime.now().day - 1;
     final int selected = (_selectedBar ?? defaultIndex).clamp(
       0,
       values.length - 1,
@@ -755,7 +838,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      _isWeekly ? 'Sessions per day' : 'Sessions per week',
+                      'Sessions per day',
                       style: const TextStyle(
                         fontSize: 12,
                         color: _muted,
@@ -854,7 +937,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                           child: _buildBar(
                                             height:
                                                 values[i] / maxY * plotH * t,
-                                            width: _isWeekly ? 18 : 38,
+                                            width: _isWeekly ? 18 : 5,
                                             selected: i == selected,
                                           ),
                                         ),
@@ -871,10 +954,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                             for (int i = 0; i < labels.length; i++)
                               Expanded(
                                 child: Text(
-                                  labels[i],
+                                  _isWeekly ||
+                                          i == 0 ||
+                                          i == labels.length - 1 ||
+                                          (i + 1) % 5 == 0
+                                      ? labels[i]
+                                      : '',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: _isWeekly ? 11 : 8,
                                     fontWeight: FontWeight.w800,
                                     color: i == selected ? _goldBright : _muted,
                                   ),

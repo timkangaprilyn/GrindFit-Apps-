@@ -14,9 +14,115 @@ class PlanExercise {
     required this.equipment,
     this.imageUrl,
   });
+
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'detail': detail,
+    'repsLabel': repsLabel,
+    'muscles': muscles,
+    'equipment': equipment,
+    'imageUrl': imageUrl,
+  };
+  factory PlanExercise.fromMap(Map<String, dynamic> value) => PlanExercise(
+    name: value['name'] as String,
+    detail: value['detail'] as String,
+    repsLabel: value['repsLabel'] as String,
+    muscles: value['muscles'] as String,
+    equipment: value['equipment'] as String,
+    imageUrl: value['imageUrl'] as String?,
+  );
 }
 
 class WorkoutPlan {
+  static List<PlanExercise> catalog(String environment) {
+    final entries = <String, PlanExercise>{};
+    for (final goal in [
+      'Muscle Gain / Strength',
+      'Weight Loss',
+      'Cardio Endurance',
+      'General Fitness',
+    ]) {
+      for (final e in forProfile(goal: goal, environment: environment)) {
+        entries[e.name] = e;
+      }
+    }
+    const extras = [
+      PlanExercise(
+        name: 'Plank Hold',
+        detail: '3 sets • 30 sec • 30s',
+        repsLabel: '30 sec',
+        muscles: 'Core, abs, shoulders',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Glute Bridge',
+        detail: '3 sets • 12 reps • 45s',
+        repsLabel: '12 reps',
+        muscles: 'Glutes, hamstrings',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Dead Bug',
+        detail: '3 sets • 8 reps • 30s',
+        repsLabel: '8 reps',
+        muscles: 'Core, abs',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Wall Push Up',
+        detail: '3 sets • 10 reps • 30s',
+        repsLabel: '10 reps',
+        muscles: 'Chest, shoulders, triceps',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Bodyweight Squat',
+        detail: '3 sets • 12 reps • 45s',
+        repsLabel: '12 reps',
+        muscles: 'Quads, glutes, hamstrings',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Standing Calf Raise',
+        detail: '3 sets • 12 reps • 30s',
+        repsLabel: '12 reps',
+        muscles: 'Calves, legs',
+        equipment: 'No equipment',
+      ),
+      PlanExercise(
+        name: 'Prone Reverse Fly',
+        detail: '2 sets • 10 reps • 30s',
+        repsLabel: '10 reps',
+        muscles: 'Back, shoulders',
+        equipment: 'No equipment',
+      ),
+    ];
+    for (final e in extras) {
+      entries.putIfAbsent(e.name, () => e);
+    }
+    if (environment.toLowerCase().contains('gym')) {
+      for (final e in const [
+        PlanExercise(
+          name: 'Dumbbell Curl',
+          detail: '3 sets • 10 reps • 45s',
+          repsLabel: '10 reps',
+          muscles: 'Biceps, arms',
+          equipment: 'Dumbbells',
+        ),
+        PlanExercise(
+          name: 'Triceps Extension',
+          detail: '3 sets • 10 reps • 45s',
+          repsLabel: '10 reps',
+          muscles: 'Triceps, arms',
+          equipment: 'Dumbbells',
+        ),
+      ]) {
+        entries[e.name] = e;
+      }
+    }
+    return entries.values.toList();
+  }
+
   static const _weightLossTitle = 'Full-Body Fat-Burning Circuit';
   static const _strengthTitle = 'Muscle-Building Strength';
   static const _enduranceTitle = 'Cardio Endurance Circuit';
@@ -56,6 +162,138 @@ class WorkoutPlan {
       return 'Cardiovascular endurance';
     }
     return 'Balanced full-body training';
+  }
+
+  static List<PlanExercise> alternativesFor(
+    PlanExercise exercise, {
+    required String environment,
+  }) {
+    final pool = <String, PlanExercise>{};
+    for (final candidate in [
+      ...catalog(environment),
+      ...catalog('Home (no equipment)'),
+    ]) {
+      pool[candidate.name] = candidate;
+    }
+    final target = exercise.muscles.toLowerCase().split(',').first.trim();
+    return pool.values.where((candidate) {
+      if (candidate.name == exercise.name) {
+        return false;
+      }
+      if (environment.toLowerCase().contains('home') &&
+          !candidate.equipment.toLowerCase().contains('no equipment') &&
+          !candidate.equipment.toLowerCase().contains('bodyweight')) {
+        return false;
+      }
+      return candidate.muscles.toLowerCase().contains(target) ||
+          exercise.muscles.toLowerCase().contains(
+            candidate.muscles.toLowerCase().split(',').first.trim(),
+          );
+    }).toList();
+  }
+
+  static List<PlanExercise> personalized({
+    required String goal,
+    required String environment,
+    Map<String, dynamic>? savedOverrides,
+    String focus = 'Full Body',
+    String request = '',
+    bool lowEnergy = false,
+    String feedback = '',
+    Map<String, String> swaps = const {},
+    List<PlanExercise>? basePlan,
+  }) {
+    if (lowEnergy || focus == 'Limited Mobility') {
+      return const [
+        PlanExercise(
+          name: 'Gentle stretching',
+          detail: '2 sets • 30 sec • easy pace',
+          repsLabel: '30 sec',
+          muscles: 'Full body',
+          equipment: 'No equipment',
+        ),
+        PlanExercise(
+          name: 'Mobility flow',
+          detail: '2 sets • 5 min • easy pace',
+          repsLabel: '5 min',
+          muscles: 'Full body',
+          equipment: 'No equipment',
+        ),
+      ];
+    }
+    var plan =
+        basePlan ??
+        forProfile(
+          goal: goal,
+          environment: environment,
+          savedOverrides: savedOverrides,
+        );
+    final query = '$focus $request'.toLowerCase();
+    final focusWords = <String, List<String>>{
+      'upper body': ['chest', 'back', 'shoulder', 'bicep', 'tricep'],
+      'lower body': ['quad', 'glute', 'hamstring', 'leg'],
+      'chest at triceps': ['chest', 'tricep'],
+      'back at biceps': ['back', 'bicep'],
+      'shoulders': ['shoulder'],
+      'legs at glutes': ['leg', 'quad', 'glute', 'hamstring'],
+      'core': ['core', 'abs'],
+      'cardio': ['cardio', 'heart', 'full body'],
+    };
+    final selected = focusWords.entries
+        .where((e) => query.contains(e.key))
+        .toList();
+    if (selected.isNotEmpty) {
+      final words = selected.first.value;
+      final filtered = (basePlan ?? catalog(environment))
+          .where(
+            (e) => words.any((word) => e.muscles.toLowerCase().contains(word)),
+          )
+          .toList();
+      if (filtered.isNotEmpty) plan = filtered;
+    }
+    if (query.contains('no equipment') || query.contains('walang equipment')) {
+      plan = plan
+          .where(
+            (e) =>
+                e.equipment.toLowerCase().contains('no equipment') ||
+                e.equipment.toLowerCase().contains('bodyweight'),
+          )
+          .toList();
+      if (plan.isEmpty) {
+        plan = forProfile(goal: goal, environment: 'Home (no equipment)');
+      }
+    }
+    plan = plan.map((exercise) {
+      final replacementName = swaps[exercise.name];
+      if (replacementName == null) return exercise;
+      for (final alternative in alternativesFor(
+        exercise,
+        environment: environment,
+      )) {
+        if (alternative.name == replacementName) return alternative;
+      }
+      return exercise;
+    }).toList();
+    if (feedback.toLowerCase() == 'easy' || feedback.toLowerCase() == 'hard') {
+      final change = feedback.toLowerCase() == 'easy' ? 1 : -1;
+      plan = plan.map((exercise) {
+        final match = RegExp(r'^(\d+) sets').firstMatch(exercise.detail);
+        if (match == null) return exercise;
+        final sets = ((int.tryParse(match.group(1)!) ?? 3) + change).clamp(
+          1,
+          5,
+        );
+        return PlanExercise(
+          name: exercise.name,
+          detail: exercise.detail.replaceFirst(match.group(0)!, '$sets sets'),
+          repsLabel: exercise.repsLabel,
+          muscles: exercise.muscles,
+          equipment: exercise.equipment,
+          imageUrl: exercise.imageUrl,
+        );
+      }).toList();
+    }
+    return plan;
   }
 
   static List<PlanExercise> forProfile({
@@ -239,8 +477,7 @@ class WorkoutPlan {
         reps: '10-12 reps',
         muscles: 'Chest, shoulders, triceps',
         equipment: 'Bodyweight',
-        imageUrl:
-            'https://images.pexels.com/photos/4162491/pexels-photo-4162491.jpeg?auto=compress&w=900',
+        imageUrl: 'https://images.pexels.com/photos/4162491/pexels-photo-4162491.jpeg?auto=compress&w=900',
       ),
       _exercise(
         name: 'Dumbbell Row',
@@ -248,8 +485,7 @@ class WorkoutPlan {
         reps: '10-12 reps',
         muscles: 'Back, biceps',
         equipment: 'Dumbbells',
-        imageUrl:
-            'https://images.pexels.com/photos/38641891/pexels-photo-38641891/free-photo-of-woman-exercising-with-dumbbells-in-gym.jpeg?auto=compress&w=900',
+        imageUrl: 'https://images.pexels.com/photos/38641891/pexels-photo-38641891/free-photo-of-woman-exercising-with-dumbbells-in-gym.jpeg?auto=compress&w=900',
       ),
       _exercise(
         name: 'Shoulder Press',
@@ -257,8 +493,7 @@ class WorkoutPlan {
         reps: '10 reps',
         muscles: 'Shoulders, triceps',
         equipment: 'Dumbbells',
-        imageUrl:
-            'https://images.pexels.com/photos/7289370/pexels-photo-7289370.jpeg?auto=compress&w=900',
+        imageUrl: 'https://images.pexels.com/photos/7289370/pexels-photo-7289370.jpeg?auto=compress&w=900',
       ),
     ];
   }
@@ -312,8 +547,7 @@ class WorkoutPlan {
         reps: '2 min',
         muscles: 'Heart, lungs, legs',
         equipment: isOutdoor || isHome ? 'No equipment' : 'Treadmill',
-        imageUrl:
-            'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=900&q=80',
+        imageUrl: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=900&q=80',
       ),
       _exercise(
         name: 'Jumping Jacks',

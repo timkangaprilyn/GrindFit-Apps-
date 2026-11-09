@@ -1,1 +1,52 @@
-{"firestore":{"rules":"firestore.rules"},"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"]},"flutter":{"platforms":{"android":{"default":{"projectId":"grindfit-app","appId":"1:868787273216:android:d79dd46836b465868462e5","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"grindfit-app","configurations":{"android":"1:868787273216:android:d79dd46836b465868462e5","ios":"1:868787273216:ios:5f742bba9c51470c8462e5"}}}}}}
+{
+    "firestore":  {
+                      "rules":  "firestore.rules"
+                  },
+    "hosting":  {
+                    "public":  "build/web",
+                    "ignore":  [
+                                   "firebase.json",
+                                   "**/.*",
+                                   "**/node_modules/**"
+                               ]
+                },
+    "flutter":  {
+                    "platforms":  {
+                                      "android":  {
+                                                      "default":  {
+                                                                      "projectId":  "grindfit-34b02",
+                                                                      "appId":  "1:68225699592:android:5981cb8e25b59050aba6bd",
+                                                                      "fileOutput":  "android/app/google-services.json"
+                                                                  }
+                                                  },
+                                      "dart":  {
+                                                   "lib/firebase_options.dart":  {
+                                                                                     "projectId":  "grindfit-34b02",
+                                                                                     "configurations":  {
+                                                                                                            "android":  "1:68225699592:android:5981cb8e25b59050aba6bd"
+                                                                                                        }
+                                                                                 }
+                                               }
+                                  }
+                },
+    "functions":  {
+                      "runtime":  "nodejs22",
+                      "source":  "functions",
+                      "ignore":  [
+                                     "node_modules",
+                                     ".git",
+                                     "*.test.js",
+                                     "*.test.cjs",
+                                     ".secret.local"
+                                 ]
+                  },
+    "emulators":  {
+                      "firestore":  {
+                                        "port":  8085
+                                    },
+                      "ui":  {
+                                 "enabled":  false
+                             },
+                      "singleProjectMode":  true
+                  }
+}

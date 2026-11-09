@@ -1,4 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'workout_plan.dart';
+import 'fitness_features.dart';
 
 /// Iisang shared na "source of truth" para sa buong app.
 ///
@@ -35,6 +39,42 @@ class AppState extends ChangeNotifier {
   List<String> workoutDays = ['Mon', 'Tue', 'Wed', 'Thu'];
   String sessionDuration = '45 min';
   int currentDayIndex = 1;
+  String workoutRequest = '';
+  String workoutFocus = 'Full Body';
+  int sleepHours = 8;
+  int energyLevel = 3;
+  String checkInDate = '';
+  String lastWorkoutFeedback = '';
+  String adaptationReason = '';
+  final Map<String, String> exerciseSwaps = {};
+  int missedWorkoutDays = 0;
+  DateTime? joinedAt;
+  List<PlanExercise>? generatedPlan;
+  String generatedContext = '';
+  String planSource = 'On-device plan';
+  String get planContext =>
+      '$fitnessGoal|$workoutEnvironment|$workoutFocus|$workoutRequest|$sessionDuration|${workoutDays.join(',')}';
+
+  void setGeneratedPlan(List<PlanExercise> exercises, String source) {
+    generatedPlan = exercises;
+    generatedContext = planContext;
+    planSource = source;
+    exerciseSwaps.clear();
+    notifyListeners();
+  }
+
+  void updateActivity(Iterable<DateTime> completed) {
+    final result = TrainingAdaptation.calculate(
+      now: DateTime.now(),
+      scheduledDays: workoutDays,
+      completed: completed,
+      feedback: lastWorkoutFeedback,
+      startedAt: joinedAt,
+    );
+    missedWorkoutDays = result.missedDays;
+    adaptationReason = result.reason;
+    notifyListeners();
+  }
 
   void updateAssessment({
     required String fullName,
@@ -116,7 +156,95 @@ class AppState extends ChangeNotifier {
         ? savedSessionDuration
         : '45 min';
     currentDayIndex = 1;
+    workoutRequest = profile['workoutRequest']?.toString() ?? '';
+    workoutFocus = profile['workoutFocus']?.toString() ?? 'Full Body';
+    sleepHours = (profile['sleepHours'] as num?)?.toInt() ?? 8;
+    energyLevel = (profile['energyLevel'] as num?)?.toInt() ?? 3;
+    checkInDate = profile['checkInDate']?.toString() ?? '';
+    lastWorkoutFeedback = profile['lastWorkoutFeedback']?.toString() ?? '';
+    adaptationReason = profile['adaptationReason']?.toString() ?? '';
+    final created = profile['createdAt'];
+    joinedAt = created is Timestamp ? created.toDate().toLocal() : null;
+    missedWorkoutDays = 0;
+    generatedPlan = null;
+    generatedContext = profile['generatedContext']?.toString() ?? '';
+    planSource = profile['planSource']?.toString() ?? 'On-device plan';
+    final savedPlan = profile['generatedPlan'];
+    if (savedPlan is List) {
+      try {
+        generatedPlan = savedPlan
+            .whereType<Map>()
+            .map((e) => PlanExercise.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+      } catch (_) {
+        generatedPlan = null;
+      }
+    }
+    exerciseSwaps.clear();
+    final savedSwaps = profile['exerciseSwaps'];
+    if (savedSwaps is Map) {
+      for (final entry in savedSwaps.entries) {
+        if (entry.key is String && entry.value is String) {
+          exerciseSwaps[entry.key as String] = entry.value as String;
+        }
+      }
+    }
+    notifyListeners();
   }
+
+  void updateCheckIn(int sleep, int energy) {
+    sleepHours = sleep;
+    energyLevel = energy;
+    checkInDate = DateTime.now().toLocal().toIso8601String().substring(0, 10);
+    notifyListeners();
+  }
+
+  void updateWorkoutRequest(String request, String focus) {
+    workoutRequest = request.trim();
+    workoutFocus = focus;
+    notifyListeners();
+  }
+
+  void updateFeedback(String feedback) {
+    lastWorkoutFeedback = feedback;
+    adaptationReason = missedWorkoutDays > 0
+        ? '$missedWorkoutDays scheduled session(s) missed recently. Return with fewer sets instead of increasing the load.'
+        : switch (feedback.toLowerCase()) {
+            'easy' =>
+              'Your last workout felt easy, so the next session adds a set.',
+            'hard' => 'Your last workout felt hard, so the next session uses fewer sets.',
+            _ => 'Your last workout felt just right, so the plan stays steady.',
+          };
+    notifyListeners();
+  }
+
+  void swapExercise(String original, String replacement) {
+    final source =
+        exerciseSwaps.entries
+            .where((entry) => entry.value == original)
+            .firstOrNull
+            ?.key ??
+        original;
+    exerciseSwaps[source] = replacement;
+    notifyListeners();
+  }
+
+  bool get needsRecovery {
+    final today = DateTime.now().toLocal().toIso8601String().substring(0, 10);
+    return checkInDate == today && (sleepHours < 6 || energyLevel <= 2);
+  }
+
+  List<PlanExercise> get recommendedPlan => WorkoutPlan.personalized(
+    goal: fitnessGoal,
+    environment: workoutEnvironment,
+    savedOverrides: workoutPlanOverrides,
+    focus: workoutFocus,
+    request: workoutRequest,
+    lowEnergy: needsRecovery,
+    feedback: missedWorkoutDays > 0 ? 'hard' : lastWorkoutFeedback,
+    swaps: exerciseSwaps,
+    basePlan: generatedContext == planContext ? generatedPlan : null,
+  );
 
   void updateGoal(String goal) {
     fitnessGoal = goal;

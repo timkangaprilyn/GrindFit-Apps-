@@ -2,52 +2,27 @@ import 'package:flutter/material.dart';
 
 /// GrindFit's reusable page transition.
 class GrindFitPageRoute<T> extends PageRouteBuilder<T> {
-  GrindFitPageRoute({
-    required this.page,
-    super.fullscreenDialog = false,
-  }) : super(
-          transitionDuration: const Duration(milliseconds: 280),
-          reverseTransitionDuration: const Duration(milliseconds: 240),
-          pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            // Forward Curve: Mabilis na pasok, napakapurol na paghinto sa dulo
-            final primaryCurved = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutQuart,
-              reverseCurve: Curves.easeInQuart,
-            );
-
-            // Exit Curve para sa lumalabas na screen
-            final secondaryCurved = CurvedAnimation(
-              parent: secondaryAnimation,
-              curve: Curves.easeOutQuart,
-              reverseCurve: Curves.easeInQuart,
-            );
-
-            // Subtle slide movement
-            final slideAnimation = Tween<Offset>(
-              begin: const Offset(0, 0.03),
-              end: Offset.zero,
-            ).animate(primaryCurved);
-
-            // Exit page scale-out (mas seamless ang lipat ng screens)
-            final secondaryScaleAnimation = Tween<double>(
-              begin: 1.0,
-              end: 0.98,
-            ).animate(secondaryCurved);
-
-            return ScaleTransition(
-              scale: secondaryScaleAnimation,
-              child: FadeTransition(
-                opacity: primaryCurved,
-                child: SlideTransition(
-                  position: slideAnimation,
-                  child: child,
-                ),
-              ),
-            );
-          },
-        );
+  GrindFitPageRoute({required this.page, super.fullscreenDialog = false})
+    : super(
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          if (MediaQuery.disableAnimationsOf(context)) return child;
+          final curved = animation.drive(
+            CurveTween(curve: Curves.easeOutCubic),
+          );
+          return SlideTransition(
+            position: curved.drive(
+              Tween(begin: const Offset(0, 0.025), end: Offset.zero),
+            ),
+            child: FadeTransition(
+              opacity: curved.drive(Tween(begin: .9, end: 1.0)),
+              child: child,
+            ),
+          );
+        },
+      );
 
   final Widget page;
 }

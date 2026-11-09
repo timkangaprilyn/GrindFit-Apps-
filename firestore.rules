@@ -22,10 +22,16 @@ service cloud.firestore {
       return isAdmin() || isTrainer();
     }
 
+    function canCoach(uid) {
+      return isAdmin() || (isTrainer()
+        && get(/databases/$(database)/documents/users/$(uid)).data.trainerUid == request.auth.uid);
+    }
+
     function memberRoleOnly(data) {
       return (!('role' in data) || data.role == 'member')
         && !('isAdmin' in data)
-        && !('admin' in data);
+        && !('admin' in data)
+        && !('trainerUid' in data);
     }
 
     match /users/{uid} {
@@ -38,15 +44,60 @@ service cloud.firestore {
         || (isOwner(uid)
           && request.resource.data.diff(resource.data)
             .affectedKeys()
-            .hasNone(['role', 'isAdmin', 'admin'])
+            .hasNone(['role', 'isAdmin', 'admin', 'trainerUid'])
           && (!('uid' in request.resource.data)
             || request.resource.data.uid == uid));
       allow delete: if isOwner(uid) || isAdmin();
 
       match /{collection}/{documentId} {
         allow read: if isOwner(uid) || isStaff();
-        allow write: if isOwner(uid) || isAdmin();
+        // Do not let the general member-data rule grant access to staff notes,
+        // reward ledgers, quotas or challenge scores.
+        allow write: if collection in ['notifications', 'recovery', 'workout_history', 'workout_plan']
+          && (isOwner(uid) || isAdmin());
       }
+
+      match /workouts/{workoutId} {
+        allow create: if isOwner(uid)
+          && request.resource.data.durationSeconds is int
+          && request.resource.data.durationSeconds >= 0
+          && request.resource.data.durationSeconds <= 21600
+          && request.resource.data.timestamp is timestamp
+          && request.resource.data.exercises is list
+          && request.resource.data.exercises.size() <= 50;
+        // Submitted workout metrics cannot be changed to farm server rewards.
+        allow update: if isOwner(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback'])
+          && request.resource.data.feedback in ['Easy', 'Just right', 'Hard'];
+        allow delete: if isOwner(uid) || isAdmin();
+      }
+
+      match /coach_notes/{noteId} {
+        allow read: if isOwner(uid) || canCoach(uid);
+        allow create: if canCoach(uid)
+          && request.resource.data.keys().hasOnly(['text', 'authorUid', 'createdAt', 'updatedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.createdAt == request.time;
+        allow update: if canCoach(uid)
+          && (isAdmin() || resource.data.authorUid == request.auth.uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'updatedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isAdmin();
+      }
+    }
+
+    match /monthly_challenges/{month}/entries/{entryId} {
+      allow read: if signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)/challenge/current).data.optedIn == true
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)/challenge/current).data.month == month;
+      allow write: if false;
     }
 
     match /admin_settings/{documentId} {

@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/app_state.dart';
+import '../widgets/sync_status.dart';
+import '../services/app_notifications.dart';
 import 'home_dashboard_screen.dart';
 import 'ai_recommendations_screen.dart';
 import 'log_workout_screen.dart';
@@ -25,9 +34,63 @@ class MainNavigationScreen extends StatefulWidget {
   State<MainNavigationScreen> createState() => MainNavigationScreenState();
 }
 
-class MainNavigationScreenState extends State<MainNavigationScreen> {
+class MainNavigationScreenState extends State<MainNavigationScreen>
+    with SingleTickerProviderStateMixin {
   late int _currentIndex = widget.initialIndex;
   DateTime? _lastBackPress;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _activity;
+  late final AnimationController _tabController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+    value: 1,
+  );
+  late final Animation<double> _tabFade = _tabController.drive(
+    Tween(begin: .85, end: 1.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      AppNotifications.instance.requestPermissions(once: true);
+      AppNotifications.instance.openPending();
+    });
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _activity = FirebaseFirestore.instance
+          .collection('users/$uid/workouts')
+          .orderBy('timestamp', descending: true)
+          .limit(100)
+          .snapshots()
+          .listen(
+            (snapshot) {
+              AppState.instance.updateActivity(
+                snapshot.docs
+                    .map((doc) => doc.data()['timestamp'])
+                    .whereType<Timestamp>()
+                    .map((t) => t.toDate()),
+              );
+              AppNotifications.instance.onWorkoutDates(
+                snapshot.docs
+                    .map((d) => d.data()['timestamp'])
+                    .whereType<Timestamp>()
+                    .map((t) => t.toDate()),
+              );
+            },
+            onError: (Object _) {
+              /* Keep the cached plan available offline. */
+            },
+          );
+    }
+  }
+
+  @override
+  void dispose() {
+    _activity?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
 
   // Black + Gold + White palette
   static const Color _bg = Color(0xFF121212); // Charcoal background
@@ -47,6 +110,9 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
   void goToTab(int index) {
     if (index == _currentIndex) return;
     setState(() => _currentIndex = index);
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      _tabController.forward(from: 0);
+    }
   }
 
   // Back button:
@@ -60,7 +126,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
     }
 
     final now = DateTime.now();
-    final bool confirmed = _lastBackPress != null &&
+    final bool confirmed =
+        _lastBackPress != null &&
         now.difference(_lastBackPress!) < const Duration(seconds: 2);
 
     if (confirmed) {
@@ -97,9 +164,25 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
       },
       child: Scaffold(
         backgroundColor: _bg,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _tabs,
+        body: Column(
+          children: [
+            const SyncStatus(),
+            Expanded(
+              child: FadeTransition(
+                opacity: _tabFade,
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: [
+                    for (var i = 0; i < _tabs.length; i++)
+                      TickerMode(
+                        enabled: i == _currentIndex,
+                        child: RepaintBoundary(child: _tabs[i]),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: Container(
           decoration: const BoxDecoration(
@@ -113,22 +196,36 @@ class MainNavigationScreenState extends State<MainNavigationScreen> {
             type: BottomNavigationBarType.fixed,
             selectedItemColor: _gold,
             unselectedItemColor: _gray,
-            selectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-            unselectedLabelStyle:
-                const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
             elevation: 0,
             items: const [
               BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded), label: 'Home'),
+                icon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.fitness_center), label: 'Workouts'),
+                icon: Icon(Icons.fitness_center),
+                label: 'Workouts',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.receipt_long_rounded), label: 'Log'),
+                icon: Icon(Icons.receipt_long_rounded),
+                label: 'Log',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
+                icon: Icon(Icons.bar_chart_rounded),
+                label: 'Analytics',
+              ),
               BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded), label: 'Profile'),
+                icon: Icon(Icons.person_rounded),
+                label: 'Profile',
+              ),
             ],
           ),
         ),

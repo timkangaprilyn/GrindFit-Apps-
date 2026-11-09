@@ -4,8 +4,14 @@ import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import '../widgets/workout_image.dart';
 import 'warmup_screen.dart';
+import 'rest_day_screen.dart';
+import 'exercise_timer_screen.dart';
+import '../models/fitness_features.dart';
+import '../services/ai_workout_service.dart';
+import '../services/offline_store.dart';
+import '../widgets/exercise_actions.dart';
 
-class WorkoutPlanDetailScreen extends StatelessWidget {
+class WorkoutPlanDetailScreen extends StatefulWidget {
   const WorkoutPlanDetailScreen({super.key, required this.exercises});
 
   final List<PlanExercise> exercises;
@@ -16,6 +22,179 @@ class WorkoutPlanDetailScreen extends StatelessWidget {
   static const Color _gold = Color(0xFFF5B800);
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
+
+  @override
+  State<WorkoutPlanDetailScreen> createState() =>
+      _WorkoutPlanDetailScreenState();
+}
+
+class _WorkoutPlanDetailScreenState extends State<WorkoutPlanDetailScreen> {
+  late List<PlanExercise> exercises = [...widget.exercises];
+  bool _preparing = false;
+  static const _background = WorkoutPlanDetailScreen._background;
+  static const _card = WorkoutPlanDetailScreen._card;
+  static const _border = WorkoutPlanDetailScreen._border;
+  static const _gold = WorkoutPlanDetailScreen._gold;
+  static const _white = WorkoutPlanDetailScreen._white;
+  static const _gray = WorkoutPlanDetailScreen._gray;
+
+  Future<void> _swap(int index) async {
+    final current = exercises[index];
+    final replacement = await chooseExerciseSwap(
+      context,
+      current,
+      AppState.instance.workoutEnvironment,
+    );
+    if (!mounted || replacement == null) return;
+    setState(() => exercises[index] = replacement);
+    AppState.instance.swapExercise(current.name, replacement.name);
+    try {
+      await OfflineStore.instance.saveProfile({
+        'exerciseSwaps': AppState.instance.exerciseSwaps,
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Swap applied for this session. Could not save the preference.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _startWithPainCheck() async {
+    var area = 'None';
+    var severity = 1;
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('May masakit ba ngayon?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: area,
+                  items: PainPolicy.areas
+                      .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+                      .toList(),
+                  onChanged: (v) => update(() => area = v!),
+                ),
+                if (area != 'None') ...[
+                  Text('Discomfort: $severity / 10'),
+                  Slider(
+                    value: severity.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    onChanged: (v) => update(() => severity = v.round()),
+                  ),
+                  const Text(
+                    'This app cannot assess an injury. For new, severe or worsening pain, stop and seek professional advice. Only continue activity you have been cleared to do.',
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(area == 'None' ? 'Start workout' : 'Review options'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || proceed != true) return;
+    if (area == 'None') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WarmupScreen(exerciseList: exercises),
+        ),
+      );
+      return;
+    }
+    if (severity >= 4 || area == 'Back / neck' || area == 'Other') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RestDayScreen()),
+      );
+      return;
+    }
+    // Exclude exercises using the reported area. Never label replacements as
+    // medically safe or use a generic warmup that may load the affected area.
+    var adjusted = PainPolicy.filter(
+      WorkoutPlan.catalog(AppState.instance.workoutEnvironment),
+      area,
+    ).take(3).toList();
+    setState(() => _preparing = true);
+    try {
+      final result = await AiWorkoutService().generate(painArea: area);
+      adjusted = PainPolicy.filter(result.plan, area);
+    } catch (_) {
+      /* Conservative on-device alternatives remain available. */
+    } finally {
+      if (mounted) setState(() => _preparing = false);
+    }
+    if (!mounted) return;
+    if (adjusted.isEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RestDayScreen()),
+      );
+      return;
+    }
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Review adjusted session'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Exercises loading $area were excluded. These suggestions are not injury treatment or medical clearance. Stop immediately if discomfort increases.',
+              ),
+              const SizedBox(height: 10),
+              for (final e in adjusted) Text('• ${e.name}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Rest instead'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('I am cleared for this activity'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => accepted == true
+            ? ExerciseTimerScreen(
+                exerciseList: adjusted,
+                totalWorkoutMinutes: 10,
+              )
+            : const RestDayScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +296,7 @@ class WorkoutPlanDetailScreen extends StatelessWidget {
                     _ExerciseCard(
                       number: index + 1,
                       exercise: exercises[index],
+                      onSwap: () => _swap(index),
                     ),
                     if (index != exercises.length - 1)
                       const SizedBox(height: 10),
@@ -149,19 +329,13 @@ class WorkoutPlanDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: exercises.isEmpty
+                  onPressed: exercises.isEmpty || _preparing
                       ? null
-                      : () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                WarmupScreen(exerciseList: exercises),
-                          ),
-                        ),
+                      : _startWithPainCheck,
                   icon: const Icon(Icons.play_arrow_rounded, size: 25),
-                  label: const Text(
-                    'START WORKOUT',
-                    style: TextStyle(
+                  label: Text(
+                    _preparing ? 'REVIEWING OPTIONS…' : 'START WORKOUT',
+                    style: const TextStyle(
                       fontSize: 15,
                       letterSpacing: 0.8,
                       fontWeight: FontWeight.w900,
@@ -307,10 +481,15 @@ class _PlanStat extends StatelessWidget {
 }
 
 class _ExerciseCard extends StatelessWidget {
-  const _ExerciseCard({required this.number, required this.exercise});
+  const _ExerciseCard({
+    required this.number,
+    required this.exercise,
+    required this.onSwap,
+  });
 
   final int number;
   final PlanExercise exercise;
+  final VoidCallback onSwap;
 
   @override
   Widget build(BuildContext context) {
@@ -404,10 +583,22 @@ class _ExerciseCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: WorkoutPlanDetailScreen._gray,
-            size: 20,
+          Column(
+            children: [
+              IconButton(
+                tooltip: 'Palitan',
+                onPressed: onSwap,
+                icon: const Icon(
+                  Icons.swap_horiz,
+                  color: WorkoutPlanDetailScreen._gold,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Exercise form guide',
+                onPressed: () => showExerciseForm(context, exercise),
+                icon: const Icon(Icons.info_outline, color: Colors.white60),
+              ),
+            ],
           ),
         ],
       ),

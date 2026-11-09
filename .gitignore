@@ -1,4 +1,7 @@
 # Miscellaneous
+/functions/node_modules/
+/functions/.secret.local
+/functions/.env*
 *.class
 *.log
 *.pyc

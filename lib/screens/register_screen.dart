@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
+import '../services/google_auth_service.dart';
 
 import '../models/app_state.dart';
 import 'login_screen.dart';
@@ -169,27 +170,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // Google Sign-In Logic for Register Screen
   Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
     setState(() => _isGoogleLoading = true);
     try {
-      final googleSignIn = GoogleSignIn();
-      await googleSignIn.signOut();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithCredential(credential);
-      final user = userCredential.user;
+      final user = await GoogleAuthService().signIn();
       if (user == null) {
-        throw Exception('Google sign-in did not return a user.');
+        return;
       }
 
       final userRef = FirebaseFirestore.instance
@@ -240,7 +226,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Google Sign-In Error: $e'),
+          content: Text(GoogleAuthService.errorMessage(e)),
           backgroundColor: Colors.redAccent,
         ),
       );

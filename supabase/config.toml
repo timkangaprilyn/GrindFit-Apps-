@@ -1,0 +1,11 @@
+project_id = "fizdgkpykhcdzvdyxvej"
+
+# The handler validates Firebase RS256 JWTs itself; these are not Supabase JWTs.
+[functions.analytics-snapshot]
+verify_jwt = false
+
+[functions.meal-preferences]
+verify_jwt = false
+
+[functions.admin-member-data]
+verify_jwt = false

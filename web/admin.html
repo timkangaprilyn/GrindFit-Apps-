@@ -5,130 +5,195 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#101010">
     <title>GrindFit Admin</title>
-    <link rel="icon" href="/favicon.png">
-    <link rel="stylesheet" href="/admin.css">
+    <link rel="icon" href="./favicon.png">
+    <link rel="stylesheet" href="./admin.css">
   </head>
   <body>
     <main id="loginView" class="login-shell">
+      <section class="login-story" aria-label="GrindFit staff portal">
+        <a class="brand" href="./admin.html"><img class="brand-logo" src="./grindfit-logo.png" alt="GrindFit logo" width="76" height="76"><span>GRINDFIT<span class="brand-subtitle">STAFF WORKSPACE</span></span></a>
+        <div class="story-copy"><p class="eyebrow">A STRONGER COMMUNITY STARTS HERE</p><h1>Behind every<br>grind.<br><em>A great team.</em></h1><p>One space to follow progress, support your members, and keep every training day moving.</p></div>
+        <div class="story-features"><span>01 &nbsp; Member insights</span><span>02 &nbsp; Coaching & progress</span><span>03 &nbsp; Activity reports</span></div>
+        <div class="story-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <small>GRINDFIT · SHOW UP. GET STRONGER.</small>
+      </section>
+      <div class="login-form-wrap">
       <form id="loginForm" class="login-card">
-        <div class="brand-mark">GF</div>
-        <p class="eyebrow">GRINDFIT ADMIN</p>
-        <h1>Sign in to manage members</h1>
-        <p class="muted">Gamitin ang account na ginawa sa Firebase Authentication at binigyan ng admin o trainer access. Walang default na admin account/password.</p>
+        <img class="login-logo" src="./grindfit-logo.png" alt="GrindFit" width="112" height="112">
+        <p class="eyebrow">WELCOME TO YOUR WORKSPACE</p>
+        <h2>Good to see you again.</h2>
+        <p class="muted">Sign in with your staff account to keep your community moving.</p>
         <label for="email">Email</label>
         <input id="email" type="email" autocomplete="username" required>
         <label for="password">Password</label>
-        <input id="password" type="password" autocomplete="current-password" required>
+        <div class="password-field"><input id="password" type="password" autocomplete="current-password" required><button id="togglePassword" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
         <p id="loginError" class="error" role="alert"></p>
-        <button id="loginButton" class="button primary" type="submit">Sign in</button>
-        <button id="resetPasswordButton" class="button subtle" type="button">Forgot password?</button>
+        <button id="loginButton" class="button primary" type="submit">Sign in to workspace <span aria-hidden="true">↗</span></button>
+        <div class="login-note"><span aria-hidden="true">◇</span><p>Access is for authorized admins and trainers. Ask your project administrator if you need a staff account.</p></div>
+        <a class="preview-link" href="?preview=1">Explore the design preview <span aria-hidden="true">→</span></a>
       </form>
+      <p class="login-footer">GrindFit member management · Staff access only</p>
+      <p id="bootStatus" class="muted" role="status"></p>
+      </div>
     </main>
 
     <main id="adminView" class="admin-shell" hidden>
       <header class="topbar">
-        <a class="brand" href="/admin.html"><span class="brand-mark small">GF</span><span>GrindFit <b>Admin</b></span></a>
+        <a class="brand" href="./admin.html"><img class="brand-logo small" src="./grindfit-logo.png" alt="GrindFit logo" width="64" height="64"><span>GRINDFIT <b>WORKSPACE</b></span></a>
         <div class="account">
+          <span id="staffRole" class="badge clear">Staff</span>
           <span id="adminEmail" class="muted"></span>
           <button id="logoutButton" class="button subtle" type="button">Sign out</button>
         </div>
       </header>
       <div class="layout">
         <aside class="sidebar" aria-label="Admin navigation">
-          <button class="nav-button active" data-view="dashboardView">Overview</button>
-          <button class="nav-button" data-view="membersView">Members</button>
-          <button class="nav-button" data-view="reportsView">Reports</button>
-          <button class="nav-button" data-view="settingsView">System Settings</button>
+          <p class="sidebar-label">WORKSPACE</p>
+          <button class="nav-button active" data-view="dashboardView" aria-current="page"><span aria-hidden="true">▦</span> Overview</button>
+          <button class="nav-button" data-view="membersView"><span aria-hidden="true">◎</span> Members</button>
+          <button class="nav-button" data-view="reportsView"><span aria-hidden="true">↗</span> Reports</button>
+          <button class="nav-button" data-view="settingsView"><span aria-hidden="true">⚙</span> Settings</button>
+          <div class="sidebar-footer"><img class="brand-logo small" src="./grindfit-logo.png" alt="GrindFit logo" width="64" height="64"><strong>Keep the momentum.</strong><p>Small steps. Stronger members.</p><span class="sidebar-version">GRINDFIT ADMIN · V1</span></div>
         </aside>
         <section class="content">
           <div id="pageError" class="error-banner" role="alert" hidden></div>
+          <div id="previewBanner" class="preview-banner" hidden><span><strong>Design preview</strong> · Fictional sample data. Live access and changes are disabled.</span><a href="./admin.html">Back to sign in →</a></div>
           <section id="dashboardView" class="page-view">
             <div class="page-heading">
-              <div><p class="eyebrow">MEMBER ACTIVITY</p><h1>Dashboard overview</h1></div>
+              <div><p class="eyebrow">YOUR COMMUNITY, AT A GLANCE</p><h1>Overview<span class="heading-dot">.</span></h1><p id="dashboardDate" class="muted"></p></div>
               <button id="refreshButton" class="button subtle" type="button">Refresh</button>
             </div>
+            <div class="welcome-strip"><div><span class="badge gold">THE DAILY GRIND</span><h2>Build momentum. Make an impact.</h2><p>Track the work. Spot who needs support. Celebrate the progress.</p></div><button class="button primary" type="button" data-go="membersView">Explore members ↗</button></div>
             <div class="stat-grid">
-              <article class="stat-card"><span>Total members</span><strong id="totalMembers">—</strong></article>
-              <article class="stat-card"><span>Active in last 14 days</span><strong id="activeMembers">—</strong></article>
-              <article class="stat-card"><span>Retention rate (14 days)</span><strong id="retentionRate">—</strong><small id="retentionFormula">Active members / all members</small></article>
-              <article class="stat-card"><span>Workouts this week</span><strong id="weeklyWorkouts">—</strong></article>
+              <article class="stat-card"><span>Total members <i aria-hidden="true">◎</i></span><strong id="totalMembers">—</strong><small>Your member community</small></article>
+              <article class="stat-card"><span>Active members <i aria-hidden="true">↗</i></span><strong id="activeMembers">—</strong><small>At least one workout in 14 days</small></article>
+              <article class="stat-card"><span>Active member share <i aria-hidden="true">◔</i></span><strong id="retentionRate">—</strong><small id="retentionFormula">Active / total members · 14 days</small></article>
+              <article class="stat-card accent"><span>Weekly sessions <i aria-hidden="true">ϟ</i></span><strong id="weeklyWorkouts">—</strong><small>Since Monday · local time</small></article>
             </div>
+            <div class="cloud-connections" aria-label="Backend connection status">
+              <div class="connection"><strong>Firebase · Members & workouts</strong><span id="firebaseConnection" role="status">Sign in to verify connection</span></div>
+              <div class="connection"><strong>Supabase · Forecasts & meal preferences</strong><span id="supabaseConnection" role="status">Sign in with admin access to verify</span></div>
+            </div>
+            <div class="pulse-grid">
+              <article class="pulse-card"><span>LAST 7 COMPLETE DAYS</span><strong id="pulseSessions">—</strong><p id="pulseChange">Waiting for workout data</p></article>
+              <article class="pulse-card"><span>MEMBER WORKOUT DAYS</span><strong id="pulseDays">—</strong><p>Distinct days per member · last 28 days</p></article>
+              <article class="pulse-card"><span>FOLLOW-UP QUEUE</span><strong id="pulseFollowUps">—</strong><p id="pulseFollowUpLabel">Members without recent workout logs</p></article>
+            </div>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">SHOWING UP, DAY AFTER DAY</p><h2>Community training calendar</h2><p class="muted">Last 28 calendar days, including today. Select a day to explore logged sessions.</p></div></div><div id="trainingCalendar" class="training-calendar"></div><div class="calendar-legend"><span>Fewer sessions</span><i></i><i></i><i></i><i></i><span>More sessions</span></div><div id="calendarDetails" class="calendar-details" hidden></div></article>
             <article class="panel">
               <div class="panel-heading"><div><h2>Workout activity</h2><p class="muted">Sessions per week across the last four weeks</p></div></div>
               <div id="activityChart" class="activity-chart" aria-label="Workout sessions by week"></div>
             </article>
+            <div class="dashboard-columns">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">TRAINING DIRECTION</p><h2>Member goals</h2></div><span class="panel-tag">Current profiles</span></div><div id="goalBreakdown" class="goal-breakdown"><p class="muted">Sign in to load member goals.</p></div></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">THE LATEST EFFORT</p><h2>Recent activity</h2></div><span class="panel-tag">Last 28 days</span></div><div id="recentActivity" class="recent-list"><p class="muted">Sign in to load recent workouts.</p></div></article>
+            </div>
+            <div class="dashboard-columns">
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">A LITTLE SUPPORT GOES A LONG WAY</p><h2>Member follow-ups</h2><p class="muted">Review a profile and add a coach note when appropriate.</p></div></div><div id="followUpList"></div></article>
+              <article class="panel"><div class="panel-heading"><div><p class="eyebrow">CONSISTENCY OVER INTENSITY</p><h2>Showing up consistently</h2><p class="muted">Most distinct workout days in the last 28 days. Multiple sessions on one day count once.</p></div></div><div id="consistentMembers"></div></article>
+            </div>
+            <article class="panel"><div class="panel-heading"><div><p class="eyebrow">WELCOME TO THE COMMUNITY</p><h2>New members</h2><p class="muted">Profiles created in the last 30 calendar days.</p></div><button class="button subtle" type="button" data-go="membersView">View all members →</button></div><div id="newMemberList" class="new-member-grid"></div></article>
             <article class="panel">
               <div class="panel-heading"><div><h2>Members requiring attention</h2><p class="muted">Injury, health, or high-frequency recovery alerts</p></div></div>
-              <div id="riskSummary" class="empty-state">Loading member activity…</div>
+              <div id="riskSummary">Loading member activity…</div>
             </article>
+            <div class="dashboard-footer"><span id="lastUpdated" role="status">No data loaded yet</span><button class="text-link" type="button" data-go="reportsView">Create an activity report →</button></div>
           </section>
 
           <section id="membersView" class="page-view" hidden>
-            <div class="page-heading"><div><p class="eyebrow">MEMBER MANAGEMENT</p><h1>Members</h1></div></div>
-            <div class="toolbar">
-              <input id="memberSearch" type="search" placeholder="Search name or goal">
+            <div class="page-heading"><div><p class="eyebrow">YOUR COMMUNITY</p><h1>Members<span class="heading-dot">.</span></h1><p class="muted">Know your members. Follow their progress. Support their next step.</p></div><button class="button subtle" type="button" data-go="reportsView">Export activity ↗</button></div>
+            <div class="screen-intro"><span class="screen-icon" aria-hidden="true">◎</span><div><p class="eyebrow">PEOPLE BEHIND THE PROGRESS</p><h2>Your member directory</h2><p>Open a profile to review workouts, saved forecasts, meal preferences and coach notes.</p></div><span class="intro-label">MEMBER WORKSPACE</span></div>
+            <div class="directory-controls"><div class="section-label"><span>FIND A MEMBER</span><small>Search, filter and sort your community</small></div><div class="toolbar">
+              <input id="memberSearch" type="search" placeholder="Search name, email or goal" aria-label="Search members">
               <select id="memberFilter" aria-label="Filter members">
                 <option value="all">All members</option>
                 <option value="risk">Injury / health alert</option>
                 <option id="inactiveFilterLabel" value="inactive">No workout in 14 days</option>
               </select>
+              <button id="clearFilters" class="button subtle" type="button">Clear filters</button>
               <select id="memberSort" aria-label="Sort members">
                 <option value="recent">Sort: recent workout</option>
                 <option value="weekly">Sort: workouts this week</option>
                 <option value="risk">Sort: injury / recovery risk</option>
                 <option value="name">Sort: name</option>
               </select>
-            </div>
+            </div></div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th>Member</th><th>Goal</th><th>Last workout</th><th>This week</th><th>Injury risk</th></tr></thead>
+                <thead><tr><th>Member</th><th>Goal</th><th>Last workout</th><th>This week</th><th>Review status</th></tr></thead>
                 <tbody id="memberRows"><tr><td colspan="5" class="muted">Loading members…</td></tr></tbody>
               </table>
             </div>
+            <div class="table-footer"><p id="memberCount" class="muted" role="status">No members loaded</p><div class="pagination"><button id="previousPage" class="button subtle" type="button">← Previous</button><span id="pageNumber">Page 1</span><button id="nextPage" class="button subtle" type="button">Next →</button></div></div>
           </section>
 
           <section id="reportsView" class="page-view" hidden>
-            <div class="page-heading"><div><p class="eyebrow">DATA EXPORT</p><h1>Reports</h1></div></div>
-            <article class="panel">
-              <h2>Workout report</h2>
+            <div class="page-heading"><div><p class="eyebrow">FROM ACTIVITY TO INSIGHT</p><h1>Reports<span class="heading-dot">.</span></h1><p class="muted">Turn recorded training into a clear, shareable activity report.</p></div></div>
+            <div class="screen-intro"><span class="screen-icon" aria-hidden="true">↗</span><div><p class="eyebrow">THE WORK, ON RECORD</p><h2>Every session tells a story.</h2><p>Choose your dates and download recorded workout activity as a CSV file.</p></div><span class="intro-label">ACTIVITY EXPORT</span></div>
+            <div class="report-layout"><article class="panel report-builder">
+              <div class="section-label"><span>01 / CONFIGURE YOUR REPORT</span><small>Workout activity</small></div>
+              <h2>Build an activity report</h2>
               <p class="muted">Choose a date range. The CSV excludes member names, email addresses, and account IDs.</p>
+              <div class="date-presets"><button type="button" class="button subtle" data-range="7">Last 7 days</button><button type="button" class="button subtle" data-range="30">Last 30 days</button><button type="button" class="button subtle" data-range="month">This month</button></div>
               <div class="toolbar report-toolbar">
                 <label>From <input id="reportFrom" type="date"></label>
                 <label>To <input id="reportTo" type="date"></label>
-                <button id="exportButton" class="button primary" type="button">Export CSV</button>
+                <button id="exportButton" class="button primary" type="button">Download workout CSV ↗</button>
               </div>
               <p id="reportStatus" class="muted" role="status"></p>
-            </article>
+            </article><aside class="report-guide"><article class="panel"><span class="file-emblem" aria-hidden="true">CSV</span><p class="eyebrow">WHAT'S IN YOUR EXPORT</p><h2>Training, in detail.</h2><ul class="detail-list"><li><span>Session date</span><small>When the workout was logged</small></li><li><span>Goal & environment</span><small>Member goal and session category</small></li><li><span>Duration & intensity</span><small>Recorded session metrics</small></li><li><span>Exercises & feedback</span><small>Movements and reported effort</small></li></ul></article><div class="info-callout"><strong>Ready for your spreadsheet.</strong><p>Open the CSV in Excel or Google Sheets. Report availability follows your staff permissions.</p></div></aside></div>
           </section>
 
           <section id="settingsView" class="page-view" hidden>
-            <div class="page-heading"><div><p class="eyebrow">CONFIGURATION</p><h1>System Settings</h1></div></div>
-            <article class="panel settings-panel">
-              <h2>Alert rules</h2>
-              <p class="muted">These thresholds are stored in Firestore and used for admin review.</p>
+            <div class="page-heading"><div><p class="eyebrow">KEEP YOUR WORKSPACE IN SYNC</p><h1>Settings<span class="heading-dot">.</span></h1><p class="muted">Set clear review rules for your team and understand staff access.</p></div></div>
+            <div class="screen-intro"><span class="screen-icon" aria-hidden="true">⚙</span><div><p class="eyebrow">A CONSISTENT STANDARD</p><h2>Make the rules work for your team.</h2><p>Adjust follow-up thresholds to match how you review member activity.</p></div><span class="intro-label">WORKSPACE CONFIGURATION</span></div>
+            <div class="settings-layout"><article class="panel settings-panel">
+              <div class="section-label"><span>01 / ACTIVITY REVIEW</span><small>Admin controlled</small></div><h2>Review thresholds</h2>
+              <p class="muted">Saved rules guide dashboard follow-ups and staff review. They do not diagnose injury or recovery.</p>
               <p id="settingsAccessNotice" class="muted" hidden>Trainers can view alert rules. Only admin accounts can update them.</p>
-              <label>Inactive member threshold (days)<input id="inactiveDays" type="number" min="1" max="365"></label>
-              <label>Injury alert review threshold (workouts in 4 days)<input id="injuryThreshold" type="number" min="1" max="14"></label>
+              <label>Follow up after this many inactive days<input id="inactiveDays" type="number" min="1" max="365"><small>No recent workout log within this window triggers a review.</small></label>
+              <label>Workout review threshold in a 4-day window<input id="injuryThreshold" type="number" min="1" max="14"><small>Flags frequent logged sessions for staff review.</small></label>
               <button id="saveSettingsButton" class="button primary" type="button">Save settings</button>
               <p id="settingsStatus" class="muted" role="status"></p>
             </article>
-            <article class="panel">
-              <h2>Admin accounts</h2>
+            <article class="panel access-panel">
+              <span class="access-emblem" aria-hidden="true">◇</span><p class="eyebrow">STAFF PERMISSIONS</p><h2>The right access.<br>The right responsibility.</h2>
               <p class="muted">Admin/trainer access is granted through a trusted Firebase Authentication custom claim. This client does not create or promote staff accounts.</p>
+              <div class="access-role"><strong>Admin</strong><p>Manage review rules, trainer assignments and permitted member data.</p></div><div class="access-role"><strong>Trainer</strong><p>Review activity and coach members according to their assignment and access rules.</p></div>
               <p id="adminAccountInfo"></p>
-            </article>
+            </article></div>
           </section>
         </section>
       </div>
     </main>
 
     <dialog id="memberDialog" class="member-dialog">
-      <div class="dialog-heading"><div><p class="eyebrow">MEMBER PROGRESS</p><h2 id="detailName"></h2></div><button id="closeDialog" class="button subtle" type="button">Close</button></div>
+      <div class="dialog-heading"><div class="dialog-brand"><img src="./grindfit-logo.png" alt="GrindFit" width="64" height="64"><div><p class="eyebrow">MEMBER PROFILE</p><h2 id="detailName"></h2></div></div><button id="closeDialog" class="button subtle" type="button">Close ✕</button></div>
+      <div class="profile-nav" aria-label="Profile sections"><button type="button" data-detail-anchor="detailSummary">Overview</button><button type="button" data-detail-anchor="cloudMemberPanel">Saved insights</button><button type="button" data-detail-anchor="coachPanel">Coaching</button><button type="button" data-detail-anchor="detailWorkouts">Workout history</button></div>
       <div id="detailSummary" class="detail-grid"></div>
       <h3>Alerts</h3><div id="detailAlerts"></div>
+      <section id="cloudMemberPanel" class="panel cloud-detail">
+        <div class="panel-heading"><div><p class="eyebrow">SUPABASE MEMBER DATA</p><h3>Forecasts & meal preferences</h3></div><button id="retryCloudMember" class="button subtle" type="button">Refresh data</button></div>
+        <p id="cloudMemberStatus" class="cloud-caption" role="status"></p>
+        <div id="cloudMemberData"></div>
+      </section>
+      <section id="coachPanel" class="panel">
+        <h3>Coach notes</h3>
+        <p class="muted">Visible to this member. Trainers can write for their assigned members only.</p>
+        <div id="coachAssignment" hidden>
+          <label>Assigned trainer Firebase UID <input id="trainerUid" type="text" autocomplete="off"></label>
+          <button id="assignTrainerButton" class="button subtle" type="button">Save assignment</button>
+        </div>
+        <div id="coachNotes"></div>
+        <label for="coachNoteText">Member feedback</label>
+        <textarea id="coachNoteText" rows="4" maxlength="2000" placeholder="Write a note for this member"></textarea>
+        <button id="saveCoachNoteButton" class="button primary" type="button">Save note</button>
+        <button id="cancelCoachEditButton" class="button subtle" type="button" hidden>Cancel edit</button>
+        <p id="coachNoteStatus" class="muted" role="status"></p>
+      </section>
       <h3>Recent workouts</h3><div id="detailWorkouts" class="detail-workouts"></div>
     </dialog>
 
-    <script type="module" src="/admin.js"></script>
+    <script type="module" src="./admin-bootstrap.js"></script>
   </body>
 </html>

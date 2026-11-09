@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import '../widgets/workout_image.dart';
+import '../services/voice_coach.dart';
 import 'workout_complete_screen.dart';
 
 class ExerciseTimerScreen extends StatefulWidget {
@@ -94,6 +95,9 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
   }
 
   void _startActiveTimer() {
+    VoiceCoach.instance.say(
+      '${_currentExercise.name}. Set $_currentSet. Move with control.',
+    );
     _activeTimer?.cancel();
     _restTimer?.cancel();
     _isResting = false;
@@ -111,6 +115,9 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
         return;
       }
       setState(() => _setSecondsRemaining--);
+      if (_setSecondsRemaining == 3) {
+        VoiceCoach.instance.say('Three seconds left.');
+      }
     });
   }
 
@@ -129,6 +136,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
   }
 
   void _startRestTimer() {
+    VoiceCoach.instance.say('Set complete. Rest and breathe.');
     _activeTimer?.cancel();
     _restTimer?.cancel();
     setState(() {
@@ -290,6 +298,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
 
   @override
   void dispose() {
+    VoiceCoach.instance.stop();
     _workoutTimer?.cancel();
     _activeTimer?.cancel();
     _restTimer?.cancel();
@@ -318,16 +327,35 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                     onPressed: () => Navigator.maybePop(context),
                     icon: const Icon(Icons.arrow_back_rounded, color: _white),
                   ),
-                  const Spacer(),
-                  const Text(
-                    'WORKOUT SESSION',
-                    style: TextStyle(
-                      color: _gray,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
+                  const Expanded(
+                    child: Text(
+                      'WORKOUT SESSION',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _gray,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        letterSpacing: 1.2,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Toggle voice coach',
+                    icon: Icon(
+                      VoiceCoach.instance.enabled
+                          ? Icons.volume_up
+                          : Icons.volume_off,
+                      color: _gold,
+                    ),
+                    onPressed: () async {
+                      await VoiceCoach.instance.configure(
+                        on: !VoiceCoach.instance.enabled,
+                      );
+                      if (mounted) setState(() {});
+                    },
+                  ),
                   Text(
                     _formatTime(_totalTimeRemaining),
                     style: const TextStyle(
