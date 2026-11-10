@@ -28,7 +28,7 @@ class _PhoneNotificationControlsState extends State<PhoneNotificationControls> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Pop-up and phone alerts',
+            'Daily workout reminders',
             style: TextStyle(
               color: Colors.white,
               fontSize: 15,
@@ -37,7 +37,7 @@ class _PhoneNotificationControlsState extends State<PhoneNotificationControls> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Choose Allow when your phone asks for notification permission. Phone sound, pop-up and Do Not Disturb settings also apply.',
+            'Get your workout focus, duration and exercises on training days, and a recovery reminder on rest days. Allow phone notifications to receive reminders when the app is closed.',
             style: TextStyle(
               color: GrindFitTheme.gray,
               fontSize: 12,

@@ -48,46 +48,41 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   @override
   void initState() {
     super.initState();
-    _exercises =
-        WorkoutPlan.forProfile(
-          goal: AppState.instance.fitnessGoal,
-          environment: AppState.instance.workoutEnvironment,
-          savedOverrides: AppState.instance.workoutPlanOverrides,
-        ).map((exercise) {
-          final sets =
-              int.tryParse(
-                RegExp(
-                      r'(\d+)\s*sets?',
-                      caseSensitive: false,
-                    ).firstMatch(exercise.detail)?.group(1) ??
-                    '',
-              ) ??
-              3;
-          final reps =
-              int.tryParse(
-                RegExp(r'(\d+)').firstMatch(exercise.repsLabel)?.group(1) ?? '',
-              ) ??
-              10;
-          final duration =
-              int.tryParse(
-                RegExp(
-                      r'(\d+)\s*(?:s|sec|secs|second|seconds)\b',
-                      caseSensitive: false,
-                    ).firstMatch(exercise.detail)?.group(1) ??
-                    '',
-              ) ??
-              45;
-          return <String, dynamic>{
-            'name': exercise.name,
-            'sets': sets,
-            'reps': reps,
-            'duration': duration,
-            'weight': '',
-            'intensity': 'Moderate',
-            'completed': false,
-            'imageUrl': exercise.imageUrl,
-          };
-        }).toList();
+    _exercises = AppState.instance.recommendedPlan.map((exercise) {
+      final sets =
+          int.tryParse(
+            RegExp(
+                  r'(\d+)\s*sets?',
+                  caseSensitive: false,
+                ).firstMatch(exercise.detail)?.group(1) ??
+                '',
+          ) ??
+          3;
+      final reps =
+          int.tryParse(
+            RegExp(r'(\d+)').firstMatch(exercise.repsLabel)?.group(1) ?? '',
+          ) ??
+          10;
+      final duration =
+          int.tryParse(
+            RegExp(
+                  r'(\d+)\s*(?:s|sec|secs|second|seconds)\b',
+                  caseSensitive: false,
+                ).firstMatch(exercise.detail)?.group(1) ??
+                '',
+          ) ??
+          45;
+      return <String, dynamic>{
+        'name': exercise.name,
+        'sets': sets,
+        'reps': reps,
+        'duration': duration,
+        'weight': '',
+        'intensity': 'Moderate',
+        'completed': false,
+        'imageUrl': exercise.imageUrl,
+      };
+    }).toList();
     _loadExerciseValues(_currentExerciseIndex);
   }
 
@@ -240,7 +235,15 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const ManualLogWorkoutScreen(),
+                  builder: (_) => ManualLogWorkoutScreen(
+                    exercise: PlanExercise(
+                      name: _exercises[_currentExerciseIndex]['name'] as String,
+                      detail: '$_sets sets • ${_durationController.text}s',
+                      repsLabel: '$_reps reps',
+                      muscles: '',
+                      equipment: '',
+                    ),
+                  ),
                 ),
               );
             },

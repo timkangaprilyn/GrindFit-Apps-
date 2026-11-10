@@ -21,6 +21,36 @@ class _BuildCounter extends StatelessWidget {
 }
 
 void main() {
+  test(
+    'daily reminder describes the saved AI workout and session duration',
+    () {
+      final content = AppNotifications.dailyReminderContent({
+        'workoutFocus': 'Core',
+        'sessionDuration': '20 min',
+        'workoutDays': ['Mon'],
+        'generatedContext': 'Muscle Gain / Strength|Gym|Core||20 min|Mon',
+        'generatedPlan': [
+          {
+            'name': 'Plank',
+            'detail': '3 sets • 30s',
+            'repsLabel': '1 reps',
+            'muscles': 'Core',
+            'equipment': 'Bodyweight',
+          },
+        ],
+      }, workout: true);
+      expect(content.title, 'Workout today: Core');
+      expect(content.body, contains('20 min'));
+      expect(content.body, contains('Plank'));
+    },
+  );
+
+  test('rest day reminder recommends recovery instead of a workout', () {
+    final content = AppNotifications.dailyReminderContent({}, workout: false);
+    expect(content.title, 'Today is your rest day');
+    expect(content.body, contains('Recovery day'));
+  });
+
   final started = DateTime(2026, 11, 9, 12);
   AppAlert alert(
     String id, {

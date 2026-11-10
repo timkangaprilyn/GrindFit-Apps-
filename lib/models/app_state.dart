@@ -55,6 +55,14 @@ class AppState extends ChangeNotifier {
   String get planContext =>
       '$fitnessGoal|$workoutEnvironment|$workoutFocus|$workoutRequest|$sessionDuration|${workoutDays.join(',')}';
 
+  void useOfflineWorkout() {
+    generatedPlan = null;
+    generatedContext = '';
+    planSource = 'On-device plan • Available offline';
+    exerciseSwaps.clear();
+    notifyListeners();
+  }
+
   void setGeneratedPlan(List<PlanExercise> exercises, String source) {
     generatedPlan = exercises;
     generatedContext = planContext;

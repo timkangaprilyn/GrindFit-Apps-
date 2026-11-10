@@ -4,12 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'rest_day_screen.dart';
+import 'manual_log_workout_screen.dart';
 import '../widgets/workout_image.dart';
 import '../widgets/exercise_actions.dart';
 import '../services/offline_store.dart';
 import '../services/ai_workout_service.dart';
-
-import 'package:cloud_functions/cloud_functions.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
@@ -79,15 +78,23 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     }
   }
 
-  Future<void> _saveBuilder(String focus, {bool generate = false}) async {
+  Future<void> _saveBuilder(
+    String focus, {
+    bool generate = false,
+    bool offline = false,
+  }) async {
+    if (_saving) return;
     final request = _requestController.text.trim();
     if (request.length > 500) return;
     setState(() => _saving = true);
     AppState.instance.updateWorkoutRequest(request, focus);
     await _savePreferences({'workoutRequest': request, 'workoutFocus': focus});
+    if (offline) await _useOfflineWorkout();
     if (generate) {
       try {
-        final generated = await AiWorkoutService().generate();
+        final generated = await AiWorkoutService().generate().timeout(
+          const Duration(seconds: 8),
+        );
         final state = AppState.instance;
         state.setGeneratedPlan(generated.plan, 'AI-generated plan');
         await _savePreferences({
@@ -100,29 +107,32 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(generated.reason)));
         }
-      } on FirebaseFunctionsException catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'AI is unavailable right now. Your on-device plan is ready; try AI again when connected.',
-              ),
-            ),
-          );
-        }
       } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Could not create an AI plan. Your on-device plan is ready.',
-              ),
-            ),
-          );
-        }
+        await _useOfflineWorkout(automatic: true);
       }
     }
     if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _useOfflineWorkout({bool automatic = false}) async {
+    final state = AppState.instance;
+    state.useOfflineWorkout();
+    await _savePreferences({
+      'generatedPlan': <Map<String, dynamic>>[],
+      'generatedContext': '',
+      'planSource': state.planSource,
+      'exerciseSwaps': <String, String>{},
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          automatic
+              ? 'Online AI is unavailable. Your personalized offline workout is ready.'
+              : 'Your personalized offline workout is ready. No internet needed.',
+        ),
+      ),
+    );
   }
 
   Future<void> _showCheckIn() async {
@@ -565,6 +575,16 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
+                icon: const Icon(Icons.edit_note_rounded, color: _gold),
+                tooltip: 'Log this exercise',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ManualLogWorkoutScreen(exercise: exercise),
+                  ),
+                ),
+              ),
+              IconButton(
                 icon: const Icon(Icons.swap_horiz, color: _gold),
                 tooltip: 'Replace exercise',
                 onPressed: () => _showSwap(exercise),
@@ -634,6 +654,18 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 ? null
                 : () => _saveBuilder(state.workoutFocus, generate: true),
             child: Text(_saving ? 'Building…' : 'Generate workout'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _saving
+                ? null
+                : () => _saveBuilder(state.workoutFocus, offline: true),
+            icon: const Icon(Icons.offline_bolt_outlined),
+            label: const Text('Use offline workout'),
+          ),
+          const Text(
+            'Offline recommendations use your goal, equipment, focus and daily check-in. Online AI falls back automatically when unavailable.',
+            style: TextStyle(color: _gray, fontSize: 12),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(

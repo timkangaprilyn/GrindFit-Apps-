@@ -9,7 +9,9 @@ import 'main_navigation_screen.dart';
 import '../services/offline_store.dart';
 
 class ManualLogWorkoutScreen extends StatefulWidget {
-  const ManualLogWorkoutScreen({super.key});
+  const ManualLogWorkoutScreen({super.key, this.exercise});
+
+  final PlanExercise? exercise;
 
   @override
   State<ManualLogWorkoutScreen> createState() => _ManualLogWorkoutScreenState();
@@ -46,6 +48,39 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
     'Shoulder Press',
     'Squats',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    final recommendations = AppState.instance.recommendedPlan;
+    for (final exercise in recommendations) {
+      if (!_exercises.contains(exercise.name)) _exercises.add(exercise.name);
+    }
+    final exercise = widget.exercise;
+    if (exercise == null) return;
+    if (!_exercises.contains(exercise.name)) _exercises.add(exercise.name);
+    _selectedExercise = exercise.name;
+    _sets =
+        int.tryParse(
+          RegExp(
+                r'(\d+)\s*sets?',
+                caseSensitive: false,
+              ).firstMatch(exercise.detail)?.group(1) ??
+              '',
+        ) ??
+        3;
+    _reps =
+        int.tryParse(
+          RegExp(r'\d+').firstMatch(exercise.repsLabel)?.group(0) ?? '',
+        ) ??
+        10;
+    _durationController.text =
+        RegExp(
+          r'(\d+)\s*(?:s|sec|secs|second|seconds)\b',
+          caseSensitive: false,
+        ).firstMatch(exercise.detail)?.group(1) ??
+        '45';
+  }
 
   @override
   void dispose() {

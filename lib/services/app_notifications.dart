@@ -12,6 +12,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/app_alert.dart';
+import '../models/workout_plan.dart';
 import 'offline_store.dart';
 
 class AppNotifications with WidgetsBindingObserver {
@@ -34,6 +35,8 @@ class AppNotifications with WidgetsBindingObserver {
   String _scheduleKey = '';
   String _completedToday = '';
   SharedPreferences? _prefs;
+  Timer? _dailyTimer;
+  String _popupDay = '';
   bool get _mobile =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
@@ -60,6 +63,11 @@ class AppNotifications with WidgetsBindingObserver {
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     WidgetsBinding.instance.addObserver(this);
+    _dailyTimer?.cancel();
+    _dailyTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _checkDailyPopup(),
+    );
     if (_mobile) {
       try {
         tzdata.initializeTimeZones();
@@ -118,6 +126,7 @@ class AppNotifications with WidgetsBindingObserver {
     _profileData = {};
     _scheduleKey = '';
     _completedToday = '';
+    _popupDay = '';
     if (_nativeReady) {
       try {
         await _plugin.cancelAll();
@@ -138,6 +147,8 @@ class AppNotifications with WidgetsBindingObserver {
             )
           : {};
       unawaited(_reschedule());
+      // Let the root popup host attach before delivering a cached reminder.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkDailyPopup());
       _inbox ??= FirebaseFirestore.instance
           .collection('users/$uid/notifications')
           .orderBy('timestamp', descending: true)
@@ -352,6 +363,81 @@ class AppNotifications with WidgetsBindingObserver {
     unawaited(_reschedule());
   }
 
+  static ({String title, String body}) dailyReminderContent(
+    Map<String, dynamic> profile, {
+    required bool workout,
+  }) {
+    if (!workout) {
+      return (
+        title: 'Today is your rest day',
+        body: 'Recovery day: gentle stretching, hydration and rest. Check in with your energy before your next session.',
+      );
+    }
+    final focus = profile['workoutFocus']?.toString() ?? 'Full Body';
+    final duration = profile['sessionDuration']?.toString() ?? '45 min';
+    final goal = profile['fitnessGoal']?.toString() ?? 'Muscle Gain / Strength';
+    final environment = profile['workoutEnvironment']?.toString() ?? 'Gym';
+    final request = profile['workoutRequest']?.toString() ?? '';
+    final days =
+        (profile['workoutDays'] as List?)?.whereType<String>().join(',') ?? '';
+    final context = '$goal|$environment|$focus|$request|$duration|$days';
+    List<PlanExercise>? generated;
+    if (profile['generatedContext'] == context &&
+        profile['generatedPlan'] is List) {
+      try {
+        generated = (profile['generatedPlan'] as List)
+            .whereType<Map>()
+            .map((e) => PlanExercise.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+        if (generated.isEmpty) generated = null;
+      } catch (_) {
+        /* Use the on-device catalog for invalid saved plans. */
+      }
+    }
+    final plan = WorkoutPlan.personalized(
+      goal: goal,
+      environment: environment,
+      focus: focus,
+      request: request,
+      basePlan: generated,
+    );
+    final names = plan.take(3).map((e) => e.name).join(', ');
+    return (
+      title: 'Workout today: $focus',
+      body:
+          '$duration session${names.isEmpty ? '' : ': $names'}. Open your current plan to review and start.',
+    );
+  }
+
+  void _checkDailyPopup() {
+    final uid = _uid;
+    if (!_foreground || uid == null || _profileData.isEmpty) return;
+    final now = DateTime.now();
+    final (hour, minute) = reminderTime;
+    if (now.hour * 60 + now.minute < hour * 60 + minute) return;
+    final days = _profileData['workoutDays'];
+    if (days is! List || days.isEmpty) return;
+    const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final workout = days.contains(names[now.weekday - 1]);
+    final today = '${now.year}-${now.month}-${now.day}';
+    if (workout && _completedToday == today) return;
+    final key = 'daily-popup-$uid-$today';
+    if (_popupDay == key || _prefs?.getBool(key) == true) return;
+    final content = dailyReminderContent(_profileData, workout: workout);
+    final alert = AppAlert(
+      id: 'scheduled-daily-$today',
+      title: content.title,
+      body: content.body,
+      type: workout ? 'Reminders' : 'Recovery',
+      route: workout ? 'workout' : 'rest',
+      ownerUid: uid,
+    );
+    if (!alert.enabledBy(_settings)) return;
+    _popupDay = key;
+    unawaited(_prefs?.setBool(key, true));
+    deliver(alert);
+  }
+
   Future<void> _reschedule() async {
     if (!_nativeReady || _uid == null) return;
     if (_scheduling) {
@@ -367,8 +453,9 @@ class AppNotifications with WidgetsBindingObserver {
           : <String>{};
       final (hour, minute) = reminderTime;
       final now = tz.TZDateTime.now(tz.local);
+      final workoutContent = dailyReminderContent(_profileData, workout: true);
       final key =
-          '$uid|${days.toList()..sort()}|$hour:$minute|$_settings|$_completedToday|${now.year}-${now.month}-${now.day}|${tz.local.name}';
+          '$uid|${days.toList()..sort()}|$hour:$minute|$_settings|$_completedToday|${now.year}-${now.month}-${now.day}|${tz.local.name}|$workoutContent';
       if (key == _scheduleKey) return;
       for (var day = 1; day <= 7; day++) {
         await _plugin.cancel(id: 1000 + day);
@@ -396,14 +483,13 @@ class AppNotifications with WidgetsBindingObserver {
             minute,
           );
         }
+        final content = workout
+            ? workoutContent
+            : dailyReminderContent(_profileData, workout: false);
         await _plugin.zonedSchedule(
           id: 1000 + day,
-          title: workout
-              ? 'Time for your GrindFit session'
-              : 'Make room for recovery',
-          body: workout
-              ? 'Your planned workout is ready. Start when you feel ready.'
-              : 'Today is a rest day in your schedule. Take a breather and check in with your energy.',
+          title: content.title,
+          body: content.body,
           scheduledDate: date,
           notificationDetails: _details,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -466,6 +552,7 @@ class AppNotifications with WidgetsBindingObserver {
       _scheduleKey = '';
       unawaited(_refreshTimezone());
       openPending();
+      _checkDailyPopup();
     }
   }
 
