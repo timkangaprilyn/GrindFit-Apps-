@@ -214,7 +214,7 @@ class WelcomeScreen extends StatelessWidget {
 
                     // Description
                     const Text(
-                      'Track your daily workouts effortlessly, unlock tailored AI-powered recommendations designed for your body, and consistently crush your fitness goals with GrindFit.',
+                      'Track your daily workouts effortlessly, unlock tailored recommendations designed for your body, and consistently crush your fitness goals with GrindFit.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13.5,

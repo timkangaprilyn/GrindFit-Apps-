@@ -1,0 +1,9 @@
+{
+  "name": "grindfit-staff-portal",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve-admin.mjs",
+    "test": "node --test test/admin-utils.test.mjs test/admin-insights.test.mjs"
+  }
+}

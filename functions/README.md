@@ -71,6 +71,17 @@ The wrapper refuses to overwrite an existing local credential file. If a
 network operation fails, retain that file and review the Firebase account before
 retrying; any incompletely configured new account is left disabled.
 
+Admins can also create trainers from **admin.html → Trainers**; that page uses
+the Supabase `admin-staff` function (see `supabase/README.md`).
+
+### Trainer from the terminal
+
+Create a trainer the same way with `-Role trainer`. It applies only the
+`trainer` claim and saves the password to
+`.dart_tool/private/trainer-login.credential.xml`; reveal it with
+`functions/show-admin-login.ps1 -Role trainer`. The script keeps one saved
+credential per role, so move or delete that file before creating another trainer.
+
 The admin login page has no password-reset button. Firebase project owners can
 still manage account recovery through Firebase. Admin access remains enforced
 by trusted claims and backend rules, not by hiding login controls.

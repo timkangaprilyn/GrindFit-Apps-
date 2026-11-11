@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// Reusable text input used across GrindFit forms (login, register, etc.)
@@ -114,7 +115,9 @@ class _GrindFitTextFieldState extends State<GrindFitTextField> {
               prefixIcon: widget.prefixIcon != null
                   ? Icon(
                       widget.prefixIcon,
-                      color: _isFocused ? AppColors.neonCyan : AppColors.textMuted,
+                      color: _isFocused
+                          ? AppColors.neonCyan
+                          : AppColors.textMuted,
                       size: 20,
                     )
                   : null,
@@ -130,12 +133,15 @@ class _GrindFitTextFieldState extends State<GrindFitTextField> {
                       onPressed: () => setState(() => _obscure = !_obscure),
                     )
                   : (widget.suffixIcon != null
-                      ? IconButton(
-                          icon: Icon(widget.suffixIcon,
-                              color: AppColors.textMuted, size: 20),
-                          onPressed: widget.onSuffixTap,
-                        )
-                      : null),
+                        ? IconButton(
+                            icon: Icon(
+                              widget.suffixIcon,
+                              color: AppColors.textMuted,
+                              size: 20,
+                            ),
+                            onPressed: widget.onSuffixTap,
+                          )
+                        : null),
             ),
           ),
         ),

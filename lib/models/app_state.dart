@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'meal_plan.dart';
+import 'meal_recommendation.dart';
+import 'training_program.dart';
 import 'workout_plan.dart';
 import 'fitness_features.dart';
 
@@ -32,6 +35,23 @@ class AppState extends ChangeNotifier {
   String workoutEnvironment = 'Gym';
   Map<String, dynamic> workoutPlanOverrides = {};
 
+  /// Equipment owned at home/outdoors (ids from [Gear]). The gym has everything.
+  Set<String> equipment = {};
+
+  /// When the current program started; weeks and progression count from here.
+  DateTime? programStartedAt;
+
+  /// Exercises added and values changed for one day only (date = [todayPlanDate]).
+  String todayPlanDate = '';
+  List<Map<String, dynamic>> todayExtras = [];
+  Map<String, Map<String, int>> todayAdjustments = {};
+
+  /// Daily food budget in pesos for the meal plan.
+  int mealBudget = MealPlanner.defaultBudget;
+
+  /// Diet filters from the meal screen (synced through Supabase there).
+  MealPreferences mealPreferences = const MealPreferences();
+
   // ---- Mula sa Program Duration screen ----
   int programDurationMonths = 3;
 
@@ -40,7 +60,7 @@ class AppState extends ChangeNotifier {
   String sessionDuration = '45 min';
   int currentDayIndex = 1;
   String workoutRequest = '';
-  String workoutFocus = 'Full Body';
+  String workoutFocus = TrainingProgram.programFocus;
   int sleepHours = 8;
   int energyLevel = 3;
   String checkInDate = '';
@@ -165,7 +185,27 @@ class AppState extends ChangeNotifier {
         : '45 min';
     currentDayIndex = 1;
     workoutRequest = profile['workoutRequest']?.toString() ?? '';
-    workoutFocus = profile['workoutFocus']?.toString() ?? 'Full Body';
+    final savedFocus = profile['workoutFocus']?.toString();
+    // 'Full Body' used to mean "follow the plan"; it now maps to the program.
+    workoutFocus =
+        savedFocus == null || savedFocus.isEmpty || savedFocus == 'Full Body'
+        ? TrainingProgram.programFocus
+        : savedFocus;
+    equipment = Gear.clean(
+      profile['equipment'] is List ? profile['equipment'] as List : const [],
+    );
+    final started = profile['programStartedAt'];
+    programStartedAt = started is Timestamp
+        ? started.toDate().toLocal()
+        : started is String
+        ? DateTime.tryParse(started)?.toLocal()
+        : null;
+    _loadTodayPlan(profile['todayPlan']);
+    mealBudget =
+        ((profile['mealBudget'] as num?)?.toInt() ?? MealPlanner.defaultBudget)
+            .clamp(MealPlanner.minBudget, MealPlanner.maxBudget);
+    mealPreferences = const MealPreferences();
+    _mealChoices = const {};
     sleepHours = (profile['sleepHours'] as num?)?.toInt() ?? 8;
     energyLevel = (profile['energyLevel'] as num?)?.toInt() ?? 3;
     checkInDate = profile['checkInDate']?.toString() ?? '';
@@ -176,7 +216,11 @@ class AppState extends ChangeNotifier {
     missedWorkoutDays = 0;
     generatedPlan = null;
     generatedContext = profile['generatedContext']?.toString() ?? '';
-    planSource = profile['planSource']?.toString() ?? 'On-device plan';
+    final savedSource = profile['planSource']?.toString() ?? 'On-device plan';
+    // Plans saved before the wording change still carry the old label.
+    planSource = savedSource == 'AI-generated plan'
+        ? 'Personalized online plan'
+        : savedSource;
     final savedPlan = profile['generatedPlan'];
     if (savedPlan is List) {
       try {
@@ -242,17 +286,272 @@ class AppState extends ChangeNotifier {
     return checkInDate == today && (sleepHours < 6 || energyLevel <= 2);
   }
 
-  List<PlanExercise> get recommendedPlan => WorkoutPlan.personalized(
+  // ---- Training program (rotation, progression, equipment) ----
+
+  static String _todayKey([DateTime? now]) =>
+      (now ?? DateTime.now()).toLocal().toIso8601String().substring(0, 10);
+
+  void _loadTodayPlan(Object? saved) {
+    todayPlanDate = '';
+    todayExtras = [];
+    todayAdjustments = {};
+    if (saved is! Map || saved['date'] != _todayKey()) return;
+    todayPlanDate = _todayKey();
+    final extras = saved['extras'];
+    if (extras is List) {
+      todayExtras = [
+        for (final e in extras.whereType<Map>())
+          if (e['name'] is String) Map<String, dynamic>.from(e),
+      ];
+    }
+    final adjustments = saved['adjustments'];
+    if (adjustments is Map) {
+      for (final entry in adjustments.entries) {
+        final values = entry.value;
+        if (entry.key is! String || values is! Map) continue;
+        todayAdjustments[entry.key as String] = {
+          for (final v in values.entries)
+            if (v.key is String && v.value is num)
+              v.key as String: (v.value as num).toInt(),
+        };
+      }
+    }
+  }
+
+  /// Equipment used to build workouts: everything at the gym, otherwise what
+  /// the member owns. The "No Equipment" focus forces bodyweight for today.
+  Set<String> get ownedEquipment => workoutFocus == 'No Equipment'
+      ? const {}
+      : Gear.effective(workoutEnvironment, equipment);
+
+  DateTime get programStart => programStartedAt ?? joinedAt ?? DateTime.now();
+
+  int get currentWeekIndex =>
+      TrainingProgram.weekIndexOf(DateTime.now(), programStart);
+
+  /// Today's scheduled workout, or the next one when today is a rest day.
+  ProgramSession get currentSession => TrainingProgram.upcoming(
+    DateTime.now(),
     goal: fitnessGoal,
-    environment: workoutEnvironment,
-    savedOverrides: workoutPlanOverrides,
-    focus: workoutFocus,
-    request: workoutRequest,
-    lowEnergy: needsRecovery,
-    feedback: missedWorkoutDays > 0 ? 'hard' : lastWorkoutFeedback,
-    swaps: exerciseSwaps,
-    basePlan: generatedContext == planContext ? generatedPlan : null,
+    days: workoutDays,
+    owned: ownedEquipment,
+    sessionDuration: sessionDuration,
+    start: programStart,
+    months: programDurationMonths,
   );
+
+  /// Sessions this week (offset 0) or a later week (offset 1 = next week).
+  List<ProgramSession> weekSessions(int weekOffset) => TrainingProgram.week(
+    DateTime.now().add(Duration(days: 7 * weekOffset)),
+    goal: fitnessGoal,
+    days: workoutDays,
+    owned: ownedEquipment,
+    sessionDuration: sessionDuration,
+    start: programStart,
+    months: programDurationMonths,
+  );
+
+  bool get _todayPlanActive => todayPlanDate == _todayKey();
+
+  bool isTodayExtra(String name) =>
+      _todayPlanActive && todayExtras.any((e) => e['name'] == name);
+
+  List<PlanExercise> get recommendedPlan {
+    final useGenerated =
+        generatedPlan != null && generatedContext == planContext;
+    final focusPlan = TrainingProgram.focusSession(
+      workoutFocus,
+      goal: fitnessGoal,
+      owned: ownedEquipment,
+      sessionDuration: sessionDuration,
+      weekIndex: currentWeekIndex,
+    );
+    var plan = WorkoutPlan.personalized(
+      goal: fitnessGoal,
+      environment: workoutEnvironment,
+      focus: useGenerated ? workoutFocus : '',
+      request: workoutRequest,
+      lowEnergy: needsRecovery || workoutFocus == 'Limited Mobility',
+      feedback: missedWorkoutDays > 0 ? 'hard' : lastWorkoutFeedback,
+      swaps: exerciseSwaps,
+      basePlan: useGenerated
+          ? generatedPlan
+          : focusPlan ?? currentSession.exercises,
+    );
+    if (!_todayPlanActive || needsRecovery) return plan;
+    plan = [
+      for (final exercise in plan)
+        todayAdjustments[exercise.name] == null
+            ? exercise
+            : _withValues(exercise, todayAdjustments[exercise.name]!),
+    ];
+    for (final extra in todayExtras) {
+      final name = extra['name'] as String;
+      if (plan.any((e) => e.name == name)) continue;
+      final known = TrainingProgram.byName(name);
+      final base = known != null
+          ? TrainingProgram.prescribe(
+              known,
+              goal: fitnessGoal,
+              weekIndex: currentWeekIndex,
+            )
+          : PlanExercise(
+              name: name,
+              detail: '3 sets • 10 reps • 45s',
+              repsLabel: '10 reps',
+              muscles: 'Added by you',
+              equipment: 'Your choice',
+            );
+      plan.add(
+        _withValues(base, {
+          for (final key in ['sets', 'reps', 'duration'])
+            if (extra[key] is num) key: (extra[key] as num).toInt(),
+        }),
+      );
+    }
+    return plan;
+  }
+
+  /// Applies today-only sets/reps/rest while keeping units (reps, sec, min).
+  static PlanExercise _withValues(PlanExercise e, Map<String, int> values) {
+    if (values.isEmpty) return e;
+    final parts = e.detail.split(' • ');
+    final sets =
+        values['sets'] ??
+        int.tryParse(RegExp(r'\d+').firstMatch(parts.first)?.group(0) ?? '') ??
+        3;
+    var amount = e.repsLabel;
+    final reps = values['reps'];
+    if (reps != null) {
+      final unit =
+          RegExp(r'^\d+\s*(.*)$').firstMatch(e.repsLabel)?.group(1) ?? '';
+      amount = '$reps ${unit.isEmpty ? 'reps' : unit}';
+    }
+    final duration = values['duration'];
+    final rest = duration != null
+        ? '${duration}s'
+        : parts.length >= 3
+        ? parts[2]
+        : '45s';
+    return PlanExercise(
+      name: e.name,
+      detail: '$sets sets • $amount • $rest',
+      repsLabel: amount,
+      muscles: e.muscles,
+      equipment: e.equipment,
+      imageUrl: e.imageUrl,
+    );
+  }
+
+  void _startTodayPlan() {
+    if (_todayPlanActive) return;
+    todayPlanDate = _todayKey();
+    todayExtras = [];
+    todayAdjustments = {};
+  }
+
+  /// Adds an exercise to today's workout only. It is gone tomorrow.
+  void addTodayExtra(String name, {int? sets, int? reps, int? duration}) {
+    _startTodayPlan();
+    todayExtras = [
+      for (final e in todayExtras)
+        if (e['name'] != name) e,
+      {'name': name, 'sets': ?sets, 'reps': ?reps, 'duration': ?duration},
+    ];
+    notifyListeners();
+  }
+
+  void removeTodayExtra(String name) {
+    _startTodayPlan();
+    todayExtras = [
+      for (final e in todayExtras)
+        if (e['name'] != name) e,
+    ];
+    notifyListeners();
+  }
+
+  /// Sets/reps/duration changed on the Log tab, kept for today only.
+  void setTodayAdjustments(Map<String, Map<String, int>> values) {
+    _startTodayPlan();
+    todayAdjustments = {
+      for (final entry in values.entries)
+        entry.key: Map<String, int>.from(entry.value),
+    };
+    notifyListeners();
+  }
+
+  /// Changes one exercise's values for today, keeping today's other changes.
+  void setTodayAdjustment(String name, Map<String, int> values) {
+    _startTodayPlan();
+    todayAdjustments = {
+      ...todayAdjustments,
+      name: Map<String, int>.from(values),
+    };
+    notifyListeners();
+  }
+
+  /// Saved on the profile as `todayPlan`; ignored on any other date.
+  Map<String, dynamic> get todayPlanJson => {
+    'date': todayPlanDate,
+    'extras': todayExtras,
+    'adjustments': todayAdjustments,
+  };
+
+  void updateEquipment(Set<String> ids) {
+    equipment = Gear.clean(ids);
+    notifyListeners();
+  }
+
+  NutritionTarget get nutritionTarget => MealPlanner.target(
+    goal: fitnessGoal,
+    weightKg: weightKg,
+    heightCm: heightCm,
+    age: age,
+    gender: gender,
+    daysPerWeek: workoutDays.length,
+  );
+
+  DailyMealPlan todayMealPlan() => MealPlanner.plan(
+    target: nutritionTarget,
+    budget: mealBudget,
+    prefs: mealPreferences,
+    chosen: todayMealChoices,
+  );
+
+  /// Meals the member swapped in; they only last for the day they were picked.
+  Map<MealSlot, String> _mealChoices = const {};
+  String _mealChoicesDate = '';
+  Map<MealSlot, String> get todayMealChoices =>
+      _mealChoicesDate == _dayKey(DateTime.now()) ? _mealChoices : const {};
+
+  void chooseMeals(Map<MealSlot, String> choices) {
+    _mealChoices = Map.unmodifiable(choices);
+    _mealChoicesDate = _dayKey(DateTime.now());
+    notifyListeners();
+  }
+
+  void clearMealChoices() {
+    _mealChoices = const {};
+    notifyListeners();
+  }
+
+  static String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
+
+  void updateMealBudget(int pesos) {
+    mealBudget = pesos.clamp(MealPlanner.minBudget, MealPlanner.maxBudget);
+    notifyListeners();
+  }
+
+  void setMealPreferences(MealPreferences prefs) {
+    if (identical(prefs, mealPreferences)) return;
+    mealPreferences = prefs;
+    notifyListeners();
+  }
+
+  void startProgram([DateTime? at]) {
+    programStartedAt = at ?? DateTime.now();
+    notifyListeners();
+  }
 
   void updateGoal(String goal) {
     fitnessGoal = goal;

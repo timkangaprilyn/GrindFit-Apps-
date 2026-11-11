@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -23,7 +25,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   final _emailController = TextEditingController();
   bool _isLoading = false;
-  
+
   // Cooldown timer variables
   int _cooldownSeconds = 0;
   Timer? _timer;
@@ -99,7 +101,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _handleBack();
       });
-
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message = 'An error occurred. Please try again.';
@@ -174,17 +175,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    _gold.withAlpha(50),
-                    _gold.withAlpha(0),
-                  ],
+                  colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
                 ),
               ),
             ),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -196,8 +197,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         letterSpacing: -0.5,
                       ),
                       children: [
-                        TextSpan(text: 'Reset Your\n', style: TextStyle(color: _white)),
-                        TextSpan(text: 'Password', style: TextStyle(color: _gold)),
+                        TextSpan(
+                          text: 'Reset Your\n',
+                          style: TextStyle(color: _white),
+                        ),
+                        TextSpan(
+                          text: 'Password',
+                          style: TextStyle(color: _gold),
+                        ),
                       ],
                     ),
                   ),
@@ -226,13 +233,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     cursorColor: _gold,
-                    style: const TextStyle(fontSize: 15, color: _white, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: _white,
+                      fontWeight: FontWeight.w500,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'you@example.com',
                       hintStyle: const TextStyle(color: _hint, fontSize: 15),
                       filled: true,
                       fillColor: _card,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 20,
+                      ),
                       prefixIcon: const Padding(
                         padding: EdgeInsets.only(left: 16, right: 12),
                         child: Icon(Icons.mail_outline, color: _gold, size: 22),
@@ -263,7 +277,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: _cooldownSeconds > 0
-                              ? const LinearGradient(colors: [Colors.grey, Colors.grey])
+                              ? const LinearGradient(
+                                  colors: [Colors.grey, Colors.grey],
+                                )
                               : const LinearGradient(
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
@@ -282,7 +298,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
-                          onTap: (_isLoading || _cooldownSeconds > 0) ? null : _handleSendResetLink,
+                          onTap: (_isLoading || _cooldownSeconds > 0)
+                              ? null
+                              : _handleSendResetLink,
                           child: Center(
                             child: _isLoading
                                 ? const SizedBox(
@@ -300,7 +318,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
-                                      color: _cooldownSeconds > 0 ? _white : _bg,
+                                      color: _cooldownSeconds > 0
+                                          ? _white
+                                          : _bg,
                                     ),
                                   ),
                           ),

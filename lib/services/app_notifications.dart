@@ -12,6 +12,7 @@ import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/app_alert.dart';
+import '../models/training_program.dart';
 import '../models/workout_plan.dart';
 import 'offline_store.dart';
 
@@ -394,6 +395,45 @@ class AppNotifications with WidgetsBindingObserver {
         /* Use the on-device catalog for invalid saved plans. */
       }
     }
+    // Without a saved online plan, use the weekly program (or today's focus).
+    var label = focus;
+    if (generated == null) {
+      final owned = Gear.effective(
+        environment,
+        Gear.clean(
+          profile['equipment'] is List
+              ? profile['equipment'] as List
+              : const [],
+        ),
+      );
+      final started = profile['programStartedAt'] ?? profile['createdAt'];
+      final start = started is Timestamp ? started.toDate() : DateTime.now();
+      final followsProgram =
+          focus == 'Full Body' || focus == TrainingProgram.programFocus;
+      if (followsProgram) {
+        final session = TrainingProgram.upcoming(
+          DateTime.now(),
+          goal: goal,
+          days:
+              (profile['workoutDays'] as List?)?.whereType<String>().toList() ??
+              const [],
+          owned: owned,
+          sessionDuration: duration,
+          start: start,
+          months: (profile['programDurationMonths'] as num?)?.toInt() ?? 3,
+        );
+        generated = session.exercises;
+        label = session.dayName;
+      } else {
+        generated = TrainingProgram.focusSession(
+          focus,
+          goal: goal,
+          owned: focus == 'No Equipment' ? const {} : owned,
+          sessionDuration: duration,
+          weekIndex: TrainingProgram.weekIndexOf(DateTime.now(), start),
+        );
+      }
+    }
     final plan = WorkoutPlan.personalized(
       goal: goal,
       environment: environment,
@@ -403,7 +443,7 @@ class AppNotifications with WidgetsBindingObserver {
     );
     final names = plan.take(3).map((e) => e.name).join(', ');
     return (
-      title: 'Workout today: $focus',
+      title: 'Workout today: $label',
       body:
           '$duration session${names.isEmpty ? '' : ': $names'}. Open your current plan to review and start.',
     );

@@ -19,7 +19,7 @@ function openMember(id) {
   $('detailSummary').innerHTML = `<div class="detail-cell"><span>Sample goal</span><strong>${escapeHtml(member.fitnessGoal)}</strong></div><div class="detail-cell"><span>This week</span><strong>${member.weeklyCount} sample sessions</strong></div>`;
   $('detailAlerts').textContent = 'Fictional sample profile. No live member data is loaded.';
   $('coachPanel').hidden = true;
-  $('cloudMemberPanel').hidden = true;
+  if ($('cloudMemberPanel')) $('cloudMemberPanel').hidden = true;
   $('detailWorkouts').innerHTML = member.workouts.map((w) => `<div class="detail-workout"><strong>${w.title}</strong><p>${formatDate(w.timestamp)} · Sample session</p></div>`).join('');
   $('memberDialog').showModal();
 }
@@ -54,18 +54,33 @@ function renderDashboard() {
 }
 const reset = () => { page = 1; renderMembers(); };
 setupInterface({onPage: (delta) => {page += delta; renderMembers();}, onClear: reset});
-$('loginView').hidden = true; $('adminView').hidden = false; $('previewBanner').hidden = false;
-$('firebaseConnection').textContent = 'Design preview · no live connection';
-$('supabaseConnection').textContent = 'Design preview · no live connection';
-$('adminEmail').textContent = 'Design preview'; $('staffRole').textContent = 'Preview';
-$('logoutButton').textContent = 'Exit preview'; $('logoutButton').addEventListener('click', () => {location.href = './admin.html';});
+const trainer = document.body.dataset.portal === 'trainer';
+const setText = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+$('adminView').hidden = false; $('previewBanner').hidden = false;
+setText('firebaseConnection', 'Design preview · no live connection');
+setText('supabaseConnection', 'Design preview · no live connection');
+$('adminEmail').textContent = 'Design preview'; $('staffRole').textContent = trainer ? 'Trainer preview' : 'Admin preview';
+$('logoutButton').textContent = 'Exit preview'; $('logoutButton').addEventListener('click', () => {location.href = './login.html';});
 $('refreshButton').textContent = 'Refresh preview'; $('refreshButton').addEventListener('click', renderDashboard);
 $('memberSearch').addEventListener('input', reset); $('memberFilter').addEventListener('change', reset); $('memberSort').addEventListener('change', reset);
 $('closeDialog').addEventListener('click', () => $('memberDialog').close());
-['exportButton', 'saveSettingsButton', 'inactiveDays', 'injuryThreshold'].forEach((id) => {$ (id).disabled = true; $(id).title = 'Available after signing in with staff access';});
-$('inactiveDays').value = 14; $('injuryThreshold').value = 3;
-$('settingsAccessNotice').hidden = false; $('settingsAccessNotice').textContent = 'Preview only. Settings changes are disabled.';
-$('adminAccountInfo').textContent = 'Sample staff workspace. No authenticated session or live database connection.';
+['exportButton', 'saveSettingsButton', 'inactiveDays', 'injuryThreshold'].forEach((id) => { const el = $(id); if (el) { el.disabled = true; el.title = 'Available after signing in with staff access'; } });
+if ($('inactiveDays')) { $('inactiveDays').value = 14; $('injuryThreshold').value = 3; }
+if ($('settingsAccessNotice')) { $('settingsAccessNotice').hidden = false; $('settingsAccessNotice').textContent = 'Preview only. Settings changes are disabled.'; }
+if ($('trainerForm')) {
+  ['trainerName', 'trainerEmail', 'trainerPassword', 'generatePassword', 'createTrainerButton', 'refreshTrainersButton'].forEach((id) => { $(id).disabled = true; });
+  $('trainerForm').addEventListener('submit', (event) => event.preventDefault());
+  setText('trainerFormStatus', 'Preview only. Trainer accounts can be created after signing in as an admin.');
+  setText('trainerListStatus', 'Sample trainers · no live accounts are shown in preview.');
+  $('trainerList').innerHTML = ['Sample Trainer A', 'Sample Trainer B'].map((name, i) => `<div class="trainer-row"><div><strong>${name}</strong><p>trainer${i + 1}@example.com · ${4 - i} assigned members</p></div><div class="trainer-actions"><span class="badge clear">Active</span></div></div>`).join('');
+}
+if ($('trainerSpecialty')) { $('trainerSpecialty').disabled = true; $('trainerBio').disabled = true; }
+if ($('requestList')) {
+  setText('requestCount', '2 pending');
+  $('requestList').innerHTML = [['Sample Member 03', 'Gusto kong lumakas para sa basketball.'], ['Sample Member 11', '']].map(([name, note]) => `<div class="recent-row"><span class="member-avatar" aria-hidden="true">SM</span><div class="recent-info"><strong>${name}</strong><p>${trainer ? '' : 'Requested <b>Sample Trainer A</b> · '}Today</p>${note ? `<p class="request-note">“${note}”</p>` : ''}</div><div class="request-actions"><button class="button primary" type="button" disabled>Approve</button><button class="button subtle" type="button" disabled>Decline</button></div></div>`).join('');
+  setText('requestStatus', 'Preview only. Approvals are available after signing in.');
+}
+setText('adminAccountInfo','Sample staff workspace. No authenticated session or live database connection.');
 $('reportStatus').textContent = 'CSV export is available after signing in. No live data is loaded in preview.';
 const range = reportRange('30'); $('reportFrom').value = range.from; $('reportTo').value = range.to;
 renderDashboard();

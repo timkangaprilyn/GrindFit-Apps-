@@ -33,9 +33,6 @@ class _FadeSlideInState extends State<FadeSlideIn>
     _controller = AnimationController(vsync: this, duration: widget.duration);
     _fade = _controller.drive(CurveTween(curve: widget.curve));
     _slide = _fade.drive(Tween(begin: widget.offset, end: Offset.zero));
-    _controller.addStatusListener((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
@@ -65,14 +62,12 @@ class _FadeSlideInState extends State<FadeSlideIn>
   }
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
-    ignoring: _controller.status == AnimationStatus.dismissed,
-    // Keep layout space while waiting; animate transforms and opacity only.
-    child: RepaintBoundary(
-      child: FadeTransition(
-        opacity: _fade,
-        child: SlideTransition(position: _slide, child: widget.child),
-      ),
+  // Keep layout space while waiting; animate transforms and opacity only.
+  // Taps are never blocked, so a quick tap during the entrance still works.
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
     ),
   );
 }

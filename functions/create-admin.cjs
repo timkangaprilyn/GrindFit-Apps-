@@ -1,8 +1,11 @@
 'use strict';
 
-async function createAdmin(auth, email, password) {
+const STAFF_ROLES = {admin: 'GrindFit Admin', trainer: 'GrindFit Trainer'};
+
+async function createStaff(auth, email, password, role = 'admin', {displayName = STAFF_ROLES[role], minPasswordLength = 20} = {}) {
+  if (!Object.hasOwn(STAFF_ROLES, role)) throw new Error('Role must be admin or trainer.');
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Invalid email.');
-  if (typeof password !== 'string' || password.length < 20) throw new Error('A strong generated password is required.');
+  if (typeof password !== 'string' || password.length < minPasswordLength) throw new Error('A strong generated password is required.');
   // Never reset credentials or promote an existing email implicitly.
   try {
     await auth.getUserByEmail(email);
@@ -10,14 +13,16 @@ async function createAdmin(auth, email, password) {
   } catch (error) {
     if (error.code !== 'auth/user-not-found') throw error;
   }
-  const user = await auth.createUser({email, password, disabled: true, displayName: 'GrindFit Admin', emailVerified: false});
+  const user = await auth.createUser({email, password, disabled: true, displayName, emailVerified: false});
   // Leave a partially configured account disabled if either privileged step fails.
-  await auth.setCustomUserClaims(user.uid, {admin: true});
+  await auth.setCustomUserClaims(user.uid, {[role]: true});
   await auth.updateUser(user.uid, {disabled: false});
   const verified = await auth.getUser(user.uid);
-  if (verified.customClaims?.admin !== true || verified.disabled) throw new Error('Account creation was not fully verified. Review Firebase Authentication.');
-  return {uid: user.uid, admin: true};
+  if (verified.customClaims?.[role] !== true || verified.disabled) throw new Error('Account creation was not fully verified. Review Firebase Authentication.');
+  return {uid: user.uid, role, [role]: true};
 }
+
+const createAdmin = (auth, email, password) => createStaff(auth, email, password, 'admin');
 
 async function main() {
   const cliAuth = require('firebase-tools/lib/auth');
@@ -37,14 +42,14 @@ async function main() {
     if (input.length > 4096) throw new Error('Input too large.');
   }
   const credentials = JSON.parse(input.replace(/^\uFEFF/, ''));
-  const result = await createAdmin(getAuth(app), credentials.email, credentials.password);
+  const result = await createStaff(getAuth(app), credentials.email, credentials.password, credentials.role ?? 'admin');
   console.log(JSON.stringify(result));
 }
 
 if (require.main === module) main().catch((error) => {
   if (/already exists/.test(error.message || '')) console.error(error.message);
   else if (/permission|credential|unauthorized|insufficient/i.test(error.message || '')) console.error('Firebase denied account creation. Use an account with Authentication administration access.');
-  else console.error('Admin setup failed or is incomplete. Check Firebase Authentication; credentials were not printed.');
+  else console.error('Staff account setup failed or is incomplete. Check Firebase Authentication; credentials were not printed.');
   process.exitCode = 1;
 });
-module.exports = {createAdmin};
+module.exports = {createAdmin, createStaff};

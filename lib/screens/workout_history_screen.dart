@@ -181,7 +181,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                             .doc(user.uid)
                             .collection('workouts')
                             .orderBy('timestamp', descending: true)
-                            .snapshots(),
+                            .snapshots(includeMetadataChanges: true),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
@@ -278,6 +278,10 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                                           }
 
                                           final workoutMap = {
+                                            // Done offline, not on the server yet.
+                                            'pending': docs[index]
+                                                .metadata
+                                                .hasPendingWrites,
                                             'date': formattedDate,
                                             'title':
                                                 data['title']?.toString() ??
@@ -590,6 +594,27 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                               color: _white,
                             ),
                           ),
+                          if (workout['pending'] == true)
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.cloud_upload_outlined,
+                                    size: 14,
+                                    color: _muted,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Saved on this phone • not synced yet',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: _muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),

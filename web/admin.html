@@ -8,34 +8,8 @@
     <link rel="icon" href="./favicon.png">
     <link rel="stylesheet" href="./admin.css">
   </head>
-  <body>
-    <main id="loginView" class="login-shell">
-      <section class="login-story" aria-label="GrindFit staff portal">
-        <a class="brand" href="./admin.html"><img class="brand-logo" src="./grindfit-logo.png" alt="GrindFit logo" width="76" height="76"><span>GRINDFIT<span class="brand-subtitle">STAFF WORKSPACE</span></span></a>
-        <div class="story-copy"><p class="eyebrow">A STRONGER COMMUNITY STARTS HERE</p><h1>Behind every<br>grind.<br><em>A great team.</em></h1><p>One space to follow progress, support your members, and keep every training day moving.</p></div>
-        <div class="story-features"><span>01 &nbsp; Member insights</span><span>02 &nbsp; Coaching & progress</span><span>03 &nbsp; Activity reports</span></div>
-        <div class="story-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-        <small>GRINDFIT · SHOW UP. GET STRONGER.</small>
-      </section>
-      <div class="login-form-wrap">
-      <form id="loginForm" class="login-card">
-        <img class="login-logo" src="./grindfit-logo.png" alt="GrindFit" width="112" height="112">
-        <p class="eyebrow">WELCOME TO YOUR WORKSPACE</p>
-        <h2>Good to see you again.</h2>
-        <p class="muted">Sign in with your staff account to keep your community moving.</p>
-        <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="username" required>
-        <label for="password">Password</label>
-        <div class="password-field"><input id="password" type="password" autocomplete="current-password" required><button id="togglePassword" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
-        <p id="loginError" class="error" role="alert"></p>
-        <button id="loginButton" class="button primary" type="submit">Sign in to workspace <span aria-hidden="true">↗</span></button>
-        <div class="login-note"><span aria-hidden="true">◇</span><p>Access is for authorized admins and trainers. Ask your project administrator if you need a staff account.</p></div>
-        <a class="preview-link" href="?preview=1">Explore the design preview <span aria-hidden="true">→</span></a>
-      </form>
-      <p class="login-footer">GrindFit member management · Staff access only</p>
-      <p id="bootStatus" class="muted" role="status"></p>
-      </div>
-    </main>
+  <body data-portal="admin">
+    <p id="bootStatus" class="muted" role="status"></p>
 
     <main id="adminView" class="admin-shell" hidden>
       <header class="topbar">
@@ -52,18 +26,20 @@
           <button class="nav-button active" data-view="dashboardView" aria-current="page"><span aria-hidden="true">▦</span> Overview</button>
           <button class="nav-button" data-view="membersView"><span aria-hidden="true">◎</span> Members</button>
           <button class="nav-button" data-view="reportsView"><span aria-hidden="true">↗</span> Reports</button>
+          <button class="nav-button" data-view="trainersView"><span aria-hidden="true">✦</span> Trainers</button>
           <button class="nav-button" data-view="settingsView"><span aria-hidden="true">⚙</span> Settings</button>
           <div class="sidebar-footer"><img class="brand-logo small" src="./grindfit-logo.png" alt="GrindFit logo" width="64" height="64"><strong>Keep the momentum.</strong><p>Small steps. Stronger members.</p><span class="sidebar-version">GRINDFIT ADMIN · V1</span></div>
         </aside>
         <section class="content">
           <div id="pageError" class="error-banner" role="alert" hidden></div>
-          <div id="previewBanner" class="preview-banner" hidden><span><strong>Design preview</strong> · Fictional sample data. Live access and changes are disabled.</span><a href="./admin.html">Back to sign in →</a></div>
+          <div id="previewBanner" class="preview-banner" hidden><span><strong>Design preview</strong> · Fictional sample data. Live access and changes are disabled.</span><a href="./login.html">Back to sign in →</a></div>
           <section id="dashboardView" class="page-view">
             <div class="page-heading">
               <div><p class="eyebrow">YOUR COMMUNITY, AT A GLANCE</p><h1>Overview<span class="heading-dot">.</span></h1><p id="dashboardDate" class="muted"></p></div>
               <button id="refreshButton" class="button subtle" type="button">Refresh</button>
             </div>
             <div class="welcome-strip"><div><span class="badge gold">THE DAILY GRIND</span><h2>Build momentum. Make an impact.</h2><p>Track the work. Spot who needs support. Celebrate the progress.</p></div><button class="button primary" type="button" data-go="membersView">Explore members ↗</button></div>
+            <article id="requestsPanel" class="panel requests-panel"><div class="panel-heading"><div><p class="eyebrow">MEMBERS WHO WANT A COACH</p><h2>Coaching requests</h2><p class="muted">Members choose a coach in the app. Approve to assign them, or decline.</p></div><span id="requestCount" class="panel-tag">Loading…</span></div><div id="requestList" class="recent-list"></div><p id="requestStatus" class="muted" role="status"></p></article>
             <div class="stat-grid">
               <article class="stat-card"><span>Total members <i aria-hidden="true">◎</i></span><strong id="totalMembers">—</strong><small>Your member community</small></article>
               <article class="stat-card"><span>Active members <i aria-hidden="true">↗</i></span><strong id="activeMembers">—</strong><small>At least one workout in 14 days</small></article>
@@ -144,6 +120,31 @@
             </article><aside class="report-guide"><article class="panel"><span class="file-emblem" aria-hidden="true">CSV</span><p class="eyebrow">WHAT'S IN YOUR EXPORT</p><h2>Training, in detail.</h2><ul class="detail-list"><li><span>Session date</span><small>When the workout was logged</small></li><li><span>Goal & environment</span><small>Member goal and session category</small></li><li><span>Duration & intensity</span><small>Recorded session metrics</small></li><li><span>Exercises & feedback</span><small>Movements and reported effort</small></li></ul></article><div class="info-callout"><strong>Ready for your spreadsheet.</strong><p>Open the CSV in Excel or Google Sheets. Report availability follows your staff permissions.</p></div></aside></div>
           </section>
 
+          <section id="trainersView" class="page-view" hidden>
+            <div class="page-heading"><div><p class="eyebrow">YOUR COACHING TEAM</p><h1>Trainers<span class="heading-dot">.</span></h1><p class="muted">Create trainer logins, then assign members to them from each member profile.</p></div><button id="refreshTrainersButton" class="button subtle" type="button">Refresh list</button></div>
+            <div class="settings-layout"><article class="panel settings-panel">
+              <div class="section-label"><span>01 / NEW TRAINER ACCOUNT</span><small>Admin only</small></div><h2>Create a trainer login</h2>
+              <p class="muted">The trainer signs in at the staff login page and only sees members you assign to them.</p>
+              <form id="trainerForm" class="trainer-form">
+                <label>Trainer name<input id="trainerName" type="text" maxlength="80" autocomplete="off" required></label>
+                <label>Email<input id="trainerEmail" type="email" maxlength="254" autocomplete="off" required><small>Used to sign in. Use a real inbox if they may need a password reset.</small></label>
+                <label>Specialty<input id="trainerSpecialty" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Strength, Weight loss, Cardio"><small>Shown to members in the app when they choose a coach.</small></label>
+                <label>Short bio<textarea id="trainerBio" rows="3" maxlength="400" placeholder="A few sentences members will see in the app"></textarea></label>
+                <label>Temporary password
+                  <div class="password-field"><input id="trainerPassword" type="text" minlength="12" maxlength="128" autocomplete="new-password" spellcheck="false" required><button id="generatePassword" type="button">Generate</button></div>
+                  <small>At least 12 characters with a letter and a number. Copy it now and give it to the trainer privately.</small>
+                </label>
+                <button id="createTrainerButton" class="button primary" type="submit">Create trainer account</button>
+              </form>
+              <p id="trainerFormStatus" class="muted" role="status"></p>
+            </article>
+            <article class="panel access-panel">
+              <span class="access-emblem" aria-hidden="true">✦</span><p class="eyebrow">TRAINER ACCOUNTS</p><h2>Your team</h2>
+              <p id="trainerListStatus" class="muted" role="status">Loading trainers…</p>
+              <div id="trainerList" class="trainer-list"></div>
+            </article></div>
+          </section>
+
           <section id="settingsView" class="page-view" hidden>
             <div class="page-heading"><div><p class="eyebrow">KEEP YOUR WORKSPACE IN SYNC</p><h1>Settings<span class="heading-dot">.</span></h1><p class="muted">Set clear review rules for your team and understand staff access.</p></div></div>
             <div class="screen-intro"><span class="screen-icon" aria-hidden="true">⚙</span><div><p class="eyebrow">A CONSISTENT STANDARD</p><h2>Make the rules work for your team.</h2><p>Adjust follow-up thresholds to match how you review member activity.</p></div><span class="intro-label">WORKSPACE CONFIGURATION</span></div>
@@ -167,6 +168,18 @@
       </div>
     </main>
 
+    <dialog id="trainerProfileDialog" class="member-dialog trainer-profile-dialog">
+      <form id="trainerProfileForm" method="dialog" class="trainer-form">
+        <div class="dialog-heading"><div><p class="eyebrow">SHOWN TO MEMBERS IN THE APP</p><h2>Trainer profile</h2><p id="profileAccount" class="muted"></p></div><button id="closeProfileDialog" class="button subtle" type="button">Close ✕</button></div>
+        <label>Name members see<input id="profileName" type="text" maxlength="80" required></label>
+        <label>Specialty<input id="profileSpecialty" type="text" maxlength="60" placeholder="e.g. Strength, Weight loss, Cardio"></label>
+        <label>Short bio<textarea id="profileBio" rows="4" maxlength="400"></textarea></label>
+        <label class="check-row"><input id="profileActive" type="checkbox"> Show this trainer in the app so members can request them</label>
+        <button id="saveProfileButton" class="button primary" type="submit">Save profile</button>
+        <p id="profileStatus" class="muted" role="status"></p>
+      </form>
+    </dialog>
+
     <dialog id="memberDialog" class="member-dialog">
       <div class="dialog-heading"><div class="dialog-brand"><img src="./grindfit-logo.png" alt="GrindFit" width="64" height="64"><div><p class="eyebrow">MEMBER PROFILE</p><h2 id="detailName"></h2></div></div><button id="closeDialog" class="button subtle" type="button">Close ✕</button></div>
       <div class="profile-nav" aria-label="Profile sections"><button type="button" data-detail-anchor="detailSummary">Overview</button><button type="button" data-detail-anchor="cloudMemberPanel">Saved insights</button><button type="button" data-detail-anchor="coachPanel">Coaching</button><button type="button" data-detail-anchor="detailWorkouts">Workout history</button></div>
@@ -181,7 +194,7 @@
         <h3>Coach notes</h3>
         <p class="muted">Visible to this member. Trainers can write for their assigned members only.</p>
         <div id="coachAssignment" hidden>
-          <label>Assigned trainer Firebase UID <input id="trainerUid" type="text" autocomplete="off"></label>
+          <label>Assigned trainer <select id="trainerUid"><option value="">Not assigned</option></select></label>
           <button id="assignTrainerButton" class="button subtle" type="button">Save assignment</button>
         </div>
         <div id="coachNotes"></div>

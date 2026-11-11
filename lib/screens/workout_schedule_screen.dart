@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
 import 'plan_ready_screen.dart';
@@ -26,8 +27,9 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
   static const double _heroWidthFactor = 591 / 841;
   static const double _heroRatio = 640 / 591;
 
-  late final List<String> _selectedDays =
-      List<String>.from(AppState.instance.workoutDays);
+  late final List<String> _selectedDays = List<String>.from(
+    AppState.instance.workoutDays,
+  );
   final List<String> _weekDays = [
     'Mon',
     'Tue',
@@ -35,13 +37,19 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
     'Thu',
     'Fri',
     'Sat',
-    'Sun'
+    'Sun',
   ];
 
   late String _selectedDuration = AppState.instance.sessionDuration.isNotEmpty
       ? AppState.instance.sessionDuration
       : '30 min';
-  final List<String> _durations = ['15 min', '30 min', '45 min', '60 min', '90 min'];
+  final List<String> _durations = [
+    '15 min',
+    '30 min',
+    '45 min',
+    '60 min',
+    '90 min',
+  ];
 
   void _handleNext() {
     AppState.instance.updateSchedule(_selectedDays, _selectedDuration);
@@ -230,7 +238,9 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
         children: [
           // 1. Gold diagonal accents sa gilid
           const Positioned.fill(
-            child: IgnorePointer(child: CustomPaint(painter: _EdgeAccentPainter())),
+            child: IgnorePointer(
+              child: CustomPaint(painter: _EdgeAccentPainter()),
+            ),
           ),
 
           // 2. Hero: couple sa taas-kanan (walang logo)
@@ -278,7 +288,10 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
                   const FractionallySizedBox(
                     widthFactor: 0.45,
                     alignment: Alignment.centerLeft,
-                    child: OnboardingStepIndicator(currentStep: 5, totalSteps: 5),
+                    child: OnboardingStepIndicator(
+                      currentStep: 5,
+                      totalSteps: 5,
+                    ),
                   ),
                   const SizedBox(height: 26),
 
@@ -315,8 +328,9 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
                               ),
                               const SizedBox(height: 10),
                               ConstrainedBox(
-                                constraints:
-                                    BoxConstraints(maxWidth: screenW * 0.7),
+                                constraints: BoxConstraints(
+                                  maxWidth: screenW * 0.7,
+                                ),
                                 child: const Text(
                                   'Choose your days and preferred duration per session.',
                                   style: TextStyle(

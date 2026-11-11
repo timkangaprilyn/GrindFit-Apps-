@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
 import 'workout_schedule_screen.dart';
@@ -127,10 +128,7 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
               ? LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [
-                    _gold.withValues(alpha: 0.12),
-                    _card,
-                  ],
+                  colors: [_gold.withValues(alpha: 0.12), _card],
                 )
               : null,
           color: isSelected ? null : _card,
@@ -279,7 +277,10 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                   const FractionallySizedBox(
                     widthFactor: 0.62,
                     alignment: Alignment.centerLeft,
-                    child: OnboardingStepIndicator(currentStep: 4, totalSteps: 5),
+                    child: OnboardingStepIndicator(
+                      currentStep: 4,
+                      totalSteps: 5,
+                    ),
                   ),
                   const SizedBox(height: 40),
 
@@ -308,7 +309,7 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                       maxWidth: media.size.width * 0.78,
                     ),
                     child: const Text(
-                      'Set your target timeline for progress tracking and AI adaptation.',
+                      'Set your target timeline for progress tracking and plan adjustments.',
                       style: TextStyle(
                         fontSize: 15,
                         height: 1.4,
@@ -370,8 +371,11 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                                 ),
                               ),
                               SizedBox(width: 10),
-                              Icon(Icons.arrow_forward_rounded,
-                                  color: _bg, size: 22),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: _bg,
+                                size: 22,
+                              ),
                             ],
                           ),
                         ),

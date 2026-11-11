@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../models/user_profile.dart';
 
 class FirestoreService {
@@ -66,7 +67,10 @@ class FirestoreService {
     required String userId,
     required String fitnessGoal,
   }) {
-    return updateUserProfile(userId: userId, data: {'fitnessGoal': fitnessGoal});
+    return updateUserProfile(
+      userId: userId,
+      data: {'fitnessGoal': fitnessGoal},
+    );
   }
 
   Future<bool> isProfileComplete(String userId) async {
@@ -75,18 +79,21 @@ class FirestoreService {
     return profile.isComplete;
   }
 
-  Future<void> saveUserWorkoutPlan(String userId, Map<String, dynamic> planData) async {
+  Future<void> saveUserWorkoutPlan(
+    String userId,
+    Map<String, dynamic> planData,
+  ) async {
     try {
       final environment = planData['environment'] ?? 'indoor';
-      await _usersRef.doc(userId).collection('workout_plan').doc(environment).set({
-        ...planData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      
-      await _usersRef.doc(userId).collection('workout_plan').doc('current').set({
-        ...planData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await _usersRef
+          .doc(userId)
+          .collection('workout_plan')
+          .doc(environment)
+          .set({...planData, 'updatedAt': FieldValue.serverTimestamp()});
+
+      await _usersRef.doc(userId).collection('workout_plan').doc('current').set(
+        {...planData, 'updatedAt': FieldValue.serverTimestamp()},
+      );
     } catch (e) {
       throw _mapFirestoreError(e);
     }
@@ -94,7 +101,11 @@ class FirestoreService {
 
   Future<Map<String, dynamic>?> getUserWorkoutPlan(String userId) async {
     try {
-      final doc = await _usersRef.doc(userId).collection('workout_plan').doc('current').get();
+      final doc = await _usersRef
+          .doc(userId)
+          .collection('workout_plan')
+          .doc('current')
+          .get();
       if (doc.exists) {
         return doc.data();
       }
@@ -109,7 +120,11 @@ class FirestoreService {
       final userDoc = await _usersRef.doc(userId).get();
       final environment = userDoc.data()?['environment'] ?? 'indoor';
 
-      final doc = await _usersRef.doc(userId).collection('workout_plan').doc(environment).get();
+      final doc = await _usersRef
+          .doc(userId)
+          .collection('workout_plan')
+          .doc(environment)
+          .get();
       if (doc.exists) {
         return doc.data();
       }
@@ -119,7 +134,10 @@ class FirestoreService {
     }
   }
 
-  Future<void> logCompletedWorkout(String userId, Map<String, dynamic> workoutLog) async {
+  Future<void> logCompletedWorkout(
+    String userId,
+    Map<String, dynamic> workoutLog,
+  ) async {
     try {
       await _usersRef.doc(userId).collection('workout_history').add({
         ...workoutLog,

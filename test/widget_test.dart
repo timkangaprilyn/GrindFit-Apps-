@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_application_1/models/app_state.dart';
 import 'package:flutter_application_1/models/workout_plan.dart';
 import 'package:flutter_application_1/screens/log_workout_screen.dart';
 import 'package:flutter_application_1/screens/warmup_screen.dart';
@@ -110,15 +111,17 @@ void main() {
   testWidgets('Log workout marks the selected exercise with a check', (
     WidgetTester tester,
   ) async {
+    // The plan rotates by day, so read today's exercise names.
+    final plan = AppState.instance.recommendedPlan;
     await tester.pumpWidget(const MaterialApp(home: LogWorkoutScreen()));
 
     expect(find.text('Save Workout'), findsOneWidget);
     expect(find.text('Start Workout'), findsNothing);
-    expect(find.text('1. Push Up'), findsOneWidget);
+    expect(find.text('1. ${plan[0].name}'), findsOneWidget);
     expect(find.byIcon(Icons.check), findsOneWidget);
     expect(tester.widget<Icon>(find.byIcon(Icons.check)).color, Colors.white);
-    await tester.ensureVisible(find.text('2. Dumbbell Row'));
-    await tester.tap(find.text('2. Dumbbell Row'));
+    await tester.ensureVisible(find.text('2. ${plan[1].name}'));
+    await tester.tap(find.text('2. ${plan[1].name}'));
     await tester.pump();
 
     expect(find.byIcon(Icons.check), findsOneWidget);

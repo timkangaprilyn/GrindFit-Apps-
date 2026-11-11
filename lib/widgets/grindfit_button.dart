@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// Reusable primary button used across GrindFit.
@@ -79,8 +80,8 @@ class GrindFitButton extends StatelessWidget {
       onPressed: isDisabled ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? AppColors.neonCyan,
-        disabledBackgroundColor:
-            (backgroundColor ?? AppColors.neonCyan).withValues(alpha: 0.5),
+        disabledBackgroundColor: (backgroundColor ?? AppColors.neonCyan)
+            .withValues(alpha: 0.5),
         padding: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),

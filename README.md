@@ -71,15 +71,36 @@ Review the rules against the deployed project before publishing them:
 firebase deploy --only firestore:rules --project grindfit-34b02
 ```
 
-The admin portal is available at `/admin.html` after building the Flutter web
-target. It checks the signed-in user's trusted `admin` or `trainer` custom
-claim before reading member data. Add the portal's hosting domain to Firebase
-Authentication's authorized domains before using it outside localhost.
+The staff portal has three pages, available after building the Flutter web
+target:
 
-For local design review, open `web/admin.html` with VS Code Live Server. Assets
-use relative paths and work when served from either the repo root or `web/`.
-Choose **Explore the design preview**, or append `?preview=1`, to inspect the
-responsive dashboard with fictional sample data. Preview loads no Firebase SDK
+- `/login.html` — staff sign-in. It reads the trusted Firebase custom claims and
+  sends `admin` accounts to `/admin.html` and `trainer` accounts to
+  `/trainer.html`. Other accounts are signed out.
+- `/admin.html` — admin workspace for all members, settings and trainer
+  assignment.
+- `/trainer.html` — trainer dashboard limited to members whose `trainerUid`
+  matches the trainer's Firebase UID, with coach notes and activity reports.
+
+Members choose a coach in the app (**Your GrindFit tools → Your coach**). The
+app lists active profiles from `trainers/{uid}` (name, specialty, bio, member
+count) and writes one pending request to `trainer_requests/{memberUid}`. The
+requested trainer (trainer dashboard) or any admin (admin dashboard) approves
+or declines it under **Coaching requests**. Approval assigns `trainerUid` and
+moves member counts in one batch; `firestore.rules` rejects approval without
+assignment, assignment without approval, and count changes that do not match a
+real move. Admins publish or hide trainer profiles from **Trainers → Edit
+profile**. Rules tests: `functions/trainer-requests.emulator.test.cjs`.
+
+Both dashboards redirect to `/login.html` without a session, and to the other
+dashboard when the account's claims do not match. Add the portal's hosting
+domain to Firebase Authentication's authorized domains before using it outside
+localhost.
+
+For local review, run `npm start` from the repo root (Node.js 22) and open
+`http://localhost:8080/`, or open `web/login.html` with VS Code Live Server.
+Append `?preview=1` to `admin.html` or `trainer.html` to inspect either
+dashboard with fictional sample data. Preview loads no Firebase SDK
 or member-data API and disables exports, settings changes and coaching writes.
 Normal sign-in still requires staff claims and deployed Firestore rules.
 
@@ -94,7 +115,7 @@ forecasts and meal preferences through `admin-member-data`; see
 read results and explicit deployment errors. The site uses the existing
 GrindFit logo and solid backgrounds without CSS gradients.
 
-Verify browser-independent admin helpers with `node --test test/admin-utils.test.mjs`.
+Verify browser-independent admin helpers with `npm test`.
 
 Build and deploy the app and portal with:
 

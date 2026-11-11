@@ -33,7 +33,7 @@ exports.generateWorkoutPlan = onCall({ secrets: [geminiKey], timeoutSeconds: 45,
   const quota = db.doc(`users/${uid}/ai_usage/${today}`);
   await db.runTransaction(async (transaction) => {
     const saved = await transaction.get(quota);
-    if ((saved.data()?.count || 0) >= 10) throw new HttpsError('resource-exhausted', 'Daily AI limit reached. Your offline plan remains available.');
+    if ((saved.data()?.count || 0) >= 10) throw new HttpsError('resource-exhausted', 'Daily online recommendation limit reached. Your offline plan remains available.');
     transaction.set(quota, { count: (saved.data()?.count || 0) + 1 });
   });
   const allowed = eligibleCatalog(profile.workoutEnvironment || profile.environment,

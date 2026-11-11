@@ -19,7 +19,7 @@ void main() {
           muscles: 'Chest',
           equipment: 'Weights',
         ),
-      ], 'AI-generated plan');
+      ], 'Personalized online plan');
       state.updateWorkoutRequest('No Equipment', 'Full Body');
       state.useOfflineWorkout();
 

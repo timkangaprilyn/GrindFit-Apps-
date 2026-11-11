@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/animations/motion.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -366,7 +367,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: staggered([
                   const Text(
                     'Join GrindFit and start achieving your fitness goals.',
                     style: TextStyle(
@@ -637,7 +638,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                ],
+                ]),
               ),
             ),
           ),

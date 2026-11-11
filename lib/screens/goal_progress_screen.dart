@@ -1,9 +1,12 @@
 import 'dart:math' as math;
 
+import 'package:flutter_application_1/animations/motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+
 import 'main_navigation_screen.dart';
 
 class GoalProgressScreen extends StatefulWidget {
@@ -213,7 +216,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    children: staggered([
                       _buildGoalCard(),
                       const SizedBox(height: 18),
                       _buildWeightChartCard(),
@@ -226,7 +229,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                    ],
+                    ]),
                   ),
                 ),
         ],
@@ -277,8 +280,11 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.fitness_center_rounded,
-                    color: Colors.black, size: 24),
+                child: const Icon(
+                  Icons.fitness_center_rounded,
+                  color: Colors.black,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -448,8 +454,10 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: _gold.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(10),
@@ -504,8 +512,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
             padding: const EdgeInsets.only(left: 38, right: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children:
-                  labels.map((lbl) => Text(lbl, style: _axisStyle)).toList(),
+              children: labels
+                  .map((lbl) => Text(lbl, style: _axisStyle))
+                  .toList(),
             ),
           ),
         ],
@@ -528,9 +537,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
         color: Colors.transparent,
         child: Ink(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_goldLight, _gold],
-            ),
+            gradient: const LinearGradient(colors: [_goldLight, _gold]),
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
@@ -546,8 +553,11 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.monitor_weight_outlined,
-                    color: Colors.black, size: 18),
+                Icon(
+                  Icons.monitor_weight_outlined,
+                  color: Colors.black,
+                  size: 18,
+                ),
                 SizedBox(width: 8),
                 Text(
                   'Update Weight',
@@ -604,7 +614,8 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-                builder: (_) => MainNavigationScreen(initialIndex: index)),
+              builder: (_) => MainNavigationScreen(initialIndex: index),
+            ),
           );
         },
         type: BottomNavigationBarType.fixed,
@@ -612,21 +623,35 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
         elevation: 0,
         selectedItemColor: _goldBright,
         unselectedItemColor: _muted,
-        selectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+        ),
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded), label: 'Home'),
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.fitness_center), label: 'Workouts'),
+            icon: Icon(Icons.fitness_center),
+            label: 'Workouts',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded), label: 'Log'),
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Log',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Analytics',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded), label: 'Profile'),
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
         ],
       ),
     );
@@ -663,8 +688,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
   // ───────────────────────── Update Weight Modal ─────────────────────────
 
   void _showUpdateWeightModal(BuildContext context) {
-    final TextEditingController weightController =
-        TextEditingController(text: _currentWeight.toStringAsFixed(1));
+    final TextEditingController weightController = TextEditingController(
+      text: _currentWeight.toStringAsFixed(1),
+    );
 
     showModalBottomSheet(
       context: context,
@@ -715,8 +741,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
               const SizedBox(height: 10),
               TextField(
                 controller: weightController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 cursorColor: _gold,
                 style: const TextStyle(
                   fontSize: 16,
@@ -742,9 +769,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   onPressed: () async {
                     final double? newW = double.tryParse(weightController.text);
                     if (newW != null && newW > 0) {
-                      final baseline = _startWeight > 0
-                          ? _startWeight
-                          : newW;
+                      final baseline = _startWeight > 0 ? _startWeight : newW;
                       setState(() {
                         _currentWeight = newW;
                         _startWeight = baseline;
@@ -778,10 +803,12 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
   // ───────────────────────── Update Goal Modal ─────────────────────────
 
   void _showUpdateGoalModal(BuildContext context) {
-    final TextEditingController targetWeightController =
-        TextEditingController(text: _targetWeight.toStringAsFixed(0));
-    final TextEditingController startWeightController =
-        TextEditingController(text: _startWeight.toStringAsFixed(0));
+    final TextEditingController targetWeightController = TextEditingController(
+      text: _targetWeight.toStringAsFixed(0),
+    );
+    final TextEditingController startWeightController = TextEditingController(
+      text: _startWeight.toStringAsFixed(0),
+    );
 
     final List<String> categories = [
       'Build Muscle',
@@ -856,10 +883,12 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                       ),
                       decoration: _fieldDecoration(icon: Icons.flag_rounded),
                       items: categories
-                          .map((c) => DropdownMenuItem<String>(
-                                value: c,
-                                child: Text(c),
-                              ))
+                          .map(
+                            (c) => DropdownMenuItem<String>(
+                              value: c,
+                              child: Text(c),
+                            ),
+                          )
                           .toList(),
                       onChanged: (val) {
                         if (val != null) {
@@ -879,8 +908,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: startWeightController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       cursorColor: _gold,
                       style: const TextStyle(
                         fontSize: 16,
@@ -904,8 +934,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: targetWeightController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       cursorColor: _gold,
                       style: const TextStyle(
                         fontSize: 16,
@@ -929,12 +960,15 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                           ),
                         ),
                         onPressed: () async {
-                          final double? newStart =
-                              double.tryParse(startWeightController.text);
-                          final double? newTarget =
-                              double.tryParse(targetWeightController.text);
+                          final double? newStart = double.tryParse(
+                            startWeightController.text,
+                          );
+                          final double? newTarget = double.tryParse(
+                            targetWeightController.text,
+                          );
 
-                          final bool validStart = newStart != null && newStart > 0;
+                          final bool validStart =
+                              newStart != null && newStart > 0;
                           final bool validTarget =
                               newTarget != null && newTarget > 0;
 
@@ -1081,7 +1115,10 @@ class _WeightChartPainter extends CustomPainter {
     for (int i = 0; i < lines; i++) {
       final double y = topPad + chartH * i / (lines - 1);
       canvas.drawLine(
-          Offset(leftPad, y), Offset(leftPad + chartW, y), gridPaint);
+        Offset(leftPad, y),
+        Offset(leftPad + chartW, y),
+        gridPaint,
+      );
 
       final double value = maxV - range * i / (lines - 1);
       final TextPainter tp = TextPainter(
@@ -1108,8 +1145,9 @@ class _WeightChartPainter extends CustomPainter {
 
     // Animated reveal: clip from left to right
     canvas.save();
-    canvas.clipRect(Rect.fromLTWH(
-        0, 0, leftPad + chartW * progress + rightPad, size.height));
+    canvas.clipRect(
+      Rect.fromLTWH(0, 0, leftPad + chartW * progress + rightPad, size.height),
+    );
 
     final Path linePath = Path()..moveTo(points.first.dx, points.first.dy);
     for (int i = 1; i < points.length; i++) {
@@ -1130,10 +1168,7 @@ class _WeightChartPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            gold.withValues(alpha: 0.25),
-            gold.withValues(alpha: 0.0),
-          ],
+          colors: [gold.withValues(alpha: 0.25), gold.withValues(alpha: 0.0)],
         ).createShader(Rect.fromLTWH(leftPad, topPad, chartW, chartH)),
     );
 

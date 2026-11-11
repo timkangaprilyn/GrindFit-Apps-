@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
 import '../models/workout_insights.dart';
 import '../widgets/workout_insights_card.dart';
@@ -205,7 +206,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        children: staggered([
           _buildHeader(),
           const SizedBox(height: 20),
           _buildPeriodToggle(),
@@ -286,7 +287,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           else
             _buildHistoryButton(),
           const SizedBox(height: 12),
-        ],
+        ]),
       ),
     );
   }

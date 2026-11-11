@@ -1,13 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/animations/motion.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/app_state.dart';
+import '../models/coaching.dart';
 import '../models/fitness_features.dart';
 import '../services/offline_store.dart';
 import '../services/voice_coach.dart';
 import '../theme/grindfit_theme.dart';
+import '../widgets/online_only.dart';
+import 'choose_coach_screen.dart';
 import 'meal_recommendations_screen.dart';
 
 class MemberFeaturesScreen extends StatefulWidget {
@@ -89,6 +93,7 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                     'XP and levels' => Icons.local_fire_department_rounded,
                     'Monthly member challenge' => Icons.emoji_events_outlined,
                     'Coach notes' => Icons.chat_bubble_outline_rounded,
+                    'Your coach' => Icons.sports_rounded,
                     'Voice coach' => Icons.volume_up_outlined,
                     'Pinoy meal planner' => Icons.restaurant_rounded,
                     _ => Icons.self_improvement_rounded,
@@ -133,7 +138,7 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        children: [
+        children: staggered([
           _section('XP and levels', [
             StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               stream: _profile
@@ -201,14 +206,17 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                           labelText: 'Public nickname (not your full name)',
                         ),
                       ),
-                    FilledButton(
-                      onPressed: _busy ? null : () => _challenge(!joined),
-                      child: Text(
-                        _busy
-                            ? 'Saving…'
-                            : joined
-                            ? 'Leave challenge and remove my entry'
-                            : 'I agree — join this month',
+                    OnlineOnly(
+                      feature: 'The monthly challenge',
+                      child: FilledButton(
+                        onPressed: _busy ? null : () => _challenge(!joined),
+                        child: Text(
+                          _busy
+                              ? 'Saving…'
+                              : joined
+                              ? 'Leave challenge and remove my entry'
+                              : 'I agree — join this month',
+                        ),
                       ),
                     ),
                     if (joined) ...[
@@ -250,6 +258,92 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                       ),
                     ],
                   ],
+                );
+              },
+            ),
+          ]),
+          _section('Your coach', [
+            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: _profile.snapshots(),
+              builder: (context, profileSnap) {
+                final coachUid =
+                    profileSnap.data?.data()?['trainerUid'] as String? ?? '';
+                return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .doc('trainer_requests/$_uid')
+                      .snapshots(),
+                  builder: (context, requestSnap) {
+                    final request = CoachRequest.fromMap(
+                      requestSnap.data?.data(),
+                    );
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (coachUid.isEmpty)
+                          const Text(
+                            'You do not have a coach yet. Choose one who fits your goal.',
+                          )
+                        else
+                          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            stream: FirebaseFirestore.instance
+                                .doc('trainers/$coachUid')
+                                .snapshots(),
+                            builder: (context, coachSnap) {
+                              final coach = TrainerProfile.fromMap(
+                                coachUid,
+                                coachSnap.data?.data(),
+                              );
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.verified_rounded,
+                                  color: GrindFitTheme.gold,
+                                ),
+                                title: Text(coach.displayName),
+                                subtitle: Text(
+                                  coach.specialty.isEmpty
+                                      ? 'Your assigned coach'
+                                      : coach.specialty,
+                                ),
+                              );
+                            },
+                          ),
+                        if (request.isPending)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              'Request to ${request.trainerName} is waiting for approval.',
+                              style: const TextStyle(color: GrindFitTheme.gold),
+                            ),
+                          )
+                        else if (request.status == CoachRequestStatus.declined)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              '${request.trainerName} could not take your request. You can choose another coach.',
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        OnlineOnly(
+                          feature: 'Choosing a coach',
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ChooseCoachScreen(),
+                              ),
+                            ),
+                            icon: const Icon(Icons.groups_rounded),
+                            label: Text(
+                              coachUid.isEmpty
+                                  ? 'Choose a coach'
+                                  : 'Change coach',
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
             ),
@@ -417,7 +511,7 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                 },
               ),
             ]),
-        ],
+        ]),
       ),
     );
   }

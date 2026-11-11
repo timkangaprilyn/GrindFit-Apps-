@@ -24,13 +24,6 @@ export function setupInterface({onPage = () => {}, onClear = () => {}} = {}) {
     section.scrollIntoView({block:'start',behavior:'instant'});
     section.tabIndex = -1; section.focus({preventScroll:true});
   }));
-  $('togglePassword').addEventListener('click', () => {
-    const show = $('password').type === 'password';
-    $('password').type = show ? 'text' : 'password';
-    $('togglePassword').textContent = show ? 'Hide' : 'Show';
-    $('togglePassword').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-    $('togglePassword').setAttribute('aria-pressed', String(show));
-  });
   $('clearFilters').addEventListener('click', () => {
     $('memberSearch').value = ''; $('memberFilter').value = 'all'; $('memberSort').value = 'recent'; onClear();
   });

@@ -5,20 +5,20 @@ class AppColors {
   AppColors._();
 
   // Core Brand Colors (Orange & Blue Theme)
-  static const Color primaryOrange = Color(0xFFFF6B00); 
-  static const Color secondaryBlue = Color(0xFF1A73E8); 
-  static const Color accentBlue = Color(0xFF00B2FF);    
+  static const Color primaryOrange = Color(0xFFFF6B00);
+  static const Color secondaryBlue = Color(0xFF1A73E8);
+  static const Color accentBlue = Color(0xFF00B2FF);
 
   // Background & Surface Colors (Light Mode)
-  static const Color background = Color(0xFFF8F9FA);          
+  static const Color background = Color(0xFFF8F9FA);
   static const Color backgroundSecondary = Color(0xFFF1F5F9);
-  static const Color surface = Color(0xFFFFFFFF);             
-  static const Color surfaceElevated = Color(0xFFEEF2F6);     
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceElevated = Color(0xFFEEF2F6);
 
   // Text Colors (Dark Navy palette)
-  static const Color textPrimary = Color(0xFF0F172A);   
-  static const Color textSecondary = Color(0xFF475569); 
-  static const Color textMuted = Color(0xFF94A3B8);     
+  static const Color textPrimary = Color(0xFF0F172A);
+  static const Color textSecondary = Color(0xFF475569);
+  static const Color textMuted = Color(0xFF94A3B8);
 
   // Legacy Aliases para walang mag-error na lumang code
   static const Color neonCyan = primaryOrange;
@@ -28,12 +28,12 @@ class AppColors {
   // Utility & Status Colors
   static const Color border = Color(0xFFE2E8F0);
   static const Color error = Color(0xFFEF4444);
-  static const Color success = Color(0xFF10B981); 
+  static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
 
   // Glow & Shadow Colors
-  static const Color shadow = Color(0x1A000000);     
-  static const Color orangeGlow = Color(0x40FF6B00); 
+  static const Color shadow = Color(0x1A000000);
+  static const Color orangeGlow = Color(0x40FF6B00);
 }
 
 class AppRadius {
@@ -186,7 +186,10 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.primaryOrange,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -212,9 +215,7 @@ class AppTheme {
       ),
 
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primaryOrange,
-        ),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primaryOrange),
       ),
 
       textTheme: const TextTheme(

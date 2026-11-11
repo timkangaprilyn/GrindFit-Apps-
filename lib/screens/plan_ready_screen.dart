@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
-import '../models/workout_plan.dart';
+import '../models/training_program.dart';
 import 'main_navigation_screen.dart';
 
 class PlanReadyScreen extends StatefulWidget {
@@ -27,16 +28,22 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
   String _loadingStepText = 'Preparing your personalized plan...';
   String? _errorMessage;
 
-  late final List<PlanExercise> _exercises;
+  /// The first week of the program, previewed from today's date.
+  late final List<ProgramSession> _firstWeek;
 
   @override
   void initState() {
     super.initState();
     final state = AppState.instance;
-    _exercises = WorkoutPlan.forProfile(
+    final now = DateTime.now();
+    _firstWeek = TrainingProgram.week(
+      now,
       goal: state.fitnessGoal,
-      environment: state.workoutEnvironment,
-      savedOverrides: state.workoutPlanOverrides,
+      days: state.workoutDays,
+      owned: Gear.effective(state.workoutEnvironment, state.equipment),
+      sessionDuration: state.sessionDuration,
+      start: now,
+      months: state.programDurationMonths,
     );
   }
 
@@ -86,8 +93,12 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
         'daysPerWeek': state.workoutDays.length,
         'sessionDuration': state.sessionDuration,
         'setupCompleted': true,
+        'equipment': state.equipment.toList()..sort(),
+        // A finished setup starts a new program; weeks count from today.
+        'programStartedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      state.startProgram();
     } catch (error) {
       debugPrint('Unable to save the completed GrindFit setup: $error');
       if (!mounted) return;
@@ -158,7 +169,7 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: staggered([
                     InkWell(
                       borderRadius: BorderRadius.circular(14),
                       onTap: _isGenerating
@@ -185,42 +196,70 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
                     _buildInjuryNotice(),
                     const SizedBox(height: 24),
                     const Text(
-                      'Initial Workout Preview',
+                      'Your first week',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                         color: _white,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _border, width: 1.2),
-                      ),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < _exercises.length; i++) ...[
-                            if (i > 0)
-                              const Divider(color: _border, height: 20),
-                            _buildPreviewRow(
-                              '${i + 1}. ${_exercises[i].name}',
-                              _exercises[i].detail,
-                            ),
-                          ],
-                        ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'This is your starting plan. Each training day works different muscles, '
+                      'reps and sets grow week by week, and every 4th week is lighter for recovery. '
+                      'You can change today\'s focus or add exercises for the day on the Workouts tab.',
+                      style: const TextStyle(
+                        color: _gray,
+                        fontSize: 12.5,
+                        height: 1.45,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    for (final session in _firstWeek)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: _card,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _border, width: 1.2),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${TrainingProgram.weekdays[session.date.weekday - 1]} • ${session.dayName}',
+                              style: const TextStyle(
+                                color: _gold,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            for (
+                              var i = 0;
+                              i < session.exercises.length;
+                              i++
+                            ) ...[
+                              if (i > 0)
+                                const Divider(color: _border, height: 20),
+                              _buildPreviewRow(
+                                '${i + 1}. ${session.exercises[i].name}',
+                                session.exercises[i].detail,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     if (_errorMessage != null) ...[
                       _buildErrorCard(_errorMessage!),
                       const SizedBox(height: 16),
                     ],
-                    _buildActionButton(),
+                    Pressable(child: _buildActionButton()),
                     const SizedBox(height: 16),
-                  ],
+                  ]),
                 ),
               ),
             ),

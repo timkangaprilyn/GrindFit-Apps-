@@ -23,7 +23,9 @@ class OnboardingStepIndicator extends StatelessWidget {
             margin: EdgeInsets.only(right: index == totalSteps - 1 ? 0 : 6),
             height: 5,
             decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFFF5200) : const Color(0xFFE2E8F0),
+              color: isActive
+                  ? const Color(0xFFFF5200)
+                  : const Color(0xFFE2E8F0),
               borderRadius: BorderRadius.circular(4),
             ),
           ),

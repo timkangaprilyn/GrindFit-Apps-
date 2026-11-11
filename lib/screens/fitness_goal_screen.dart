@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
 import 'workout_environment_screen.dart';
@@ -28,27 +29,27 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
   // dumbbell -> custom horizontal dumbbell
   // Getter ito (hindi field) para laging updated kahit hot reload.
   List<Map<String, String>> get _goals => const [
-        {
-          'title': 'Weight Loss',
-          'subtitle': 'Get leaner and healthier.',
-          'kind': 'run',
-        },
-        {
-          'title': 'Muscle Gain / Strength',
-          'subtitle': 'Build muscle and get stronger.',
-          'kind': 'emoji',
-        },
-        {
-          'title': 'Endurance / Cardio',
-          'subtitle': 'Improve stamina and endurance.',
-          'kind': 'heart',
-        },
-        {
-          'title': 'General Fitness',
-          'subtitle': 'Improve overall fitness and well-being.',
-          'kind': 'dumbbell',
-        },
-      ];
+    {
+      'title': 'Weight Loss',
+      'subtitle': 'Get leaner and healthier.',
+      'kind': 'run',
+    },
+    {
+      'title': 'Muscle Gain / Strength',
+      'subtitle': 'Build muscle and get stronger.',
+      'kind': 'emoji',
+    },
+    {
+      'title': 'Endurance / Cardio',
+      'subtitle': 'Improve stamina and endurance.',
+      'kind': 'heart',
+    },
+    {
+      'title': 'General Fitness',
+      'subtitle': 'Improve overall fitness and well-being.',
+      'kind': 'dumbbell',
+    },
+  ];
 
   void _select(String title) {
     if (_selectedGoal == title) return;
@@ -79,8 +80,11 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
           painter: _DumbbellPainter(color: _iconColor),
         );
       default:
-        return const Icon(Icons.directions_run_rounded,
-            color: _iconColor, size: 30);
+        return const Icon(
+          Icons.directions_run_rounded,
+          color: _iconColor,
+          size: 30,
+        );
     }
   }
 
@@ -228,8 +232,10 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
 
           SafeArea(
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 18.0,
+                vertical: 12.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -257,8 +263,10 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
                   const FractionallySizedBox(
                     widthFactor: 0.55,
                     alignment: Alignment.centerLeft,
-                    child:
-                        OnboardingStepIndicator(currentStep: 2, totalSteps: 5),
+                    child: OnboardingStepIndicator(
+                      currentStep: 2,
+                      totalSteps: 5,
+                    ),
                   ),
                   const SizedBox(height: 26),
 

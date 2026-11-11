@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
+import '../models/training_program.dart';
 import 'program_duration_screen.dart';
 
 class WorkoutEnvironmentScreen extends StatefulWidget {
@@ -25,6 +27,10 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
   static const double _heroRatio = 760 / 842;
 
   late String _selectedEnvironment;
+  late Set<String> _equipment = {...AppState.instance.equipment}
+    ..remove(Gear.gym);
+
+  bool get _isGym => _selectedEnvironment.toLowerCase().contains('gym');
 
   // Updated environments to include Gym, Home (no equipment), and Outdoor[cite: 3]
   final List<Map<String, dynamic>> _environments = const [
@@ -36,13 +42,13 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
     },
     {
       'title': 'Home (no equipment)',
-      'subtitle': 'Bodyweight workouts optimized for your living space.',
+      'subtitle': 'Bodyweight, plus any equipment you have at home.',
       'icon': Icons.home_rounded,
       'image': 'assets/images/env_indoor.png',
     },
     {
       'title': 'Outdoor',
-      'subtitle': 'Enjoy fresh air, parks, and open spaces.',
+      'subtitle': 'Parks and open spaces, with or without equipment.',
       'icon': Icons.park_rounded,
       'image': 'assets/images/env_outdoor.png',
     },
@@ -58,9 +64,59 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
 
   void _handleNext() {
     AppState.instance.updateEnvironment(_selectedEnvironment);
+    AppState.instance.updateEquipment(_isGym ? const {} : _equipment);
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProgramDurationScreen()),
+    );
+  }
+
+  // Checklist ng equipment para sa Home at Outdoor
+  Widget _equipmentPicker() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _border, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'What equipment do you have?',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: _white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Your workouts will only use what you select. Leave all off for bodyweight only.',
+            style: TextStyle(fontSize: 12.5, height: 1.35, color: _gray),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (id, label) in Gear.options)
+                if (id != Gear.gym)
+                  FilterChip(
+                    label: Text(label),
+                    selected: _equipment.contains(id),
+                    onSelected: (on) => setState(() {
+                      _equipment = {..._equipment};
+                      on ? _equipment.add(id) : _equipment.remove(id);
+                    }),
+                  ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -181,7 +237,7 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            title,
+                            title == 'Home (no equipment)' ? 'Home' : title,
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -237,8 +293,10 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final heroHeight = media.size.width * _heroRatio;
-    final topGap =
-        (media.size.height * 0.24 - media.padding.top - 42).clamp(12.0, 220.0);
+    final topGap = (media.size.height * 0.24 - media.padding.top - 42).clamp(
+      12.0,
+      220.0,
+    );
 
     return Scaffold(
       backgroundColor: _bg,
@@ -316,7 +374,10 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                   const FractionallySizedBox(
                     widthFactor: 0.62,
                     alignment: Alignment.centerLeft,
-                    child: OnboardingStepIndicator(currentStep: 3, totalSteps: 5),
+                    child: OnboardingStepIndicator(
+                      currentStep: 3,
+                      totalSteps: 5,
+                    ),
                   ),
                   const SizedBox(height: 22),
 
@@ -358,6 +419,13 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                       children: [
                         for (var i = 0; i < _environments.length; i++)
                           _envCard(_environments[i], i),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                          child: _isGym
+                              ? const SizedBox(width: double.infinity)
+                              : _equipmentPicker(),
+                        ),
                       ],
                     ),
                   ),
@@ -401,8 +469,11 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                                 ),
                               ),
                               SizedBox(width: 10),
-                              Icon(Icons.arrow_forward_rounded,
-                                  color: _bg, size: 22),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                color: _bg,
+                                size: 22,
+                              ),
                             ],
                           ),
                         ),

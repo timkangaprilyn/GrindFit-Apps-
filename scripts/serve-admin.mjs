@@ -28,8 +28,9 @@ const server = http.createServer((req, res) => {
   const urlPath = decodeURIComponent(req.url.split('?')[0]);
   let filePath;
 
-  if (urlPath === '/' || urlPath === '/admin' || urlPath === '/admin.html') {
-    filePath = path.join(webDir, 'admin.html');
+  const pages = {'/': 'login.html', '/login': 'login.html', '/admin': 'admin.html', '/trainer': 'trainer.html'};
+  if (pages[urlPath]) {
+    filePath = path.join(webDir, pages[urlPath]);
   } else {
     // Check in web/ first, then repo root
     const testWeb = path.join(webDir, urlPath);
@@ -59,7 +60,8 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`\n===========================================`);
   console.log(` GrindFit Admin Portal is running!`);
-  console.log(` Live:    http://localhost:${PORT}/admin.html`);
-  console.log(` Preview: http://localhost:${PORT}/admin.html?preview=1`);
+  console.log(` Sign in: http://localhost:${PORT}/login.html`);
+  console.log(` Admin:   http://localhost:${PORT}/admin.html   (preview: ?preview=1)`);
+  console.log(` Trainer: http://localhost:${PORT}/trainer.html (preview: ?preview=1)`);
   console.log(`===========================================\n`);
 });

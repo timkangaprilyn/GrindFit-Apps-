@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101010">
+    <title>GrindFit Staff Sign In</title>
+    <link rel="icon" href="./favicon.png">
+    <link rel="stylesheet" href="./admin.css">
+  </head>
+  <body>
+    <main id="loginView" class="login-shell">
+      <section class="login-story" aria-label="GrindFit staff portal">
+        <a class="brand" href="./login.html"><img class="brand-logo" src="./grindfit-logo.png" alt="GrindFit logo" width="76" height="76"><span>GRINDFIT<span class="brand-subtitle">STAFF WORKSPACE</span></span></a>
+        <div class="story-copy"><p class="eyebrow">A STRONGER COMMUNITY STARTS HERE</p><h1>Behind every<br>grind.<br><em>A great team.</em></h1><p>One space to follow progress, support your members, and keep every training day moving.</p></div>
+        <div class="story-features"><span>01 &nbsp; Member insights</span><span>02 &nbsp; Coaching & progress</span><span>03 &nbsp; Activity reports</span></div>
+        <div class="story-art" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <small>GRINDFIT · SHOW UP. GET STRONGER.</small>
+      </section>
+      <div class="login-form-wrap">
+      <form id="loginForm" class="login-card">
+        <img class="login-logo" src="./grindfit-logo.png" alt="GrindFit" width="112" height="112">
+        <p class="eyebrow">WELCOME TO YOUR WORKSPACE</p>
+        <h2>Good to see you again.</h2>
+        <p class="muted">Sign in with your staff account. Admins open the admin workspace; trainers open their trainer dashboard.</p>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <div class="password-field"><input id="password" type="password" autocomplete="current-password" required><button id="togglePassword" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
+        <p id="loginError" class="error" role="alert"></p>
+        <button id="loginButton" class="button primary" type="submit">Sign in to workspace <span aria-hidden="true">↗</span></button>
+        <div class="login-note"><span aria-hidden="true">◇</span><p>Access is for authorized admins and trainers. Ask your project administrator if you need a staff account.</p></div>
+        <a class="preview-link" href="./admin.html?preview=1">Preview the admin workspace <span aria-hidden="true">→</span></a>
+        <a class="preview-link" href="./trainer.html?preview=1">Preview the trainer dashboard <span aria-hidden="true">→</span></a>
+      </form>
+      <p class="login-footer">GrindFit member management · Staff access only</p>
+      <p id="bootStatus" class="muted" role="status"></p>
+      </div>
+    </main>
+    <script type="module" src="./login.js"></script>
+  </body>
+</html>

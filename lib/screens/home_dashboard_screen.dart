@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'notifications_screen.dart';
@@ -388,37 +389,44 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: staggered([
                   _buildHeader(firstName),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.auto_awesome, color: _gold),
-                      title: const Text('Your GrindFit tools'),
-                      subtitle: const Text(
-                        'XP • Challenge • Coach notes • Meals • Voice • Recovery',
-                      ),
-                      trailing: const Icon(Icons.chevron_right, color: _gold),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MemberFeaturesScreen(),
+                  Pressable(
+                    child: Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.auto_awesome, color: _gold),
+                        title: const Text('Your GrindFit tools'),
+                        subtitle: const Text(
+                          'XP • Challenge • Coach notes • Meals • Voice • Recovery',
+                        ),
+                        trailing: const Icon(Icons.chevron_right, color: _gold),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MemberFeaturesScreen(),
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.restaurant_menu, color: _gold),
-                      title: const Text('Meal Recommendations'),
-                      subtitle: const Text(
-                        'Pinoy meal ideas • Budget • Favorites',
-                      ),
-                      trailing: const Icon(Icons.chevron_right, color: _gold),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MealRecommendationsScreen(),
+                  Pressable(
+                    child: Card(
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.restaurant_menu,
+                          color: _gold,
+                        ),
+                        title: const Text('Meal Recommendations'),
+                        subtitle: const Text(
+                          'Pinoy meal ideas • Budget • Favorites',
+                        ),
+                        trailing: const Icon(Icons.chevron_right, color: _gold),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MealRecommendationsScreen(),
+                          ),
                         ),
                       ),
                     ),
@@ -427,12 +435,12 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   _buildStatsCard(),
                   const SizedBox(height: 24),
                   _buildSectionHeader(
-                    'AI RECOMMENDED WORKOUT',
+                    'RECOMMENDED FOR YOU',
                     action: 'View plan',
                     onAction: _viewPlan,
                   ),
                   const SizedBox(height: 10),
-                  _buildWorkoutCard(summary),
+                  Pressable(scale: .985, child: _buildWorkoutCard(summary)),
                   const SizedBox(height: 24),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +469,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildWeeklyChart(todayString),
-                ],
+                ]),
               ),
             ),
           ),
@@ -804,6 +812,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   Widget _buildWorkoutCard(String summary) {
     final goal = AppState.instance.fitnessGoal;
+    final session = AppState.instance.currentSession;
+    final sessionLabel = session.isToday
+        ? "Today: ${session.dayName} • Week ${session.weekNumber}"
+        : "Rest day • Next: ${session.dayName}";
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -881,7 +893,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          WorkoutPlan.focusForGoal(goal),
+                          sessionLabel,
                           style: TextStyle(
                             fontSize: 13.5,
                             color: _gray,

@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/network_status.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -49,10 +52,29 @@ class _SplashScreenState extends State<SplashScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const WelcomeScreen();
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final online = await NetworkStatus.instance.checkNow().timeout(
+      const Duration(seconds: 6),
+      onTimeout: () => false,
+    );
+    DocumentSnapshot<Map<String, dynamic>> doc;
+    if (online) {
+      try {
+        doc = await ref.get().timeout(const Duration(seconds: 8));
+      } catch (_) {
+        NetworkStatus.instance.setOnline(false);
+        doc = await ref.get(const GetOptions(source: Source.cache));
+      }
+    } else {
+      // Offline: use the profile saved on this phone from the last session.
+      try {
+        doc = await ref.get(const GetOptions(source: Source.cache));
+      } catch (_) {
+        throw StateError(
+          'No internet. Connect once so GrindFit can download your profile for offline use.',
+        );
+      }
+    }
     final data = doc.data();
     final role = data?['role'] as String? ?? 'member';
     AppState.instance.loadProfile(data, fallbackName: user.displayName);

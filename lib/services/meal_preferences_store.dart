@@ -35,8 +35,25 @@ class MealPreferencesStore extends ChangeNotifier {
   bool _disposed = false;
   Timer? _timer;
   Future<void> _writes = Future.value();
-  String get _key =>
-      'grindfit-meals-v1-${Uri.encodeComponent(ownerUid ?? 'guest')}';
+  String get _key => _keyFor(ownerUid);
+  static String _keyFor(String? uid) =>
+      'grindfit-meals-v1-${Uri.encodeComponent(uid ?? 'guest')}';
+
+  /// Reads the preferences saved on this device without contacting the cloud.
+  static Future<MealPreferences?> readLocal(String? uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_keyFor(uid));
+      if (saved == null) return null;
+      final local = jsonDecode(saved) as Map<String, dynamic>;
+      return MealPreferences.fromJson(
+        Map<String, dynamic>.from(local['preferences'] as Map),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool get _ownsAccount => ownerUid != null && ownerUid == _currentUid();
   void _emit() {
     if (!_disposed) notifyListeners();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// Consistent GrindFit success/error feedback (Phase 2 spec, Sections
@@ -60,7 +61,9 @@ class GrindFitFeedback {
             Expanded(
               child: Text(
                 message,
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
           ],

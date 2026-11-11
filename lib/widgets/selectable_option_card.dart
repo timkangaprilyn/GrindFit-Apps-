@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// Reusable selectable card used for single-choice options like
@@ -73,7 +74,11 @@ class SelectableOptionCard extends StatelessWidget {
               ),
             ),
             if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.neonCyan, size: 20),
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.neonCyan,
+                size: 20,
+              ),
           ],
         ),
       ),

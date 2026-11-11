@@ -31,6 +31,32 @@ Firebase login and workout logs remain in `grindfit-34b02`.
 Supabase stores **derived daily analytics/forecast snapshots**, not a migration
 of all workout logs. The calculations run on the device; Gemini is not used.
 
+## Trainer accounts (admin website → Trainers)
+
+`functions/admin-staff` lets admins create, list, disable and re-enable trainer
+logins without Firebase Cloud Functions (no Blaze plan needed). It verifies the
+caller's Firebase ID token and requires `admin: true`, then calls the Firebase
+Identity Toolkit API with a Firebase service account. It only ever sets the
+`trainer` claim, removes any `admin` claim from the claims it writes, and refuses
+to disable or enable admin accounts or the caller.
+
+1. Firebase console → Project settings → **Service accounts** → **Generate new
+   private key**. Save the JSON **outside this repository** (e.g. Downloads).
+2. Deploy and save the key as the `FIREBASE_SERVICE_ACCOUNT` secret:
+
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\supabase\deploy-live.ps1 -StaffAccounts -ServiceAccountFile "$HOME\Downloads\<key-file>.json"
+   ```
+
+   Enter your Supabase Personal Access Token when prompted.
+3. Delete the downloaded key file. The secret now lives only in Supabase.
+
+Manual alternative: add the secret under **Edge Functions → Secrets**, then
+deploy `dashboard/admin-staff.ts` as `admin-staff` with **Verify JWT** OFF.
+The service account key is a full-access project credential: never commit it,
+paste it in chat, or put it in web code. Rotate it in the Firebase console if
+it is exposed.
+
 ## Meal recommendations
 
 Home → Meal Recommendations (also linked from Your GrindFit tools) offers

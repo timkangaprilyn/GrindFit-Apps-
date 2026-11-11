@@ -36,6 +36,30 @@ class OfflineStore extends ChangeNotifier {
   bool get hasError =>
       _errors.keys.any((p) => p == 'users/$uid' || p.startsWith('users/$uid/'));
 
+  /// This account's unsynced saves with the last error from the server, if any.
+  List<({String path, String? error, Map<String, dynamic> data})>
+  get pendingItems {
+    final current = uid;
+    return [
+      for (final entry in _pending.entries)
+        if (entry.key == 'users/$current' ||
+            entry.key.startsWith('users/$current/'))
+          (
+            path: entry.key,
+            error: _errors[entry.key],
+            data: Map<String, dynamic>.from(entry.value['data'] as Map),
+          ),
+    ];
+  }
+
+  /// Drops one unsynced save that the server keeps rejecting.
+  Future<void> discard(String path) async {
+    _pending.remove(path);
+    _errors.remove(path);
+    await _persist();
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     _prefs ??= await SharedPreferences.getInstance();
     _restore();

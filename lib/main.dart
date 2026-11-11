@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
+import 'services/network_status.dart';
 import 'services/offline_store.dart';
 import 'services/voice_coach.dart';
 import 'theme/grindfit_theme.dart';
@@ -44,6 +45,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await OfflineStore.instance.initialize();
+  NetworkStatus.instance.start();
   await VoiceCoach.instance.initialize();
   await AppNotifications.instance.initialize();
   AppNotifications.instance.onOpen = _openAlert;

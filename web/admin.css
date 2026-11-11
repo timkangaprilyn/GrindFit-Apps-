@@ -294,3 +294,91 @@ tbody tr:hover .member-avatar {
 }
 @media(max-width:1050px){.report-layout,.settings-layout{grid-template-columns:1fr}.intro-label{display:none}.report-guide{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}.report-guide .panel{margin-bottom:0}}@media(max-width:760px){.screen-intro{padding:20px;gap:15px;align-items:flex-start}.screen-icon{width:43px;height:43px;font-size:24px;border-radius:9px}.screen-intro h2{font-size:20px}.screen-intro .eyebrow{font-size:8px;letter-spacing:1px}.screen-intro p:last-child{font-size:11px}.directory-controls{padding:16px}.section-label{align-items:flex-start;flex-direction:column;gap:7px}.report-guide{display:block}.report-guide .panel{margin-bottom:20px}.report-builder,.settings-layout .settings-panel,.access-panel{padding:20px}.report-toolbar{grid-template-columns:1fr}.report-toolbar .button{grid-column:auto}.member-dialog{padding:0 16px 20px}.dialog-brand{gap:8px}.dialog-brand img{width:43px;height:43px}.dialog-brand h2{font-size:18px}.dialog-heading>.button{font-size:10px;padding:9px 12px;flex-shrink:0}.dialog-brand .eyebrow{font-size:8px}.profile-nav{gap:6px}.profile-nav button{font-size:9px;padding:9px}.detail-grid{grid-template-columns:1fr 1fr}.detail-cell{padding:12px}.cloud-detail .panel-heading{flex-wrap:wrap}}
 .date-presets .button[aria-pressed=true]:hover:not(:disabled){background:var(--gold);border-color:var(--gold);color:#111315}.button:disabled,.button.primary:disabled{opacity:1;background:#23282c;border-color:#353e44;color:#83919a;transform:none;filter:none}
+/* Trainers page */
+.trainer-form{display:grid;gap:14px}.trainer-form>label{display:grid;gap:8px;padding:18px;background:#131618;border:1px solid var(--border);border-radius:9px;line-height:1.5}.trainer-form>label small{font-size:10px;font-weight:400;color:#82919b;line-height:1.6}.trainer-form .password-field input{font-family:ui-monospace,Consolas,monospace;padding-right:90px}.trainer-form .password-field button{color:var(--gold);font-weight:650}.trainer-form>.button.primary{min-height:46px;justify-content:center}
+.trainer-list{display:grid}.trainer-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;border-top:1px solid var(--border);padding:16px 0}.trainer-row strong{font-size:13px}.trainer-row p{margin:0;font-size:11px;color:#8e9ca5;line-height:1.7;overflow-wrap:anywhere}.trainer-row code{font-size:10px;color:#b9c1c6}.trainer-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.trainer-actions .button{padding:8px 12px;font-size:11px}
+@media(max-width:760px){.trainer-row{grid-template-columns:1fr}.trainer-actions{justify-content:flex-start}}
+/* Coaching requests + trainer profiles */
+.request-note{font-style:italic;color:#b9c1c6}.request-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.request-actions .button{padding:8px 12px;font-size:11px}.requests-panel .recent-row{flex-wrap:wrap}
+.trainer-form textarea{width:100%;resize:vertical;min-height:72px}.trainer-profile-dialog{max-width:560px}.trainer-profile-dialog .dialog-heading{margin-bottom:6px}.check-row{display:flex!important;grid-template-columns:none;align-items:center;gap:10px;font-size:12px}.check-row input{width:18px;height:18px;accent-color:var(--gold)}
+
+/* =========================================================
+   POLISH LAYER — calmer, consistent motion (same black/gold palette)
+   One easing everywhere, no bounce, no endless pulsing.
+   ========================================================= */
+:root{--ease:cubic-bezier(.22,1,.36,1);--fast:.16s;--mid:.28s;--slow:.48s}
+
+@keyframes gfRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes gfPop{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+
+/* Pages: the view fades, its blocks rise one after another */
+.page-view:not([hidden]){animation:gfFadeIn var(--mid) ease both}
+.page-view:not([hidden])>*{animation:gfRise var(--slow) var(--ease) both}
+.page-view:not([hidden])>*:nth-child(2){animation-delay:.04s}
+.page-view:not([hidden])>*:nth-child(3){animation-delay:.08s}
+.page-view:not([hidden])>*:nth-child(4){animation-delay:.12s}
+.page-view:not([hidden])>*:nth-child(5){animation-delay:.16s}
+.page-view:not([hidden])>*:nth-child(6){animation-delay:.2s}
+.page-view:not([hidden])>*:nth-child(n+7){animation-delay:.24s}
+.stat-grid>*,.pulse-grid>*{animation:gfPop var(--slow) var(--ease) both}
+.stat-grid>*:nth-child(2),.pulse-grid>*:nth-child(2){animation-delay:.06s}
+.stat-grid>*:nth-child(3),.pulse-grid>*:nth-child(3){animation-delay:.12s}
+.stat-grid>*:nth-child(4){animation-delay:.18s}
+.recent-row,.trainer-row,#memberRows tr{animation:gfRise var(--mid) var(--ease) both}
+
+/* Surfaces: a faint top highlight gives depth without new colors */
+.panel,.stat-card,.pulse-card,.welcome-strip,.screen-intro,.directory-controls,.table-wrap{background-image:linear-gradient(180deg,#ffffff06,#ffffff00 42%)}
+.panel,.pulse-card,.new-member-card,.welcome-strip,.stat-card{transition:transform var(--mid) var(--ease),border-color var(--mid) ease,box-shadow var(--mid) ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 14px 30px -12px #000c;border-color:#f5b80066}
+.stat-card:hover i{transform:scale(1.1);transition-timing-function:var(--ease)}
+.pulse-card:hover,.new-member-card:hover{transform:translateY(-2px)}
+.panel:hover{border-color:#3a3f43}
+.badge.gold{animation:none;box-shadow:0 0 0 1px #f5b80033}
+
+/* Top bar: soft glass so content glides underneath */
+.topbar{position:sticky;top:0;z-index:20;background:#101112d9;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+
+/* Sidebar: gold rail slides in on the active item; no sideways jumps */
+.nav-button,.nav-button.active,.nav-button:hover:not(.active){transform:none}
+.nav-button{transition:background-color var(--mid) var(--ease),color var(--mid) ease,box-shadow var(--mid) ease}
+.nav-button::before{content:"";position:absolute;left:-14px;top:50%;width:3px;height:0;border-radius:3px;background:var(--gold);transform:translateY(-50%);transition:height var(--mid) var(--ease)}
+.nav-button.active::before{height:60%}
+.nav-button>span,.nav-button:hover>span{transform:none}
+.nav-button:hover:not(.active)>span{color:var(--gold)}
+
+/* Buttons and links: quick, smooth feedback */
+.button{transition:background-color var(--fast) ease,border-color var(--fast) ease,box-shadow var(--mid) ease,transform var(--fast) var(--ease)}
+.button.primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 10px 24px -8px #f5b800aa}
+.button.subtle:hover:not(:disabled){border-color:#f5b80055}
+.button:active:not(:disabled){transform:scale(.98)!important}
+.button span,.preview-link span{transition:transform var(--mid) var(--ease)}
+.text-link{transition:color var(--fast) ease,opacity var(--fast) ease}
+.text-link:hover{opacity:.85}
+
+/* Small hover details */
+.heat-day{transition:transform var(--fast) var(--ease),box-shadow var(--fast) ease,background var(--fast) ease}
+.heat-day:hover{transform:translateY(-2px) scale(1.06)}
+.chart-bar{animation-timing-function:var(--ease)}
+.recent-row,.trainer-row{transition:background-color var(--fast) ease}
+.recent-row:hover{background:#ffffff05}
+.recent-row:hover .member-avatar,tbody tr:hover .member-avatar{transform:scale(1.06);box-shadow:none}
+.brand:hover .brand-logo{transform:scale(1.04);filter:drop-shadow(0 0 8px #f5b80055)}
+
+/* Keyboard focus is always visible */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #f5b8002b}
+
+/* Dialogs rise in; backdrop softly blurs */
+dialog[open]{animation:gfPop var(--mid) var(--ease) both}
+dialog::backdrop{background:#000a;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:gfFadeIn var(--mid) ease both}
+
+/* Login: copy and form arrive in sequence */
+.login-card{animation:gfFadeIn var(--mid) ease both}
+.login-card>*{animation:gfRise var(--slow) var(--ease) both}
+.login-card>*:nth-child(2){animation-delay:.05s}.login-card>*:nth-child(3){animation-delay:.1s}.login-card>*:nth-child(4){animation-delay:.15s}
+.login-card>*:nth-child(n+5){animation-delay:.2s}
+.story-copy{animation:gfRise .7s var(--ease) both}
+.story-features{animation:gfFadeIn .9s ease .25s both}
+.story-features span:hover{transform:none}
+@media(max-width:1100px){.nav-button::before{left:-10px}}
+@media(max-width:760px){.nav-button::before{display:none}.topbar{position:sticky}}

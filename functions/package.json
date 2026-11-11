@@ -6,7 +6,7 @@
     "node": "22"
   },
   "scripts": {
-    "test": "node --test policy.test.js",
+    "test": "node --test policy.test.js create-admin.test.cjs",
     "check": "node --check index.js"
   },
   "dependencies": {

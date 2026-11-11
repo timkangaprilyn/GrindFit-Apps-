@@ -203,7 +203,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Meal Recommendations'), findsOneWidget);
+      expect(find.text('Meal Plan'), findsOneWidget);
+      await tester.ensureVisible(find.byTooltip('Save favorite').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Save favorite').first);
       await tester.pumpAndSettle();
       expect(store.value.favorites.length, 1);
@@ -220,6 +222,8 @@ void main() {
       await tester.tap(find.text('Favorites (1)'));
       await tester.pumpAndSettle();
       expect(find.text('SAVED MEAL'), findsOneWidget);
+      await tester.ensureVisible(find.byIcon(Icons.tune));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.tune));
       await tester.pumpAndSettle();
       expect(find.text('Meal preferences'), findsOneWidget);

@@ -1,12 +1,11 @@
-import {memberPage, csvCell} from './admin-utils.mjs';
+import {memberPage, csvCell, portalRedirect} from './admin-utils.mjs';
 import {setupInterface, renderExtras} from './admin-interface.js';
 import {firebaseConfig, supabaseConfig} from './admin-config.js';
-import {requestAdminData} from './admin-cloud.mjs';
+import {requestAdminData, requestStaff} from './admin-cloud.mjs';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
@@ -24,21 +23,36 @@ import {
   updateDoc,
   serverTimestamp,
   where,
+  writeBatch,
+  increment,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {countMoves, trainerCounts, cleanTrainerProfile, sortRequests} from './admin-coaching.mjs';
 
 const app = initializeApp(firebaseConfig);
+async function callStaff(action, data = {}) {
+  const token = await state.user?.getIdToken();
+  return requestStaff({config: supabaseConfig, token, body: {...data, action}});
+}
 const auth = getAuth(app);
 const db = getFirestore(app);
 const $ = (id) => document.getElementById(id);
+// admin.html and trainer.html share this module; body[data-portal] picks the mode.
+const portal = document.body.dataset.portal === 'trainer' ? 'trainer' : 'admin';
+function setField(id, property, value) {
+  const element = $(id);
+  if (element) element[property] = value;
+}
 const state = {
   user: null,
   isAdmin: false,
   members: [],
+  trainers: [],
+  // Public trainer profiles (trainers/{uid}) shown to members in the app.
+  profiles: new Map(),
   page: 1,
   settings: { inactiveDays: 14, injuryThreshold: 3 },
 };
 
-const loginView = $("loginView");
 const adminView = $("adminView");
 const pageError = $("pageError");
 const memberDialog = $("memberDialog");
@@ -49,6 +63,7 @@ async function checkSupabase() {
   const owner = state.user?.uid;
   const version = ++connectionVersion;
   const status = $('supabaseConnection');
+  if (!status) return;
   if (!state.isAdmin) {
     status.textContent = 'Admin access required · trainer view uses Firebase';
     status.removeAttribute('data-state');
@@ -75,6 +90,7 @@ async function loadCloudMember(uid) {
   const owner = state.user?.uid;
   const status = $('cloudMemberStatus');
   const target = $('cloudMemberData');
+  if (!status || !target) return;
   target.replaceChildren();
   $('retryCloudMember').disabled = !state.isAdmin;
   if (!state.isAdmin || !owner) {
@@ -122,7 +138,7 @@ async function loadCloudMember(uid) {
   }
 }
 
-$('retryCloudMember').addEventListener('click', () => { if (activeMemberUid) loadCloudMember(activeMemberUid); });
+$('retryCloudMember')?.addEventListener('click', () => { if (activeMemberUid) loadCloudMember(activeMemberUid); });
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -239,7 +255,10 @@ async function getLatestWorkoutDate(uid, until) {
 }
 
 async function loadMembers() {
-  const users = await getDocs(collection(db, "users"));
+  // Trainers only see members an admin assigned to them via users/{uid}.trainerUid.
+  const users = await getDocs(portal === "trainer"
+    ? query(collection(db, "users"), where("trainerUid", "==", state.user.uid))
+    : collection(db, "users"));
   const memberProfiles = users.docs
     .map((snapshot) => ({ id: snapshot.id, ...snapshot.data() }))
     .filter((profile) => !["admin", "trainer"].includes(
@@ -385,7 +404,7 @@ async function openMember(uid) {
   $("cancelCoachEditButton").hidden = true;
   $("coachNoteStatus").textContent = "";
   $("coachAssignment").hidden = !state.isAdmin;
-  $("trainerUid").value = member.trainerUid || "";
+  fillTrainerSelect(member.trainerUid || "");
   $("saveCoachNoteButton").disabled = !state.isAdmin && member.trainerUid !== state.user?.uid;
   loadCoachNotes(uid);
   $("detailName").textContent = member.fullName || member.email || "Member";
@@ -442,6 +461,8 @@ async function refreshDashboard() {
     if (state.user?.uid !== owner) return;
     state.members = members;
     renderDashboard();
+    await syncTrainerCounts();
+    renderTrainers();
     $("firebaseConnection").textContent = 'Connected · latest member data loaded';
     $("firebaseConnection").dataset.state = 'ready';
     checkSupabase();
@@ -466,14 +487,14 @@ async function loadSettings() {
       injuryThreshold: boundedSetting(settings.injuryThreshold, 3, 1, 14),
     };
   }
-  $("inactiveDays").value = state.settings.inactiveDays;
-  $("injuryThreshold").value = state.settings.injuryThreshold;
-  $("saveSettingsButton").hidden = !state.isAdmin;
-  $("settingsAccessNotice").hidden = state.isAdmin;
-  $("inactiveDays").readOnly = !state.isAdmin;
-  $("injuryThreshold").readOnly = !state.isAdmin;
-  $("adminAccountInfo").textContent =
-    `Signed in as ${state.user.email || "staff account"}. This account's access is verified using Firebase Authentication custom claims. Claims for other accounts cannot be listed or changed here; use a trusted Firebase Admin SDK environment.`;
+  setField("inactiveDays", "value", state.settings.inactiveDays);
+  setField("injuryThreshold", "value", state.settings.injuryThreshold);
+  setField("saveSettingsButton", "hidden", !state.isAdmin);
+  setField("settingsAccessNotice", "hidden", state.isAdmin);
+  setField("inactiveDays", "readOnly", !state.isAdmin);
+  setField("injuryThreshold", "readOnly", !state.isAdmin);
+  setField("adminAccountInfo", "textContent",
+    `Signed in as ${state.user.email || "staff account"}. This account's access is verified using Firebase Authentication custom claims. Claims for other accounts cannot be listed or changed here; use a trusted Firebase Admin SDK environment.`);
 }
 
 async function saveSettings() {
@@ -550,90 +571,49 @@ async function exportReport() {
 }
 
 function showAdmin() {
-  loginView.hidden = true;
   adminView.hidden = false;
   $("adminEmail").textContent = state.user.email || "";
-  $("staffRole").textContent = state.isAdmin ? 'Admin' : 'Trainer';
+  $("staffRole").textContent = portal === "trainer" ? "Trainer" : "Admin";
 }
 
-function showLogin(message = "") {
-  adminView.hidden = true;
-  loginView.hidden = false;
-  $("loginError").textContent = message;
-}
-
+// Sign-in lives on login.html. This page only runs for a verified staff session.
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     state.user = null;
-    state.isAdmin = false;
-    state.members = [];
-    activeMemberUid = null;
-    editingNoteId = null;
-    memberDialog.close();
-    $("password").value = '';
-    $("coachNoteText").value = '';
-    cloudRequestVersion++;
-    connectionVersion++;
-    $("cloudMemberData").replaceChildren();
-    $("firebaseConnection").textContent = 'Sign in to verify connection';
-    $("supabaseConnection").textContent = 'Sign in with admin access to verify';
-    $("firebaseConnection").removeAttribute('data-state');
-    $("supabaseConnection").removeAttribute('data-state');
-    renderDashboard();
-    $("lastUpdated").textContent = 'Sign in to load member data';
-    showLogin();
+    adminView.hidden = true;
+    location.replace("./login.html");
     return;
   }
   try {
     const token = await user.getIdTokenResult(true);
     if (auth.currentUser?.uid !== user.uid) return;
-    if (token.claims.admin !== true && token.claims.trainer !== true) {
-      state.isAdmin = false;
-      await signOut(auth);
-      showLogin("This account does not have admin or trainer access.");
+    const redirect = portalRedirect(portal, token.claims);
+    if (redirect) {
+      if (redirect.startsWith("login.html")) await signOut(auth);
+      location.replace(`./${redirect}`);
       return;
     }
     state.user = user;
     state.isAdmin = token.claims.admin === true;
     showAdmin();
     await loadSettings();
+    await loadTrainerProfiles();
+    if (state.isAdmin && $("trainerList")) loadTrainers();
+    loadRequests();
     await refreshDashboard();
   } catch (error) {
+    adminView.hidden = false;
     showError(error.message || "Could not verify staff access.");
-    showLogin(error.message || "Could not verify staff access.");
-  }
-});
-
-$("loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  $("loginButton").disabled = true;
-  $("loginError").textContent = "";
-  try {
-    await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
-  } catch (error) {
-    $("loginError").textContent = error.code === "auth/invalid-credential" ||
-        error.code === "auth/wrong-password" ||
-        error.code === "auth/user-not-found"
-      ? "Hindi tama ang email o password, o wala pang account na may ganitong email sa Firebase Authentication."
-      : error.code === "auth/invalid-email"
-        ? "Pakisuri ang email address."
-        : error.code === "auth/too-many-requests"
-          ? "Masyadong maraming pagtatangka. Maghintay muna bago subukan ulit."
-          : error.code === "auth/network-request-failed"
-            ? "Walang koneksyon sa Firebase. Suriin ang internet at subukan ulit."
-            : error.message || "Hindi makapag-sign in. Subukan ulit.";
-  } finally {
-    $("loginButton").disabled = false;
   }
 });
 
 $("logoutButton").addEventListener("click", () => signOut(auth));
-$("refreshButton").addEventListener("click", refreshDashboard);
+$("refreshButton").addEventListener("click", () => { loadRequests(); refreshDashboard(); });
 function resetMemberPage() { state.page = 1; renderMembers(); }
 $("memberSearch").addEventListener("input", resetMemberPage);
 $("memberFilter").addEventListener("change", resetMemberPage);
 $("memberSort").addEventListener("change", resetMemberPage);
-$("saveSettingsButton").addEventListener("click", saveSettings);
+$("saveSettingsButton")?.addEventListener("click", saveSettings);
 $("exportButton").addEventListener("click", exportReport);
 $("closeDialog").addEventListener("click", () => memberDialog.close());
 setupInterface({onPage: (delta) => { state.page += delta; renderMembers(); }, onClear: resetMemberPage});
@@ -706,10 +686,323 @@ $("assignTrainerButton").addEventListener("click", async () => {
   $("assignTrainerButton").disabled = true;
   try {
     const trainerUid = $("trainerUid").value.trim();
-    await updateDoc(doc(db, "users", uid), { trainerUid });
     const member = state.members.find((item) => item.id === uid);
+    const previous = member?.trainerUid || "";
+    const batch = writeBatch(db);
+    batch.update(doc(db, "users", uid), { trainerUid });
+    addCountMoves(batch, uid, previous, trainerUid);
+    await batch.commit();
+    applyCountMoves(previous, trainerUid);
     if (member) member.trainerUid = trainerUid;
+    renderTrainers();
     $("coachNoteStatus").textContent = "Trainer assignment saved.";
   } catch (error) { $("coachNoteStatus").textContent = error.message || "Could not save assignment."; }
   finally { $("assignTrainerButton").disabled = false; }
 });
+
+// ---- Trainer profiles and member counts (trainers/{uid}). Firestore rules only
+// let staff move a count by one when the same batch moves that member.
+async function loadTrainerProfiles() {
+  try {
+    const snapshot = await getDocs(collection(db, "trainers"));
+    state.profiles = new Map(snapshot.docs.map((item) => [item.id, item.data()]));
+  } catch (_) {
+    state.profiles = new Map();
+  }
+}
+
+function addCountMoves(batch, memberUid, previousUid, nextUid) {
+  for (const {uid, delta} of countMoves(previousUid, nextUid, new Set(state.profiles.keys()))) {
+    batch.update(doc(db, "trainers", uid), { memberCount: increment(delta), lastChange: memberUid, updatedAt: serverTimestamp() });
+  }
+}
+
+function applyCountMoves(previousUid, nextUid) {
+  for (const {uid, delta} of countMoves(previousUid, nextUid, new Set(state.profiles.keys()))) {
+    const profile = state.profiles.get(uid);
+    profile.memberCount = Math.max(0, (profile.memberCount ?? 0) + delta);
+  }
+}
+
+// Admins re-sync stored counts with actual assignments (self-healing).
+async function syncTrainerCounts() {
+  if (!state.isAdmin || portal !== "admin" || !state.profiles.size) return;
+  const counts = trainerCounts(state.members, new Set(state.profiles.keys()));
+  const batch = writeBatch(db);
+  let changed = 0;
+  for (const [uid, count] of counts) {
+    const profile = state.profiles.get(uid);
+    if (profile.memberCount === count) continue;
+    batch.update(doc(db, "trainers", uid), { memberCount: count, updatedAt: serverTimestamp() });
+    profile.memberCount = count;
+    changed++;
+  }
+  if (changed) await batch.commit().catch(() => {});
+}
+
+// ---- Coaching requests from the app (trainer_requests/{memberUid}).
+async function loadRequests() {
+  const list = $("requestList");
+  if (!list || !state.user) return;
+  const owner = state.user.uid;
+  const mine = portal === "trainer" || !state.isAdmin;
+  const constraints = [where("status", "==", "pending")];
+  if (mine) constraints.unshift(where("trainerUid", "==", owner));
+  try {
+    const snapshot = await getDocs(query(collection(db, "trainer_requests"), ...constraints));
+    if (state.user?.uid !== owner) return;
+    renderRequests(sortRequests(snapshot.docs.map((item) => ({id: item.id, ...item.data()}))), mine);
+  } catch (error) {
+    if (state.user?.uid !== owner) return;
+    $("requestCount").textContent = "Unavailable";
+    list.innerHTML = `<div class="empty-state">${escapeHtml(error.code === "permission-denied" ? "Requests need the latest Firestore rules. Deploy firestore.rules, then refresh." : error.message || "Could not load requests.")}</div>`;
+  }
+}
+
+function renderRequests(requests, mine) {
+  $("requestCount").textContent = `${requests.length} pending`;
+  $("requestStatus").textContent = "";
+  if (!requests.length) {
+    $("requestList").innerHTML = `<div class="empty-state">${mine ? "No members are waiting for you right now." : "No pending coaching requests."}</div>`;
+    return;
+  }
+  $("requestList").innerHTML = requests.map((request) => `<div class="recent-row">
+      <span class="member-avatar" aria-hidden="true">${escapeHtml((request.memberName || "M").trim().slice(0, 2).toUpperCase())}</span>
+      <div class="recent-info"><strong>${escapeHtml(request.memberName || "Member")}</strong>
+        <p>${mine ? "" : `Requested <b>${escapeHtml(request.trainerName || "a trainer")}</b> · `}${escapeHtml(formatDate(request.createdAt))}</p>
+        ${request.note ? `<p class="request-note">“${escapeHtml(request.note)}”</p>` : ""}</div>
+      <div class="request-actions">
+        <button class="button primary" type="button" data-request="${escapeHtml(request.id)}" data-decision="approved">Approve</button>
+        <button class="button subtle" type="button" data-request="${escapeHtml(request.id)}" data-decision="declined">Decline</button>
+      </div>
+    </div>`).join("");
+  $("requestList").querySelectorAll("[data-request]").forEach((button) => button.addEventListener("click", () => {
+    decideRequest(requests.find((item) => item.id === button.dataset.request), button.dataset.decision);
+  }));
+}
+
+async function decideRequest(request, decision) {
+  if (!request) return;
+  const status = $("requestStatus");
+  $("requestList").querySelectorAll("button").forEach((button) => { button.disabled = true; });
+  status.textContent = decision === "approved" ? "Approving…" : "Declining…";
+  try {
+    const requestRef = doc(db, "trainer_requests", request.id);
+    const decided = { status: decision, decidedBy: state.user.uid, updatedAt: serverTimestamp() };
+    if (decision === "declined") {
+      await updateDoc(requestRef, decided);
+    } else {
+      // Approve and assign in one batch, as firestore.rules requires.
+      const memberSnapshot = await getDoc(doc(db, "users", request.memberUid));
+      if (!memberSnapshot.exists()) throw new Error("This member profile no longer exists.");
+      const previous = memberSnapshot.data().trainerUid || "";
+      const batch = writeBatch(db);
+      batch.update(requestRef, decided);
+      batch.update(doc(db, "users", request.memberUid), { trainerUid: request.trainerUid });
+      addCountMoves(batch, request.memberUid, previous, request.trainerUid);
+      await batch.commit();
+      applyCountMoves(previous, request.trainerUid);
+    }
+    status.textContent = decision === "approved"
+      ? `${request.memberName || "Member"} is now assigned to ${request.trainerName || "the trainer"}.`
+      : `Request from ${request.memberName || "member"} declined.`;
+    await loadRequests();
+    if (decision === "approved") await refreshDashboard();
+  } catch (error) {
+    status.textContent = error.code === "permission-denied"
+      ? "Not allowed. The request may have been cancelled or already decided. Refresh and try again."
+      : error.message || "Could not update the request.";
+    $("requestList").querySelectorAll("button").forEach((button) => { button.disabled = false; });
+  }
+}
+
+// ---- Trainers page (admin only). Accounts are created by the Supabase
+// admin-staff function, which verifies the Firebase admin claim itself.
+function staffErrorMessage(error) {
+  return error?.message || "Could not complete the request.";
+}
+
+function trainerLabel(trainer) {
+  return trainer.displayName ? `${trainer.displayName} · ${trainer.email}` : trainer.email || trainer.uid;
+}
+
+function fillTrainerSelect(selectedUid) {
+  const select = $("trainerUid");
+  if (!select) return;
+  if (select.tagName !== "SELECT") { select.value = selectedUid; return; }
+  const options = [new Option("Not assigned", "")];
+  for (const trainer of state.trainers) {
+    options.push(new Option(`${trainerLabel(trainer)}${trainer.disabled ? " (disabled)" : ""}`, trainer.uid));
+  }
+  // Keep an assignment visible even if the trainer list could not be loaded.
+  if (selectedUid && !state.trainers.some((trainer) => trainer.uid === selectedUid)) {
+    options.push(new Option(`Unknown trainer · ${selectedUid}`, selectedUid));
+  }
+  select.replaceChildren(...options);
+  select.value = selectedUid;
+}
+
+function renderTrainers() {
+  const list = $("trainerList");
+  if (!list) return;
+  if (!state.trainers.length) {
+    list.innerHTML = '<div class="empty-state">No trainer accounts yet. Create one using the form.</div>';
+    return;
+  }
+  list.innerHTML = state.trainers.map((trainer) => {
+    const assigned = state.members.filter((member) => member.trainerUid === trainer.uid).length;
+    const profile = state.profiles.get(trainer.uid);
+    const appBadge = !profile
+      ? '<span class="badge alert">Not in app</span>'
+      : profile.active ? '<span class="badge gold">Shown in app</span>' : '<span class="badge clear">Hidden in app</span>';
+    return `<div class="trainer-row">
+      <div><strong>${escapeHtml(profile?.displayName || trainer.displayName || "Trainer")}</strong>
+        <p>${escapeHtml(trainer.email)} · ${assigned} assigned ${assigned === 1 ? "member" : "members"}${profile?.specialty ? ` · ${escapeHtml(profile.specialty)}` : ""}</p>
+        ${profile ? "" : '<p>Add a profile so members can request this trainer in the app.</p>'}
+        <p><code>${escapeHtml(trainer.uid)}</code></p></div>
+      <div class="trainer-actions">
+        ${appBadge}
+        <span class="badge ${trainer.disabled ? "alert" : "clear"}">${trainer.disabled ? "Login disabled" : "Login active"}</span>
+        <button class="button subtle" type="button" data-trainer-profile="${escapeHtml(trainer.uid)}">${profile ? "Edit profile" : "Add profile"}</button>
+        <button class="button subtle" type="button" data-trainer-toggle="${escapeHtml(trainer.uid)}" data-disable="${trainer.disabled ? "false" : "true"}">${trainer.disabled ? "Enable" : "Disable"}</button>
+      </div>
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-trainer-toggle]").forEach((button) => button.addEventListener("click", () => toggleTrainer(button)));
+  list.querySelectorAll("[data-trainer-profile]").forEach((button) => button.addEventListener("click", () => openTrainerProfile(button.dataset.trainerProfile)));
+}
+
+let editingProfileUid = null;
+function openTrainerProfile(uid) {
+  const trainer = state.trainers.find((item) => item.uid === uid);
+  const profile = state.profiles.get(uid);
+  editingProfileUid = uid;
+  $("profileAccount").textContent = trainer ? `Login: ${trainer.email}` : "";
+  $("profileName").value = profile?.displayName || trainer?.displayName || "";
+  $("profileSpecialty").value = profile?.specialty || "";
+  $("profileBio").value = profile?.bio || "";
+  $("profileActive").checked = profile ? profile.active === true : !trainer?.disabled;
+  $("profileStatus").textContent = "";
+  $("trainerProfileDialog").showModal();
+}
+
+async function saveTrainerProfile(uid, fields) {
+  const clean = cleanTrainerProfile(fields);
+  const count = state.members.filter((member) => member.trainerUid === uid).length;
+  const data = { ...clean, memberCount: count, updatedAt: serverTimestamp() };
+  await setDoc(doc(db, "trainers", uid), data, { merge: true });
+  state.profiles.set(uid, { ...(state.profiles.get(uid) || {}), ...clean, memberCount: count });
+}
+
+if ($("trainerProfileForm")) {
+  $("closeProfileDialog").addEventListener("click", () => $("trainerProfileDialog").close());
+  $("trainerProfileForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.isAdmin || !editingProfileUid) return;
+    $("saveProfileButton").disabled = true;
+    $("profileStatus").textContent = "Saving…";
+    try {
+      await saveTrainerProfile(editingProfileUid, {
+        displayName: $("profileName").value, specialty: $("profileSpecialty").value,
+        bio: $("profileBio").value, active: $("profileActive").checked,
+      });
+      $("trainerProfileDialog").close();
+      $("trainerListStatus").textContent = "Trainer profile saved. Members see the change in the app right away.";
+      renderTrainers();
+    } catch (error) {
+      $("profileStatus").textContent = error.message || "Could not save the profile.";
+    } finally {
+      $("saveProfileButton").disabled = false;
+    }
+  });
+}
+
+async function loadTrainers() {
+  if (!state.isAdmin || !$("trainerList")) return;
+  const owner = state.user?.uid;
+  $("trainerListStatus").textContent = "Loading trainers…";
+  $("refreshTrainersButton").disabled = true;
+  try {
+    const result = await callStaff("list");
+    if (state.user?.uid !== owner) return;
+    state.trainers = Array.isArray(result?.trainers) ? result.trainers : [];
+    $("trainerListStatus").textContent = `${state.trainers.length} trainer ${state.trainers.length === 1 ? "account" : "accounts"}. Assign members from each member profile.`;
+    renderTrainers();
+  } catch (error) {
+    if (state.user?.uid !== owner) return;
+    $("trainerListStatus").textContent = staffErrorMessage(error);
+  } finally {
+    $("refreshTrainersButton").disabled = false;
+  }
+}
+
+async function toggleTrainer(button) {
+  const uid = button.dataset.trainerToggle;
+  const disabled = button.dataset.disable === "true";
+  const trainer = state.trainers.find((item) => item.uid === uid);
+  if (disabled && !confirm(`Disable ${trainer ? trainerLabel(trainer) : "this trainer"}? They will be signed out and cannot sign in until enabled again.`)) return;
+  button.disabled = true;
+  try {
+    const updated = await callStaff("set-disabled", {uid, disabled});
+    state.trainers = state.trainers.map((item) => item.uid === uid ? updated : item);
+    // A disabled login is hidden from the app so members cannot request it.
+    const profile = state.profiles.get(uid);
+    if (profile && disabled && profile.active) {
+      await updateDoc(doc(db, "trainers", uid), { active: false, updatedAt: serverTimestamp() });
+      profile.active = false;
+    }
+    $("trainerListStatus").textContent = `${trainerLabel(updated)} is now ${updated.disabled ? "disabled" : "active"}.`;
+    renderTrainers();
+  } catch (error) {
+    $("trainerListStatus").textContent = staffErrorMessage(error);
+    button.disabled = false;
+  }
+}
+
+function generatePassword() {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const all = letters + digits;
+  const bytes = crypto.getRandomValues(new Uint32Array(16));
+  let password = "";
+  for (const value of bytes) password += all[value % all.length];
+  // Guarantee at least one letter and one digit.
+  return letters[bytes[0] % letters.length] + password.slice(2) + digits[bytes[1] % digits.length];
+}
+
+if ($("trainerForm")) {
+  $("generatePassword").addEventListener("click", () => {
+    $("trainerPassword").value = generatePassword();
+    $("trainerPassword").select();
+  });
+  $("refreshTrainersButton").addEventListener("click", loadTrainers);
+  $("trainerForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.isAdmin) return;
+    const status = $("trainerFormStatus");
+    $("createTrainerButton").disabled = true;
+    status.textContent = "Creating trainer account…";
+    try {
+      const created = await callStaff("create", {
+        displayName: $("trainerName").value,
+        email: $("trainerEmail").value,
+        password: $("trainerPassword").value,
+      });
+      let profileNote = " They are now listed in the app for members to request.";
+      try {
+        await saveTrainerProfile(created.uid, {
+          displayName: created.displayName, specialty: $("trainerSpecialty").value, bio: $("trainerBio").value, active: true,
+        });
+      } catch (_) {
+        profileNote = " The app profile could not be saved yet; use Add profile in the list.";
+      }
+      status.textContent = `Trainer account created for ${created.email}. Give them the password privately; they sign in at the staff login page.${profileNote}`;
+      $("trainerForm").reset();
+      await loadTrainers();
+    } catch (error) {
+      status.textContent = staffErrorMessage(error);
+    } finally {
+      $("createTrainerButton").disabled = false;
+    }
+  });
+}

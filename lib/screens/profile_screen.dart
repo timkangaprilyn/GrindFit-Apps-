@@ -4,10 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
 import '../widgets/phone_notification_controls.dart';
+import '../widgets/online_only.dart';
+import '../services/network_status.dart';
+import '../services/offline_store.dart';
 
 // Walang sariling bottomNavigationBar dito: ang MainNavigationScreen (shell)
 // ang may hawak ng iisang navbar.
@@ -297,7 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: staggered([
                     const Text(
                       'Profile',
                       style: TextStyle(
@@ -372,7 +376,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 22),
                     _buildLogoutTile(),
                     const SizedBox(height: 12),
-                  ],
+                  ]),
                 ),
               ),
             ),
@@ -1851,6 +1855,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ───────────────────────── Change password ─────────────────────────
 
   void _changePassword() {
+    if (!requireOnline(context, 'Changing your password')) return;
     final user = _user;
     if (user == null || user.email == null) {
       _snack('You need to be signed in to change your password.', error: true);
@@ -2027,6 +2032,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _confirmDeleteMyData() async {
+    if (!requireOnline(context, 'Deleting your data')) return;
     final user = _user;
     if (user == null) {
       _snack('You need to be signed in to delete your data.', error: true);
@@ -2321,6 +2327,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ───────────────────────── Log out ─────────────────────────
 
   Future<void> _confirmLogout() async {
+    var unsynced = 0;
+    try {
+      unsynced = OfflineStore.instance.pendingCount;
+    } catch (_) {}
+    if (NetworkStatus.instance.offline && unsynced > 0) {
+      _snack(
+        'You have $unsynced offline change(s) that have not synced yet. Connect to the internet before logging out so they are recorded.',
+        error: true,
+      );
+      return;
+    }
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

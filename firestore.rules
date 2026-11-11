@@ -11,11 +11,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return signedIn() && request.auth.token.get('admin', false) == true;
     }
 
     function isTrainer() {
-      return signedIn() && request.auth.token.trainer == true;
+      return signedIn() && request.auth.token.get('trainer', false) == true;
     }
 
     function isStaff() {
@@ -34,6 +34,22 @@ service cloud.firestore {
         && !('trainerUid' in data);
     }
 
+    function requestPath(memberUid) {
+      return /databases/$(database)/documents/trainer_requests/$(memberUid);
+    }
+
+    // A trainer may assign a member to themself only in the same batch that
+    // approves that member's pending request addressed to them.
+    function trainerApprovesRequest(uid) {
+      return isTrainer()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trainerUid'])
+        && request.resource.data.trainerUid == request.auth.uid
+        && exists(requestPath(uid))
+        && get(requestPath(uid)).data.status == 'pending'
+        && get(requestPath(uid)).data.trainerUid == request.auth.uid
+        && getAfter(requestPath(uid)).data.status == 'approved';
+    }
+
     match /users/{uid} {
       allow read: if isOwner(uid) || isStaff();
       allow create: if isOwner(uid)
@@ -41,10 +57,11 @@ service cloud.firestore {
         && (!('uid' in request.resource.data)
           || request.resource.data.uid == uid);
       allow update: if isAdmin()
+        || trainerApprovesRequest(uid)
         || (isOwner(uid)
-          && request.resource.data.diff(resource.data)
+          && !request.resource.data.diff(resource.data)
             .affectedKeys()
-            .hasNone(['role', 'isAdmin', 'admin', 'trainerUid'])
+            .hasAny(['role', 'isAdmin', 'admin', 'trainerUid'])
           && (!('uid' in request.resource.data)
             || request.resource.data.uid == uid));
       allow delete: if isOwner(uid) || isAdmin();
@@ -98,6 +115,84 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)/challenge/current).data.optedIn == true
         && get(/databases/$(database)/documents/users/$(request.auth.uid)/challenge/current).data.month == month;
       allow write: if false;
+    }
+
+    // Public trainer directory shown to members in the app. Profiles are
+    // written by admins; staff may only move memberCount by one when the
+    // same batch moves users/{lastChange}.trainerUid onto or off this trainer.
+    function trainerPath(trainerUid) {
+      return /databases/$(database)/documents/trainers/$(trainerUid);
+    }
+
+    function validTrainerProfile(data) {
+      return data.keys().hasOnly(['displayName', 'specialty', 'bio', 'active', 'memberCount', 'lastChange', 'updatedAt'])
+        && data.displayName is string && data.displayName.size() >= 2 && data.displayName.size() <= 80
+        && (!('specialty' in data) || (data.specialty is string && data.specialty.size() <= 60))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 400))
+        && data.active is bool
+        && (!('memberCount' in data) || (data.memberCount is int && data.memberCount >= 0));
+    }
+
+    function countMoveIsReal(trainerUid) {
+      let memberUid = request.resource.data.lastChange;
+      let before = get(/databases/$(database)/documents/users/$(memberUid)).data;
+      let after = getAfter(/databases/$(database)/documents/users/$(memberUid)).data;
+      let wasHere = before.get('trainerUid', '') == trainerUid;
+      let isHere = after.get('trainerUid', '') == trainerUid;
+      return memberUid is string
+        && ((request.resource.data.memberCount == resource.data.get('memberCount', 0) + 1 && !wasHere && isHere)
+          || (request.resource.data.memberCount == resource.data.get('memberCount', 0) - 1 && wasHere && !isHere));
+    }
+
+    match /trainers/{trainerUid} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && validTrainerProfile(request.resource.data);
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount', 'lastChange', 'updatedAt'])
+        && request.resource.data.memberCount is int
+        && request.resource.data.memberCount >= 0
+        && countMoveIsReal(trainerUid);
+      allow delete: if isAdmin();
+    }
+
+    // One current coaching request per member (document ID = member UID).
+    function validNewRequest(memberUid, data) {
+      return data.keys().hasOnly(['memberUid', 'memberName', 'trainerUid', 'trainerName', 'note', 'status', 'createdAt', 'updatedAt'])
+        && data.memberUid == memberUid
+        && data.status == 'pending'
+        && data.trainerUid is string
+        && exists(trainerPath(data.trainerUid))
+        && get(trainerPath(data.trainerUid)).data.active == true
+        && data.memberName is string && data.memberName.size() <= 80
+        && data.trainerName is string && data.trainerName.size() <= 80
+        && (!('note' in data) || (data.note is string && data.note.size() <= 300))
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    match /trainer_requests/{memberUid} {
+      allow read: if isOwner(memberUid)
+        || isAdmin()
+        || (isTrainer() && resource.data.trainerUid == request.auth.uid);
+      // Members send a new request, or replace any earlier one.
+      allow create, update: if isOwner(memberUid) && validNewRequest(memberUid, request.resource.data);
+      // Members may cancel while pending.
+      allow update: if isOwner(memberUid)
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      // The requested trainer, or an admin, decides. Approval must assign the
+      // member to that trainer in the same batch.
+      allow update: if (isAdmin() || (isTrainer() && resource.data.trainerUid == request.auth.uid))
+        && resource.data.status == 'pending'
+        && request.resource.data.status in ['approved', 'declined']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'decidedBy'])
+        && request.resource.data.decidedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && (request.resource.data.status == 'declined'
+          || getAfter(/databases/$(database)/documents/users/$(memberUid)).data.get('trainerUid', '') == resource.data.trainerUid);
+      allow delete: if isAdmin();
     }
 
     match /admin_settings/{documentId} {

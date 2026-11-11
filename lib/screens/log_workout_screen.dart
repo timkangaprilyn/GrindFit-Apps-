@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
 import '../models/workout_plan.dart';
 import 'manual_log_workout_screen.dart';
@@ -143,21 +144,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     setState(() => _isSavingPlan = true);
     try {
       final state = AppState.instance;
-      final overrides = _planOverrides();
+      // Changes apply to today's workout only; the program keeps progressing
+      // on its own from tomorrow.
+      state.setTodayAdjustments(_planOverrides());
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'workoutPlanOverrides': {
-          '${state.fitnessGoal}|${state.workoutEnvironment}': overrides,
-        },
+        'todayPlan': state.todayPlanJson,
       }, SetOptions(merge: true));
-      state.updateWorkoutPlanOverrides(
-        goal: state.fitnessGoal,
-        environment: state.workoutEnvironment,
-        overrides: overrides,
-      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Workout saved to your plan.'),
+          content: Text("Saved for today's workout."),
           backgroundColor: Colors.green,
         ),
       );
@@ -288,7 +284,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 40.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: staggered([
                   ..._exercises.asMap().entries.map((entry) {
                     int idx = entry.key;
                     var ex = entry.value;
@@ -301,7 +297,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                           _loadExerciseValues(idx);
                         });
                       },
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: Motion.medium,
+                        curve: Motion.curve,
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -655,7 +653,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                ],
+                ]),
               ),
             ),
           ),

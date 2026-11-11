@@ -6,8 +6,10 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../animations/motion.dart';
 import '../models/app_state.dart';
 import '../widgets/sync_status.dart';
+import '../widgets/online_only.dart';
 import '../services/app_notifications.dart';
 import 'home_dashboard_screen.dart';
 import 'ai_recommendations_screen.dart';
@@ -41,11 +43,17 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _activity;
   late final AnimationController _tabController = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 180),
+    duration: const Duration(milliseconds: 260),
     value: 1,
   );
   late final Animation<double> _tabFade = _tabController.drive(
-    Tween(begin: .85, end: 1.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+    Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+  );
+  late final Animation<Offset> _tabSlide = _tabController.drive(
+    Tween(
+      begin: const Offset(0, .018),
+      end: Offset.zero,
+    ).chain(CurveTween(curve: Curves.easeOutCubic)),
   );
 
   @override
@@ -94,10 +102,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
 
   // Black + Gold + White palette
   static const Color _bg = Color(0xFF121212); // Charcoal background
-  static const Color _card = Color(0xFF1C1C1E); // Bottom Nav surface
-  static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800); // Gold highlight
-  static const Color _gray = Color(0xFF9CA3AF); // Secondary text
 
   static const List<Widget> _tabs = [
     HomeDashboardScreen(),
@@ -170,64 +175,34 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
             Expanded(
               child: FadeTransition(
                 opacity: _tabFade,
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: [
-                    for (var i = 0; i < _tabs.length; i++)
-                      TickerMode(
-                        enabled: i == _currentIndex,
-                        child: RepaintBoundary(child: _tabs[i]),
-                      ),
-                  ],
+                child: SlideTransition(
+                  position: _tabSlide,
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      for (var i = 0; i < _tabs.length; i++)
+                        TickerMode(
+                          enabled: i == _currentIndex,
+                          child: RepaintBoundary(child: _tabs[i]),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
+            const OfflineBanner(),
           ],
         ),
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            color: _card,
-            border: Border(top: BorderSide(color: _border, width: 1)),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: goToTab,
-            backgroundColor: Colors.transparent,
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: _gold,
-            unselectedItemColor: _gray,
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-            elevation: 0,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_rounded),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.fitness_center),
-                label: 'Workouts',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.receipt_long_rounded),
-                label: 'Log',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.bar_chart_rounded),
-                label: 'Analytics',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_rounded),
-                label: 'Profile',
-              ),
-            ],
-          ),
+        bottomNavigationBar: GrindFitNavBar(
+          currentIndex: _currentIndex,
+          onTap: goToTab,
+          items: const [
+            (icon: Icons.home_rounded, label: 'Home'),
+            (icon: Icons.fitness_center_rounded, label: 'Workouts'),
+            (icon: Icons.receipt_long_rounded, label: 'Log'),
+            (icon: Icons.bar_chart_rounded, label: 'Analytics'),
+            (icon: Icons.person_rounded, label: 'Profile'),
+          ],
         ),
       ),
     );

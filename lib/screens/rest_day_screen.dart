@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/animations/motion.dart';
 import 'package:intl/intl.dart';
+
 import 'home_dashboard_screen.dart';
 import 'ai_recommendations_screen.dart';
 import 'log_workout_screen.dart';
@@ -116,7 +118,7 @@ class _RestDayScreenState extends State<RestDayScreen>
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
+                children: staggered([
                   // Back button
                   Align(
                     alignment: Alignment.centerLeft,
@@ -198,7 +200,7 @@ class _RestDayScreenState extends State<RestDayScreen>
 
                   // Get It button
                   _reveal(5, _buildGetItButton()),
-                ],
+                ]),
               ),
             ),
           ),
@@ -285,8 +287,11 @@ class _RestDayScreenState extends State<RestDayScreen>
                 right: 22,
                 child: Opacity(
                   opacity: 0.55 + 0.45 * t,
-                  child: const Icon(Icons.auto_awesome_rounded,
-                      color: _goldLight, size: 20),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: _goldLight,
+                    size: 20,
+                  ),
                 ),
               ),
               Positioned(
@@ -294,8 +299,11 @@ class _RestDayScreenState extends State<RestDayScreen>
                 left: 18,
                 child: Opacity(
                   opacity: 1.0 - 0.45 * t,
-                  child: const Icon(Icons.auto_awesome_rounded,
-                      color: _gold, size: 13),
+                  child: const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: _gold,
+                    size: 13,
+                  ),
                 ),
               ),
             ],
@@ -343,8 +351,11 @@ class _RestDayScreenState extends State<RestDayScreen>
               ),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.event_available_rounded,
-                color: Colors.black, size: 25),
+            child: const Icon(
+              Icons.event_available_rounded,
+              color: Colors.black,
+              size: 25,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -362,8 +373,11 @@ class _RestDayScreenState extends State<RestDayScreen>
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_rounded,
-                        color: _goldBright, size: 12),
+                    const Icon(
+                      Icons.calendar_today_rounded,
+                      color: _goldBright,
+                      size: 12,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       today,
@@ -525,8 +539,11 @@ class _RestDayScreenState extends State<RestDayScreen>
                 ),
               ),
               child: done
-                  ? const Icon(Icons.check_rounded,
-                      color: Colors.black, size: 17)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.black,
+                      size: 17,
+                    )
                   : null,
             ),
           ],
@@ -566,8 +583,11 @@ class _RestDayScreenState extends State<RestDayScreen>
                 color: _gold.withValues(alpha: 0.12),
                 border: Border.all(color: _gold.withValues(alpha: 0.35)),
               ),
-              child: const Icon(Icons.fitness_center_rounded,
-                  color: _gold, size: 22),
+              child: const Icon(
+                Icons.fitness_center_rounded,
+                color: _gold,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             const Expanded(
@@ -641,8 +661,7 @@ class _RestDayScreenState extends State<RestDayScreen>
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.check_circle_rounded,
-                    color: Colors.black, size: 22),
+                Icon(Icons.check_circle_rounded, color: Colors.black, size: 22),
                 SizedBox(width: 10),
                 Text(
                   'Get It',
@@ -683,7 +702,8 @@ class _RestDayScreenState extends State<RestDayScreen>
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (_) => const AiRecommendationsScreen()),
+                builder: (_) => const AiRecommendationsScreen(),
+              ),
             );
           } else if (index == 2) {
             Navigator.pushReplacement(
@@ -694,7 +714,8 @@ class _RestDayScreenState extends State<RestDayScreen>
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (_) => const AnalyticsDashboardScreen()),
+                builder: (_) => const AnalyticsDashboardScreen(),
+              ),
             );
           }
         },
@@ -703,21 +724,35 @@ class _RestDayScreenState extends State<RestDayScreen>
         elevation: 0,
         selectedItemColor: _goldBright,
         unselectedItemColor: const Color(0xFF6B7280),
-        selectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle:
-            const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+        ),
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded), label: 'Home'),
+            icon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.fitness_center), label: 'Workouts'),
+            icon: Icon(Icons.fitness_center),
+            label: 'Workouts',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_rounded), label: 'Log'),
+            icon: Icon(Icons.receipt_long_rounded),
+            label: 'Log',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded), label: 'Analytics'),
+            icon: Icon(Icons.bar_chart_rounded),
+            label: 'Analytics',
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded), label: 'Profile'),
+            icon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
         ],
       ),
     );

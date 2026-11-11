@@ -23,7 +23,11 @@ class GrindFitLogo extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
-                  child: Icon(Icons.fitness_center, color: Colors.white, size: 22),
+                  child: Icon(
+                    Icons.fitness_center,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -16,7 +16,7 @@ class GrindFitTheme {
 
   static ThemeData get dark {
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(16),
     );
     OutlineInputBorder inputBorder(Color color) => OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -34,6 +34,10 @@ class GrindFitTheme {
         },
       ),
       scaffoldBackgroundColor: background,
+      splashFactory: InkRipple.splashFactory,
+      splashColor: const Color(0x1FF5B800),
+      highlightColor: const Color(0x0DF5B800),
+      visualDensity: VisualDensity.standard,
       canvasColor: card,
       dividerColor: border,
       colorScheme: const ColorScheme.dark(
@@ -54,11 +58,14 @@ class GrindFitTheme {
         headlineSmall: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w900,
+          letterSpacing: -.4,
+          height: 1.2,
           color: white,
         ),
         titleLarge: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
+          letterSpacing: -.2,
           color: white,
         ),
         titleMedium: TextStyle(
@@ -77,7 +84,7 @@ class GrindFitTheme {
         labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: card,
+        backgroundColor: background,
         foregroundColor: white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -85,6 +92,7 @@ class GrindFitTheme {
         titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w900,
+          letterSpacing: -.2,
           color: white,
         ),
         iconTheme: IconThemeData(color: white, size: 22),
@@ -95,21 +103,28 @@ class GrindFitTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: border, width: 1.2),
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: border),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: gold,
-          foregroundColor: background,
-          disabledBackgroundColor: border,
-          disabledForegroundColor: gray,
-          minimumSize: const Size(0, 52),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: shape,
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
-        ),
+        style:
+            FilledButton.styleFrom(
+              backgroundColor: gold,
+              foregroundColor: background,
+              disabledBackgroundColor: border,
+              disabledForegroundColor: gray,
+              minimumSize: const Size(0, 52),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: shape,
+              textStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .2,
+              ),
+            ).copyWith(
+              overlayColor: const WidgetStatePropertyAll(Color(0x22121212)),
+            ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -123,14 +138,20 @@ class GrindFitTheme {
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: gold,
-          side: const BorderSide(color: border, width: 1.2),
-          minimumSize: const Size(0, 48),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: shape,
-          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
+        style:
+            OutlinedButton.styleFrom(
+              foregroundColor: gold,
+              side: const BorderSide(color: border, width: 1.2),
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: shape,
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ).copyWith(
+              overlayColor: const WidgetStatePropertyAll(Color(0x14F5B800)),
+            ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
@@ -237,10 +258,15 @@ class GrindFitTheme {
         selectionColor: Color(0x44F5B800),
         selectionHandleColor: gold,
       ),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: Color(0xFF2A2A2D),
-        contentTextStyle: TextStyle(color: white, fontSize: 13),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF2A2A2D),
+        contentTextStyle: const TextStyle(color: white, fontSize: 13),
         behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0x55F5B800)),
+        ),
       ),
     );
   }

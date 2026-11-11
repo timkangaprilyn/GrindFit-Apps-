@@ -117,72 +117,33 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
     setState(() => _isAddingToPlan = true);
     try {
       final state = AppState.instance;
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
-      final profileDoc = await userRef.get();
-      final storedOverrides = profileDoc.data()?['workoutPlanOverrides'];
-      final planOverrides = storedOverrides is Map
-          ? Map<String, dynamic>.from(storedOverrides)
-          : Map<String, dynamic>.from(state.workoutPlanOverrides);
-      final scope = '${state.fitnessGoal}|${state.workoutEnvironment}';
-      final scopeData = planOverrides[scope] is Map
-          ? Map<String, dynamic>.from(planOverrides[scope] as Map)
-          : <String, dynamic>{};
-      final values = {
-        'sets': _sets,
-        'reps': _reps,
-        'duration': durationSeconds,
-      };
-
-      String normalize(String name) => name
-          .toLowerCase()
-          .replaceAll('bodyweight', '')
-          .replaceAll(RegExp(r'[^a-z0-9]'), '')
-          .replaceAll(RegExp(r's$'), '');
-
-      final normalizedSelection = normalize(_selectedExercise);
-      final baseExercises = WorkoutPlan.forProfile(
-        goal: state.fitnessGoal,
-        environment: state.workoutEnvironment,
+      final inPlan = state.recommendedPlan.any(
+        (e) => e.name == _selectedExercise,
       );
-      final matchingBaseExercise = baseExercises.where(
-        (exercise) => normalize(exercise.name) == normalizedSelection,
-      );
-
-      if (matchingBaseExercise.isNotEmpty) {
-        scopeData[matchingBaseExercise.first.name] = values;
+      // Today only: an exercise already in today's plan gets today's values;
+      // anything else is added as an extra. Tomorrow follows the program.
+      if (inPlan) {
+        state.setTodayAdjustment(_selectedExercise, {
+          'sets': _sets,
+          'reps': _reps,
+          'duration': durationSeconds,
+        });
       } else {
-        final customExercises =
-            (scopeData['customExercises'] as List?)
-                ?.whereType<Map>()
-                .map(Map<String, dynamic>.from)
-                .toList() ??
-            <Map<String, dynamic>>[];
-        final matchingCustomIndex = customExercises.indexWhere(
-          (exercise) =>
-              exercise['name'] is String &&
-              normalize(exercise['name'] as String) == normalizedSelection,
+        state.addTodayExtra(
+          _selectedExercise,
+          sets: _sets,
+          reps: _reps,
+          duration: durationSeconds,
         );
-        final customExercise = {'name': _selectedExercise, ...values};
-        if (matchingCustomIndex == -1) {
-          customExercises.add(customExercise);
-        } else {
-          customExercises[matchingCustomIndex] = customExercise;
-        }
-        scopeData['customExercises'] = customExercises;
       }
-
-      planOverrides[scope] = scopeData;
-      await userRef.set({
-        'workoutPlanOverrides': planOverrides,
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'todayPlan': state.todayPlanJson,
       }, SetOptions(merge: true));
-      state.replaceWorkoutPlanOverrides(planOverrides);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$_selectedExercise added to your workout plan.'),
+          content: Text("$_selectedExercise added to today's workout."),
           backgroundColor: Colors.green,
         ),
       );
@@ -386,7 +347,7 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Add to Workout Plan adds this exercise to your recommended session. Log Completed Workout saves it as a finished session in Analytics.',
+                    "Add to Today's Workout adds this exercise to today's session only. Log Completed Workout saves it as a finished session in Analytics.",
                     style: TextStyle(color: _gray, fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
@@ -591,7 +552,7 @@ class _ManualLogWorkoutScreenState extends State<ManualLogWorkoutScreen> {
                             )
                           : const Icon(Icons.playlist_add_rounded),
                       label: const Text(
-                        'Add to Workout Plan',
+                        "Add to Today's Workout",
                         style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),

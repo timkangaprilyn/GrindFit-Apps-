@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_theme.dart';
 
 /// A single labeled info row inside the Profile screen, e.g.
@@ -73,7 +74,11 @@ class ProfileCard extends StatelessWidget {
 /// Header card showing the user's name + email at the top of the
 /// Profile screen.
 class ProfileHeaderCard extends StatelessWidget {
-  const ProfileHeaderCard({super.key, required this.fullName, required this.email});
+  const ProfileHeaderCard({
+    super.key,
+    required this.fullName,
+    required this.email,
+  });
 
   final String fullName;
   final String email;
@@ -98,7 +103,11 @@ class ProfileHeaderCard extends StatelessWidget {
               border: Border.all(color: AppColors.neonCyan, width: 1.5),
               boxShadow: AppShadows.neonGlow,
             ),
-            child: const Icon(Icons.person, color: AppColors.neonCyan, size: 30),
+            child: const Icon(
+              Icons.person,
+              color: AppColors.neonCyan,
+              size: 30,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -107,7 +116,11 @@ class ProfileHeaderCard extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
-          Text(email, style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
+          Text(
+            email,
+            style: AppTextStyles.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );

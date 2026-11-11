@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/animations/motion.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -292,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: staggered([
                     RichText(
                       text: const TextSpan(
                         style: TextStyle(
@@ -535,7 +536,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                  ],
+                  ]),
                 ),
               ),
             ),
