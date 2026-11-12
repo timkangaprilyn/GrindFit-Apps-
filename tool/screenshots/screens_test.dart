@@ -2,6 +2,7 @@
 //
 // Run:  flutter test tool/screenshots/screens_test.dart --update-goldens
 // Output: tool/screenshots/shots/<screen>.png (phone size, 390x844 logical).
+// Options: SHOTS=home,login (only these), TALL=1 (full page height).
 //
 // Not part of the regular test suite. Screens that need a signed-in Firebase
 // session render their signed-out / loading state here.
@@ -52,7 +53,11 @@ Future<void> _loadFont(String family, List<String> files) async {
 }
 
 void main() {
-  const size = Size(390, 844);
+  // TALL=1 renders a long canvas to review whole scrolling pages.
+  final size = Size(
+    390,
+    Platform.environment['TALL'] == '1' ? 2400 : 844,
+  );
   final only = Platform.environment['SHOTS']?.split(',').toSet();
 
   setUpAll(() async {

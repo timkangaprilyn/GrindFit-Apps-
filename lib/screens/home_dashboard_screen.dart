@@ -377,84 +377,39 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: staggered([
                   _buildHeader(firstName),
-                  Pressable(
-                    child: Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.auto_awesome, color: _gold),
-                        title: const Text('Your GrindFit tools'),
-                        subtitle: const Text(
-                          'XP • Challenge • Coach notes • Meals • Voice • Recovery',
-                        ),
-                        trailing: const Icon(Icons.chevron_right, color: _gold),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MemberFeaturesScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Pressable(
-                    child: Card(
-                      child: ListTile(
-                        leading: const Icon(
-                          Icons.restaurant_menu,
-                          color: _gold,
-                        ),
-                        title: const Text('Meal Recommendations'),
-                        subtitle: const Text(
-                          'Pinoy meal ideas • Budget • Favorites',
-                        ),
-                        trailing: const Icon(Icons.chevron_right, color: _gold),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const MealRecommendationsScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 22),
+                  _buildWorkoutCard(summary),
+                  const SizedBox(height: 14),
                   _buildStatsCard(),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(
-                    'RECOMMENDED FOR YOU',
-                    action: 'View plan',
-                    onAction: _viewPlan,
-                  ),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader('TODAY'),
                   const SizedBox(height: 10),
-                  Pressable(scale: .985, child: _buildWorkoutCard(summary)),
-                  const SizedBox(height: 24),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 11, child: _buildChecklistCard(doneCount)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 10,
-                        child: Column(children: [_buildSafetyCard()]),
-                      ),
-                    ],
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 11,
+                          child: _buildChecklistCard(doneCount),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(flex: 10, child: _buildSafetyCard()),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader('THIS WEEK'),
+                  const SizedBox(height: 10),
+                  _buildWeeklyChart(),
+                  const SizedBox(height: 14),
                   _buildManualGoalProgressCard(
                     progressValue: progressValue,
                     remainingKg: remainingKg,
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Weekly Activity',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: _white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildWeeklyChart(),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader('MORE FOR YOU'),
+                  const SizedBox(height: 10),
+                  _buildQuickLinks(),
                 ]),
               ),
             ),
@@ -465,69 +420,171 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   }
 
   Widget _buildHeader(String firstName) {
+    final session = AppState.instance.currentSession;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello, $firstName! 👋',
+                DateFormat('EEEE, MMM d').format(DateTime.now()).toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: _gray,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Hello, $firstName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontSize: 26,
+                  fontSize: 28,
+                  height: 1.15,
+                  letterSpacing: -.6,
                   fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                "Let's crush your goals today.",
-                style: TextStyle(
-                  fontSize: 13.5,
-                  color: _gray,
-                  fontWeight: FontWeight.w500,
-                ),
+              Text(
+                session.isToday
+                    ? "Training day. Let's get it done."
+                    : 'Rest day. Recovery counts too.',
+                style: const TextStyle(fontSize: 14, color: _gray),
               ),
             ],
           ),
         ),
         const SizedBox(width: 12),
-        InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-            );
-          },
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _card,
-              shape: BoxShape.circle,
-              border: Border.all(color: _border),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Icon(
-                  Icons.notifications_none_rounded,
-                  color: _white,
-                  size: 22,
+        Tooltip(
+          message: 'Notifications',
+          child: Material(
+            color: _card,
+            shape: const CircleBorder(side: BorderSide(color: _border)),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                );
+              },
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: _white,
+                      size: 22,
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 13,
+                      child: _buildUnreadNotificationBadge(),
+                    ),
+                  ],
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: _buildUnreadNotificationBadge(),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// Meals and the member tools hub, kept one tap away without competing
+  /// with today's workout at the top of the screen.
+  Widget _buildQuickLinks() {
+    Widget tile({
+      required IconData icon,
+      required String title,
+      required String subtitle,
+      required Widget page,
+    }) {
+      return Expanded(
+        child: Pressable(
+          child: Material(
+            color: _card,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: const BorderSide(color: _border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => page),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: _gold.withAlpha(30),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(icon, color: _gold, size: 20),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        color: _gray,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          tile(
+            icon: Icons.restaurant_menu_rounded,
+            title: 'Meal plan',
+            subtitle: 'Pinoy meals within your budget',
+            page: const MealRecommendationsScreen(),
+          ),
+          const SizedBox(width: 12),
+          tile(
+            icon: Icons.auto_awesome_rounded,
+            title: 'GrindFit tools',
+            subtitle: 'XP, challenge, coach notes, voice',
+            page: const MemberFeaturesScreen(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -750,23 +807,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             title,
             style: const TextStyle(
               fontSize: 11.5,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w800,
+              letterSpacing: 1.3,
+              fontWeight: FontWeight.w700,
               color: _gray,
             ),
           ),
         ),
         if (action != null)
-          GestureDetector(
-            onTap: onAction,
-            child: Text(
-              action,
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                color: _gold,
-              ),
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              visualDensity: VisualDensity.compact,
             ),
+            child: Text(action),
           ),
       ],
     );
@@ -775,141 +829,131 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   Widget _buildWorkoutCard(String summary) {
     final goal = AppState.instance.fitnessGoal;
     final session = AppState.instance.currentSession;
-    final sessionLabel = session.isToday
-        ? "Today: ${session.dayName} • Week ${session.weekNumber}"
-        : "Rest day • Next: ${session.dayName}";
+    final eyebrow = session.isToday
+        ? "TODAY'S WORKOUT · WEEK ${session.weekNumber}"
+        : 'REST DAY · NEXT UP';
     return Container(
-      height: 200,
+      width: double.infinity,
       decoration: BoxDecoration(
+        color: _card,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _gold.withAlpha(90), width: 1.2),
-        boxShadow: [],
+        border: Border.all(color: _border),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(21),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      _card,
-                      Color.alphaBlend(_gold.withAlpha(38), _card),
-                    ],
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          // The photo sits behind the right side; a scrim keeps text legible.
+          Positioned(
+            top: 0,
+            bottom: 0,
+            right: 0,
+            width: 180,
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.transparent, Color(0x99FFFFFF)],
+                stops: [0.0, 0.6],
+              ).createShader(rect),
+              child: Image.asset(
+                'assets/images/goal_hero.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                excludeFromSemantics: true,
+                errorBuilder: (context, error, stackTrace) =>
+                    const SizedBox.shrink(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: _gold,
                   ),
                 ),
-              ),
-            ),
-            Positioned(
-              top: 0,
-              bottom: 0,
-              right: 0,
-              width: 170,
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (rect) => const LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [Colors.transparent, Colors.white],
-                  stops: [0.0, 0.45],
-                ).createShader(rect),
-                child: Image.asset(
-                  'assets/images/goal_hero.png',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-              child: FractionallySizedBox(
-                widthFactor: 0.66,
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          WorkoutPlan.titleForGoal(goal),
-                          maxLines: 2,
-                          style: TextStyle(
-                            fontSize: 22,
-                            height: 1.15,
-                            fontWeight: FontWeight.w800,
-                            color: _white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          sessionLabel,
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            color: _gray,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.schedule_rounded,
-                              color: _gold,
-                              size: 15,
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                summary,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: _white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                const SizedBox(height: 8),
+                FractionallySizedBox(
+                  widthFactor: .72,
+                  child: Text(
+                    session.isToday
+                        ? session.dayName
+                        : WorkoutPlan.titleForGoal(goal),
+                    maxLines: 2,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      height: 1.15,
+                      letterSpacing: -.4,
+                      fontWeight: FontWeight.w800,
+                      color: _white,
                     ),
-                    SizedBox(
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _gold,
-                          foregroundColor: _bg,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        onPressed: _startWorkout,
-                        icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                        label: const Text(
-                          'Start Workout',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                FractionallySizedBox(
+                  widthFactor: .72,
+                  child: Text(
+                    session.isToday
+                        ? WorkoutPlan.titleForGoal(goal)
+                        : 'Next: ${session.dayName}',
+                    style: const TextStyle(fontSize: 13.5, color: _gray),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, color: _gold, size: 16),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        summary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _white,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _startWorkout,
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 48),
+                        ),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                        label: const Text('Start workout'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    OutlinedButton(
+                      onPressed: _viewPlan,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                        backgroundColor: _bg.withAlpha(150),
+                      ),
+                      child: const Text('View plan'),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -926,7 +970,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "TODAY'S CHECKLIST",
+            "CHECKLIST",
             style: TextStyle(
               fontSize: 11,
               letterSpacing: 1.0,
@@ -1004,7 +1048,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _gold.withAlpha(70), width: 1.2),
+          border: Border.all(color: _border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1090,44 +1134,31 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'FITNESS GOAL',
+                'WEIGHT GOAL',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
                   color: _gray,
-                  letterSpacing: 0.5,
+                  letterSpacing: 1.2,
                 ),
               ),
-              GestureDetector(
-                onTap: _showUpdateWeightDialog,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _gold.withAlpha(30),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _gold.withAlpha(100)),
-                  ),
-                  child: const Text(
-                    'Log Progress',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: _gold,
-                    ),
-                  ),
+              TextButton.icon(
+                onPressed: _showUpdateWeightDialog,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  visualDensity: VisualDensity.compact,
                 ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Log weight'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text(
-            '🏃 Weight Loss',
-            style: TextStyle(
+          const SizedBox(height: 6),
+          Text(
+            AppState.instance.fitnessGoal,
+            style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w700,
               color: _white,
             ),
           ),

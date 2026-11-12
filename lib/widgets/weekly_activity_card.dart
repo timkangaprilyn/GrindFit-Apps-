@@ -88,6 +88,8 @@ class WeeklyActivityCard extends StatelessWidget {
                     day: day,
                     label: _labels[i],
                     fraction: day.minutes / scale,
+                    // A quiet week keeps the row compact instead of an empty chart.
+                    area: week.totalMinutes == 0 ? 34 : _barArea,
                     delay: Motion.step * i,
                   ),
                 ),
@@ -123,19 +125,20 @@ class _DayColumn extends StatelessWidget {
     required this.label,
     required this.fraction,
     required this.delay,
+    required this.area,
   });
 
   final ActivityDay day;
   final String label;
   final double fraction;
   final Duration delay;
+  final double area;
 
   @override
   Widget build(BuildContext context) {
     const gold = WeeklyActivityCard._gold;
     const gray = WeeklyActivityCard._gray;
     const dim = WeeklyActivityCard._dim;
-    const area = WeeklyActivityCard._barArea;
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final done = day.status == DayStatus.done;
 
