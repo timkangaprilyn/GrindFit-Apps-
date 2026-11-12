@@ -391,6 +391,8 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                           color: _card,
                           child: WorkoutImage(
                             imageUrl: exercise.imageUrl ?? '',
+                            exerciseName: exercise.name,
+                            showMovement: true,
                             backgroundColor: _card,
                             iconColor: _gold,
                             iconSize: 56,

@@ -162,6 +162,9 @@
               <p class="muted">Admin/trainer access is granted through a trusted Firebase Authentication custom claim. This client does not create or promote staff accounts.</p>
               <div class="access-role"><strong>Admin</strong><p>Manage review rules, trainer assignments and permitted member data.</p></div><div class="access-role"><strong>Trainer</strong><p>Review activity and coach members according to their assignment and access rules.</p></div>
               <p id="adminAccountInfo"></p>
+              <div class="access-role"><strong>Your password</strong><p>Change the password you use to sign in to this workspace.</p></div>
+              <button id="settingsChangePassword" class="button subtle" type="button">Change password</button>
+              <p id="passwordStatus" class="muted" role="status"></p>
             </article></div>
           </section>
         </section>
@@ -205,6 +208,18 @@
         <p id="coachNoteStatus" class="muted" role="status"></p>
       </section>
       <h3>Recent workouts</h3><div id="detailWorkouts" class="detail-workouts"></div>
+    </dialog>
+
+    <dialog id="passwordChangeDialog" class="member-dialog password-change-dialog" aria-labelledby="passwordChangeTitle">
+      <form id="passwordChangeForm" class="trainer-form">
+        <div class="dialog-heading"><div><p id="passwordChangeEyebrow" class="eyebrow">ACCOUNT SECURITY</p><h2 id="passwordChangeTitle">Change password</h2><p id="passwordChangeIntro" class="muted"></p></div></div>
+        <label><span id="currentPasswordLabel">Current password</span><input id="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>New password<input id="newPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required><small>At least 12 characters, with a letter and a number.</small></label>
+        <label>Confirm new password<input id="confirmPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        <p id="passwordChangeError" class="error" role="alert"></p>
+        <button id="passwordChangeButton" class="button primary" type="submit">Change password and continue</button>
+        <button id="passwordChangeSignOut" class="button subtle" type="button">Sign out</button>
+      </form>
     </dialog>
 
     <script type="module" src="./admin-bootstrap.js"></script>

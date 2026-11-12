@@ -17,11 +17,6 @@ import 'log_workout_screen.dart';
 import 'analytics_dashboard_screen.dart';
 import 'profile_screen.dart';
 
-/// Iisang "shell" na may iisang BottomNavigationBar para sa buong app.
-/// Ginigarantiyahan ng IndexedStack na hindi mawawala ang state ng bawat tab.
-///
-/// Ang mga tab (Home, Workouts, Log, Analytics, Profile) ay HINDI dapat may
-/// sarili pang bottomNavigationBar — dito lang dapat ang navbar.
 class MainNavigationScreen extends StatefulWidget {
   final int initialIndex;
 

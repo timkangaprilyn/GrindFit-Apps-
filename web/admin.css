@@ -382,3 +382,13 @@ dialog::backdrop{background:#000a;-webkit-backdrop-filter:blur(3px);backdrop-fil
 .story-features span:hover{transform:none}
 @media(max-width:1100px){.nav-button::before{left:-10px}}
 @media(max-width:760px){.nav-button::before{display:none}.topbar{position:sticky}}
+/* Required first-sign-in password change */
+.password-change-dialog{max-width:520px}.password-change-dialog .dialog-heading{margin-bottom:6px}.password-change-dialog .error{min-height:0}
+@media(max-width:760px){.account .button{padding:9px 11px;font-size:10px;min-height:36px}}
+/* Portal backgrounds: admin and trainer each have their own photo. A dark
+   overlay keeps panels and text readable; panels stay opaque on top. */
+.admin-shell{position:relative;isolation:isolate}
+.admin-shell::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-size:cover;background-repeat:no-repeat}
+body[data-portal="admin"] .admin-shell::before{background-image:linear-gradient(90deg,#101112f2 0%,#101112d9 45%,#101112b3 100%),url("./admin-bg.png");background-position:center 80%}
+body[data-portal="trainer"] .admin-shell::before{background-image:linear-gradient(90deg,#101112f2 0%,#101112d9 45%,#101112a6 100%),url("./trainer-bg.png");background-position:70% center}
+@media(max-width:760px){body[data-portal] .admin-shell::before{background-image:none;background:var(--bg)}body[data-portal="admin"] .admin-shell::before{background:linear-gradient(#101112e0,#101112f5),url("./admin-bg.png") center top/cover no-repeat}body[data-portal="trainer"] .admin-shell::before{background:linear-gradient(#101112e0,#101112f5),url("./trainer-bg.png") 70% top/cover no-repeat}}

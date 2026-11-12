@@ -381,6 +381,7 @@ class _WorkoutHero extends StatelessWidget {
               height: 170,
               child: WorkoutImage(
                 imageUrl: imageUrl ?? '',
+                exerciseName: exercise?.name,
                 backgroundColor: WorkoutPlanDetailScreen._background,
                 iconColor: WorkoutPlanDetailScreen._gold,
               ),
@@ -512,6 +513,7 @@ class _ExerciseCard extends StatelessWidget {
                 children: [
                   WorkoutImage(
                     imageUrl: exercise.imageUrl ?? '',
+                    exerciseName: exercise.name,
                     backgroundColor: WorkoutPlanDetailScreen._background,
                     iconColor: WorkoutPlanDetailScreen._gold,
                     iconSize: 30,

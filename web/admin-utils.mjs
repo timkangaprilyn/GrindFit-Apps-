@@ -43,3 +43,27 @@ export function reportRange(preset, now = new Date()) {
   const local = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return {from: local(start), to: local(end)};
 }
+
+// A password still equal to the one set when the account was created
+// (by create-admin.ps1 or the Trainers page) must be replaced before use.
+// `account` is an Identity Toolkit accounts:lookup user record.
+export const INITIAL_PASSWORD_WINDOW_MS = 10 * 60 * 1000;
+export function mustChangePassword(account) {
+  if (!account || !Array.isArray(account.providerUserInfo)) return false;
+  if (!account.providerUserInfo.some((p) => p?.providerId === 'password')) return false;
+  const created = Number(account.createdAt);
+  const updated = Number(account.passwordUpdatedAt);
+  if (!Number.isFinite(created) || created <= 0) return false;
+  if (!Number.isFinite(updated) || updated <= 0) return true;
+  return updated - created < INITIAL_PASSWORD_WINDOW_MS;
+}
+
+// Returns an error message, or '' when the new password is acceptable.
+export function newPasswordProblem(next, confirm, current = '') {
+  if (typeof next !== 'string' || next.length < 12) return 'Use at least 12 characters.';
+  if (next.length > 128) return 'Use at most 128 characters.';
+  if (!/[A-Za-z]/.test(next) || !/\d/.test(next)) return 'Include at least one letter and one number.';
+  if (next === current) return 'Choose a password different from the one you were given.';
+  if (next !== confirm) return 'The new passwords do not match.';
+  return '';
+}

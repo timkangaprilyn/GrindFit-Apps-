@@ -93,3 +93,18 @@ test('cloud errors distinguish role, session and undeployed backend', async () =
   }
   await assert.rejects(requestAdminData({config:{},token:null,body:{}}),/Sign in/);
 });
+
+test('staff must replace the password they were given', async () => {
+  const {mustChangePassword, newPasswordProblem} = await import('../web/admin-utils.mjs');
+  const pw = [{providerId: 'password'}];
+  assert.equal(mustChangePassword({providerUserInfo: pw, createdAt: '1000', passwordUpdatedAt: 1500}), true);
+  assert.equal(mustChangePassword({providerUserInfo: pw, createdAt: '1000'}), true);
+  assert.equal(mustChangePassword({providerUserInfo: pw, createdAt: '1000', passwordUpdatedAt: 1000 + 11 * 60000}), false);
+  assert.equal(mustChangePassword({providerUserInfo: [{providerId: 'google.com'}], createdAt: '1000', passwordUpdatedAt: 1000}), false);
+  assert.equal(mustChangePassword(null), false);
+  assert.match(newPasswordProblem('short1', 'short1'), /12/);
+  assert.match(newPasswordProblem('abcdefghijklm', 'abcdefghijklm'), /number/);
+  assert.match(newPasswordProblem('abcdefghijk1', 'abcdefghijk1', 'abcdefghijk1'), /different/);
+  assert.match(newPasswordProblem('abcdefghijk1', 'abcdefghijk2'), /match/);
+  assert.equal(newPasswordProblem('abcdefghijk1', 'abcdefghijk1', 'old'), '');
+});

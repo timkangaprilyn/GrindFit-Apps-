@@ -220,6 +220,21 @@ class AppNotifications with WidgetsBindingObserver {
     );
   }
 
+  /// Whether this phone will show GrindFit alerts outside the app: true or
+  /// false on Android, null where it cannot be checked (iOS, web, desktop).
+  Future<bool?> phoneAlertsEnabled() async {
+    if (!_nativeReady) return _mobile ? false : null;
+    try {
+      return await _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.areNotificationsEnabled();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> requestPermissions({bool once = false}) async {
     if (!_nativeReady) return false;
     if (once && _prefs?.getBool('notification-permission-asked') == true) {

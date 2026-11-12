@@ -1,12 +1,15 @@
-import {memberPage, csvCell, portalRedirect} from './admin-utils.mjs';
+import {memberPage, csvCell, portalRedirect, mustChangePassword, newPasswordProblem} from './admin-utils.mjs';
 import {setupInterface, renderExtras} from './admin-interface.js';
 import {firebaseConfig, supabaseConfig} from './admin-config.js';
-import {requestAdminData, requestStaff} from './admin-cloud.mjs';
+import {requestAdminData, requestStaff, lookupOwnAccount} from './admin-cloud.mjs';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
   getAuth,
   onAuthStateChanged,
   signOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   Timestamp,
@@ -576,6 +579,75 @@ function showAdmin() {
   $("staffRole").textContent = portal === "trainer" ? "Trainer" : "Admin";
 }
 
+// Change the signed-in staff member's password. With required: true (first
+// sign-in with the password they were given) the dialog cannot be dismissed.
+// Resolves true once changed, false if the optional dialog is cancelled.
+function openPasswordDialog(user, {required = false} = {}) {
+  const dialog = $("passwordChangeDialog");
+  const form = $("passwordChangeForm");
+  const error = $("passwordChangeError");
+  const button = $("passwordChangeButton");
+  if (!dialog || !form || dialog.open) return Promise.resolve(false);
+  form.reset();
+  error.textContent = "";
+  $("passwordChangeEyebrow").textContent = required ? "REQUIRED BEFORE YOU CONTINUE" : "ACCOUNT SECURITY";
+  $("passwordChangeTitle").textContent = required ? "Set your own password" : "Change password";
+  $("passwordChangeIntro").textContent = required
+    ? "This account still uses the password it was given. Replace it with one only you know."
+    : "Enter your current password, then choose a new one.";
+  $("currentPasswordLabel").textContent = required ? "Current password (the one you were given)" : "Current password";
+  button.textContent = required ? "Change password and continue" : "Change password";
+  const secondary = $("passwordChangeSignOut");
+  secondary.textContent = required ? "Sign out" : "Cancel";
+  return new Promise((resolve) => {
+    const onCancel = (event) => {
+      if (required) event.preventDefault();
+      else finish(false);
+    };
+    const finish = (changed) => {
+      dialog.removeEventListener("cancel", onCancel);
+      form.reset();
+      if (dialog.open) dialog.close();
+      resolve(changed);
+    };
+    dialog.addEventListener("cancel", onCancel);
+    secondary.onclick = () => (required ? signOut(auth) : finish(false));
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const current = $("currentPassword").value;
+      const next = $("newPassword").value;
+      const problem = newPasswordProblem(next, $("confirmPassword").value, current);
+      error.textContent = problem;
+      if (problem) return;
+      button.disabled = true;
+      try {
+        await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, current));
+        await updatePassword(user, next);
+        finish(true);
+      } catch (err) {
+        if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") error.textContent = "Your current password is incorrect.";
+        else if (err.code === "auth/weak-password" || err.code === "auth/password-does-not-meet-requirements") error.textContent = "Firebase rejected this password as too weak. Choose a stronger one.";
+        else if (err.code === "auth/too-many-requests") error.textContent = "Too many attempts. Wait a moment and try again.";
+        else if (err.code === "auth/network-request-failed") error.textContent = "No connection. Check your internet and try again.";
+        else error.textContent = err.message || "Could not change the password. Try again.";
+      } finally {
+        button.disabled = false;
+      }
+    };
+    dialog.showModal();
+    $("currentPassword").focus();
+  });
+}
+
+async function needsPasswordChange(user) {
+  try {
+    const account = await lookupOwnAccount({apiKey: firebaseConfig.apiKey, idToken: await user.getIdToken()});
+    return mustChangePassword(account);
+  } catch (_) {
+    return false;
+  }
+}
+
 // Sign-in lives on login.html. This page only runs for a verified staff session.
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -593,6 +665,11 @@ onAuthStateChanged(auth, async (user) => {
       location.replace(`./${redirect}`);
       return;
     }
+    if (await needsPasswordChange(user)) {
+      if (auth.currentUser?.uid !== user.uid) return;
+      await openPasswordDialog(user, {required: true});
+      if (auth.currentUser?.uid !== user.uid) return;
+    }
     state.user = user;
     state.isAdmin = token.claims.admin === true;
     showAdmin();
@@ -608,6 +685,16 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 $("logoutButton").addEventListener("click", () => signOut(auth));
+for (const id of ["changePasswordButton", "settingsChangePassword"]) {
+  $(id)?.addEventListener("click", async () => {
+    if (!state.user) return;
+    const changed = await openPasswordDialog(state.user);
+    if (!changed) return;
+    const message = "Password changed. Use your new password the next time you sign in.";
+    if ($("passwordStatus")) $("passwordStatus").textContent = message;
+    else alert(message);
+  });
+}
 $("refreshButton").addEventListener("click", () => { loadRequests(); refreshDashboard(); });
 function resetMemberPage() { state.page = 1; renderMembers(); }
 $("memberSearch").addEventListener("input", resetMemberPage);

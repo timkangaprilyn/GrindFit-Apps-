@@ -17,6 +17,7 @@
         <div class="account">
           <span id="staffRole" class="badge clear">Trainer</span>
           <span id="adminEmail" class="muted"></span>
+          <button id="changePasswordButton" class="button subtle" type="button">Change password</button>
           <button id="logoutButton" class="button subtle" type="button">Sign out</button>
         </div>
       </header>
@@ -138,6 +139,18 @@
         <p id="coachNoteStatus" class="muted" role="status"></p>
       </section>
       <h3>Recent workouts</h3><div id="detailWorkouts" class="detail-workouts"></div>
+    </dialog>
+
+    <dialog id="passwordChangeDialog" class="member-dialog password-change-dialog" aria-labelledby="passwordChangeTitle">
+      <form id="passwordChangeForm" class="trainer-form">
+        <div class="dialog-heading"><div><p id="passwordChangeEyebrow" class="eyebrow">ACCOUNT SECURITY</p><h2 id="passwordChangeTitle">Change password</h2><p id="passwordChangeIntro" class="muted"></p></div></div>
+        <label><span id="currentPasswordLabel">Current password</span><input id="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>New password<input id="newPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required><small>At least 12 characters, with a letter and a number.</small></label>
+        <label>Confirm new password<input id="confirmPassword" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        <p id="passwordChangeError" class="error" role="alert"></p>
+        <button id="passwordChangeButton" class="button primary" type="submit">Change password and continue</button>
+        <button id="passwordChangeSignOut" class="button subtle" type="button">Sign out</button>
+      </form>
     </dialog>
 
     <script type="module" src="./admin-bootstrap.js"></script>

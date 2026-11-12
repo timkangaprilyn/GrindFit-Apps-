@@ -34,3 +34,14 @@ export async function requestStaff({config, token, body, fetcher = fetch}) {
   }
   return data;
 }
+
+// Reads the signed-in user's own account record (password timestamps).
+export async function lookupOwnAccount({apiKey, idToken, fetcher = fetch}) {
+  const response = await fetcher(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({idToken}), signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error('Could not check your account security settings.');
+  const data = await response.json();
+  return data.users?.[0] ?? null;
+}

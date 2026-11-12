@@ -972,6 +972,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               height: 64,
               child: WorkoutImage(
                 imageUrl: exercise.imageUrl ?? '',
+                exerciseName: exercise.name,
                 backgroundColor: _bg,
                 iconColor: _gold,
                 iconSize: 24,

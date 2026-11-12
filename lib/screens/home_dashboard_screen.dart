@@ -5,7 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../animations/motion.dart';
 import '../models/app_state.dart';
+import '../models/weekly_activity.dart';
 import '../models/workout_plan.dart';
+import '../widgets/weekly_activity_card.dart';
 import 'notifications_screen.dart';
 import 'workout_plan_detail_screen.dart';
 import 'member_features_screen.dart';
@@ -344,8 +346,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String todayString = DateFormat('E').format(DateTime.now());
-
     final String fullName = AppState.instance.fullName.trim();
     final String firstName = fullName.isNotEmpty
         ? fullName.split(' ').first
@@ -468,7 +468,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _buildWeeklyChart(todayString),
+                  _buildWeeklyChart(),
                 ]),
               ),
             ),
@@ -582,17 +582,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('workouts')
-          .where(
-            'timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(
-              DateTime.now().subtract(const Duration(days: 60)),
-            ),
-          )
-          .snapshots(),
+      stream: _recentWorkouts(user.uid),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Container(
@@ -625,27 +615,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         final weekStart = today.subtract(
-          Duration(days: today.weekday - DateTime.monday),
+          Duration(days: today.weekday % DateTime.daysPerWeek),
         );
         final workoutDates = <DateTime>[];
         var minutesThisWeek = 0;
 
         for (final doc in snapshot.data!.docs) {
           final data = doc.data();
-          final rawDate =
-              data['timestamp'] ?? data['completedAt'] ?? data['date'];
-          final DateTime? date = switch (rawDate) {
-            Timestamp value => value.toDate(),
-            DateTime value => value,
-            String value => DateTime.tryParse(value),
-            _ => null,
-          };
+          final date = workoutDate(data);
           if (date == null) continue;
 
           final workoutDay = DateTime(date.year, date.month, date.day);
           workoutDates.add(workoutDay);
           if (!workoutDay.isBefore(weekStart) && !workoutDay.isAfter(today)) {
-            minutesThisWeek += _durationInMinutes(data);
+            minutesThisWeek += durationInMinutes(data);
           }
         }
 
@@ -681,26 +664,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  int _durationInMinutes(Map<String, dynamic> data) {
-    final seconds = data['durationSeconds'];
-    if (seconds is num) return (seconds / 60).round();
-
-    final rawDuration = data['duration'];
-    if (rawDuration is num) return rawDuration.round();
-    if (rawDuration is! String) return 0;
-
-    final value = rawDuration.toLowerCase();
-    final match = RegExp(r'\d+(?:\.\d+)?').firstMatch(value);
-    if (match == null) return 0;
-    final amount = double.tryParse(match.group(0)!) ?? 0;
-    if (value.contains('sec') || value.endsWith('s')) {
-      return (amount / 60).round();
-    }
-    if (value.contains('hour') || value.contains('hr') || value.endsWith('h')) {
-      return (amount * 60).round();
-    }
-    return amount.round();
-  }
+  /// Workouts logged in the last 60 days, shared by the stats and weekly cards.
+  Stream<QuerySnapshot<Map<String, dynamic>>> _recentWorkouts(String uid) =>
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('workouts')
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(
+              DateTime.now().subtract(const Duration(days: 60)),
+            ),
+          )
+          .snapshots();
 
   Widget _buildStatsContent({
     required int minutes,
@@ -1221,60 +1197,49 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildWeeklyChart(String todayString) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border, width: 1.2),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          _buildBarItem('Mon', 40, isHighlight: todayString == 'Mon'),
-          _buildBarItem('Tue', 70, isHighlight: todayString == 'Tue'),
-          _buildBarItem('Wed', 60, isHighlight: todayString == 'Wed'),
-          _buildBarItem('Thu', 100, isHighlight: todayString == 'Thu'),
-          _buildBarItem('Fri', 75, isHighlight: todayString == 'Fri'),
-          _buildBarItem('Sat', 50, isHighlight: todayString == 'Sat'),
-          _buildBarItem('Sun', 70, isHighlight: todayString == 'Sun'),
-        ],
-      ),
-    );
-  }
+  Widget _buildWeeklyChart() {
+    final user = FirebaseAuth.instance.currentUser;
+    WeeklyActivity weekFrom(Iterable<Map<String, dynamic>> workouts) =>
+        WeeklyActivity.fromWorkouts(
+          workouts,
+          now: DateTime.now(),
+          scheduled: AppState.instance.workoutDays,
+        );
+    if (user == null) return WeeklyActivityCard(week: weekFrom(const []));
 
-  Widget _buildBarItem(
-    String day,
-    double heightFactor, {
-    bool isHighlight = false,
-  }) {
-    return Column(
-      children: [
-        Container(
-          width: 22,
-          height: 100,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            width: 14,
-            height: heightFactor,
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _recentWorkouts(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isHighlight ? _gold : _gold.withAlpha(77),
-              borderRadius: BorderRadius.circular(6),
+              color: _card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border),
             ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          day,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
-            color: isHighlight ? _gold : _gray,
-          ),
-        ),
-      ],
+            child: const Text(
+              "Could not load this week's activity. Check your connection and try again.",
+              style: TextStyle(color: _gray, fontSize: 13),
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return Container(
+            height: 230,
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border),
+            ),
+            child: const Center(child: CircularProgressIndicator(color: _gold)),
+          );
+        }
+        return WeeklyActivityCard(
+          week: weekFrom(snapshot.data!.docs.map((doc) => doc.data())),
+        );
+      },
     );
   }
 }

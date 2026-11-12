@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The notification icon is referenced by name from Dart
+     (flutter_local_notifications), so release resource shrinking would
+     otherwise remove it and phone notifications would silently stop. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_grindfit" />
