@@ -389,7 +389,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) => _buildFilterChip(_categories[i]),
       ),
     );

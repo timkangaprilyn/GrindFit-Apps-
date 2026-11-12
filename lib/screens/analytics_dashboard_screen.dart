@@ -896,7 +896,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     const SizedBox(height: 3),
                     const Text(
                       'Sessions per day · tap a bar for details',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: _muted,
                         fontWeight: FontWeight.w600,
