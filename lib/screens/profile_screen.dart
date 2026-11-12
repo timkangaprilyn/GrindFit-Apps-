@@ -30,7 +30,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -270,25 +272,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Stack(
         children: [
           // Gold glow sa taas na kanan
-          Positioned(
-            top: -150,
-            right: -130,
-            child: IgnorePointer(
-              child: Container(
-                width: 380,
-                height: 380,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _gold.withValues(alpha: 0.18),
-                      _gold.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: RefreshIndicator(
               color: _gold,
@@ -306,7 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Profile',
                       style: TextStyle(
                         color: _white,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         fontSize: 30,
                         letterSpacing: -0.5,
                       ),
@@ -520,7 +503,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: const Text(
           'Privacy Policy',
-          style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+          style: TextStyle(color: _white, fontWeight: FontWeight.w800),
         ),
         content: SizedBox(
           width: double.maxFinite,
@@ -585,13 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         border: Border.all(color: _gold.withValues(alpha: 0.35), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: _gold.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Row(
         children: [
@@ -617,7 +594,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _initials(name),
                 style: const TextStyle(
                   color: _goldBright,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   fontSize: 24,
                 ),
               ),
@@ -634,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: _white,
                   ),
                 ),
@@ -739,7 +716,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             value,
             style: const TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
               letterSpacing: -0.3,
             ),
@@ -784,7 +761,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Body Mass Index',
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: _white,
                   ),
                 ),
@@ -815,7 +792,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             bmi > 0 ? bmi.toStringAsFixed(1) : '—',
             style: const TextStyle(
               fontSize: 34,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
               letterSpacing: -0.8,
             ),
@@ -880,12 +857,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: _white,
                             shape: BoxShape.circle,
                             border: Border.all(color: _bg, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _gold.withValues(alpha: 0.5),
-                                blurRadius: 10,
-                              ),
-                            ],
+                            boxShadow: [],
                           ),
                         ),
                       ),
@@ -1058,7 +1030,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Log Out',
                   style: TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: _danger,
                   ),
                 ),
@@ -1107,7 +1079,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Delete my data',
                       style: TextStyle(
                         fontSize: 15,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: _danger,
                       ),
                     ),
@@ -1164,7 +1136,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title,
           style: const TextStyle(
             fontSize: 20,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             color: _white,
           ),
         ),
@@ -1315,13 +1287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [_goldLight, _gold]),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: _gold.withValues(alpha: 0.28),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            boxShadow: [],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
@@ -1665,7 +1631,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             '$d',
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: d == days ? Colors.black : _gray,
                             ),
                           ),
@@ -2051,7 +2017,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           title: const Text(
             'Permanently delete your data?',
-            style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+            style: TextStyle(color: _white, fontWeight: FontWeight.w800),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2095,7 +2061,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : null,
               child: const Text(
                 'Delete my data',
-                style: TextStyle(color: _danger, fontWeight: FontWeight.w900),
+                style: TextStyle(color: _danger, fontWeight: FontWeight.w800),
               ),
             ),
           ],
@@ -2187,7 +2153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           title: const Text(
             'Confirm your identity',
-            style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+            style: TextStyle(color: _white, fontWeight: FontWeight.w800),
           ),
           content: TextField(
             controller: passwordC,
@@ -2348,7 +2314,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         title: const Text(
           'Log out?',
-          style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+          style: TextStyle(color: _white, fontWeight: FontWeight.w800),
         ),
         content: const Text(
           'You\'ll need to log in again to access your workouts.',

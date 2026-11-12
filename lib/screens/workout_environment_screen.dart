@@ -19,7 +19,9 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
   static const Color _card = Color(0xFF1C1C1E);
   static const Color _border = Color(0xFF3A3A3E);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFFB4B8BF);
 
@@ -178,15 +180,7 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
             color: isSelected ? _gold : _border,
             width: isSelected ? 1.8 : 1.2,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.25),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : const [],
+          boxShadow: isSelected ? [] : const [],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius - 1),
@@ -382,8 +376,8 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                   const SizedBox(height: 22),
 
                   // Title
-                  RichText(
-                    text: const TextSpan(
+                  Text.rich(
+                    const TextSpan(
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -446,13 +440,7 @@ class _WorkoutEnvironmentScreenState extends State<WorkoutEnvironmentScreen> {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withValues(alpha: 0.3),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(30),

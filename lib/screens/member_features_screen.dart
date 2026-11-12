@@ -107,7 +107,7 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     fontSize: 16,
                     color: Colors.white,
                   ),

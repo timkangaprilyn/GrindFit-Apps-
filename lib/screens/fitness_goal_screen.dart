@@ -18,8 +18,10 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
   static const Color _border = Color(0xFF2A2A2D);
   static const Color _checkBorder = Color(0xFF3F3F44);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
-  static const Color _iconColor = Color(0xFFFF9F0A);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
+  static const Color _iconColor = Color(0xFFF5B800);
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
 
@@ -130,15 +132,7 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
               color: isSelected ? _gold : _border,
               width: isSelected ? 1.6 : 1,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: _gold.withAlpha(45),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : const [],
+            boxShadow: isSelected ? [] : const [],
           ),
           child: Row(
             children: [
@@ -278,7 +272,7 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
                         "What's your ",
                         style: TextStyle(
                           fontSize: 28,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           color: _white,
                           letterSpacing: -0.5,
                         ),
@@ -290,7 +284,7 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
                             'goal?',
                             style: TextStyle(
                               fontSize: 28,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: _gold,
                               letterSpacing: -0.5,
                             ),
@@ -338,13 +332,7 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withAlpha(70),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),

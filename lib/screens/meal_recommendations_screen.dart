@@ -534,7 +534,7 @@ class _MealRecommendationsScreenState extends State<MealRecommendationsScreen>
                 children: [
                   const Text(
                     "Today's meal plan",
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
                   Text(

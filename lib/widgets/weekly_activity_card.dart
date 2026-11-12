@@ -49,7 +49,7 @@ class WeeklyActivityCard extends StatelessWidget {
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 30,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               height: 1,
                             ),
                           ),
@@ -219,7 +219,7 @@ class _DayColumn extends StatelessWidget {
               style: TextStyle(
                 color: day.isToday ? Colors.black : gray,
                 fontSize: 10.5,
-                fontWeight: day.isToday ? FontWeight.w900 : FontWeight.w600,
+                fontWeight: day.isToday ? FontWeight.w800 : FontWeight.w600,
               ),
             ),
           ),

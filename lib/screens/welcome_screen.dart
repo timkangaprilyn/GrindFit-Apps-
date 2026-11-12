@@ -12,8 +12,12 @@ class WelcomeScreen extends StatelessWidget {
   static const Color _black = Color(0xFF050505);
   static const Color _charcoal = Color(0xFF141414);
   static const Color _gold = Color(0xFFFFC107);
-  static const Color _goldLight = Color(0xFFFFD54F);
-  static const Color _goldDeep = Color(0xFFE0A100);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
+  static const Color _goldDeep = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Color(0xFFFFFFFF);
   static const Color _gray = Color(0xFF9CA3AF);
 
@@ -115,7 +119,7 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                             style: TextStyle(
                               fontSize: 20,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               fontStyle: FontStyle.italic,
                               letterSpacing: 1,
                             ),
@@ -186,12 +190,11 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(height: 14),
 
                     // Headline
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: const TextSpan(
+                    Text.rich(
+                      const TextSpan(
                         style: TextStyle(
                           fontSize: 28,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           color: _white,
                           height: 1.2,
                         ),
@@ -208,6 +211,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ],
                       ),
+                      textAlign: TextAlign.center,
                     ),
 
                     const SizedBox(height: 14),

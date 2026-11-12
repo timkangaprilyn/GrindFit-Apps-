@@ -3,27 +3,62 @@ import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 
 import '../animations/grindfit_transitions.dart';
 
-/// Shared black, gold and neutral surfaces used by the current app screens.
+/// GrindFit design tokens and the app-wide dark theme.
+///
+/// Direction: a training log, not a poster. Near-black surfaces, one brand
+/// accent (gold) used for actions and progress only, flat fills instead of
+/// gradients and glows, and a restrained type scale where weight is earned.
 class GrindFitTheme {
   GrindFitTheme._();
+
+  // Surfaces, darkest to lightest.
   static const background = Color(0xFF121212);
   static const card = Color(0xFF1C1C1E);
+  static const raised = Color(0xFF242427);
   static const field = Color(0xFF171719);
   static const border = Color(0xFF2E2E31);
+  static const borderStrong = Color(0xFF3F3F44);
+
+  // Brand accent: actions, selection and progress.
   static const gold = Color(0xFFF5B800);
-  static const gray = Color(0xFF9CA3AF);
+  static const goldPressed = Color(0xFFDCA600);
+  static const goldTint = Color(0xFF2B2510); // gold at ~12% on card
+
+  // Text.
   static const white = Colors.white;
+  static const textPrimary = Color(0xFFF4F4F5);
+  static const gray = Color(0xFF9CA3AF);
+  static const muted = Color(0xFF6B7280);
+
+  // Status.
+  static const success = Color(0xFF22C55E);
+  static const warning = Color(0xFFF59E0B);
+  static const danger = Color(0xFFF87171);
+
+  // Shape and spacing.
+  static const radiusSm = 10.0;
+  static const radiusMd = 14.0;
+  static const radiusLg = 18.0;
+  static const gutter = 20.0;
+
+  /// Named explicitly so every text style, including component styles that
+  /// do not inherit from the ambient text style, renders in the same face.
+  static const fontFamily = 'Roboto';
+
+  static const _text = TextStyle(fontFamily: fontFamily, color: textPrimary);
 
   static ThemeData get dark {
     final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(radiusMd),
     );
-    OutlineInputBorder inputBorder(Color color) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: color),
-    );
+    OutlineInputBorder inputBorder(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: BorderSide(color: color, width: width),
+        );
     return ThemeData(
       brightness: Brightness.dark,
+      fontFamily: fontFamily,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: GrindFitTransitions(),
@@ -40,62 +75,77 @@ class GrindFitTheme {
       visualDensity: VisualDensity.standard,
       canvasColor: card,
       dividerColor: border,
+      dividerTheme: const DividerThemeData(
+        color: border,
+        thickness: 1,
+        space: 1,
+      ),
       colorScheme: const ColorScheme.dark(
         primary: gold,
         onPrimary: background,
         secondary: gold,
         onSecondary: background,
         surface: card,
-        onSurface: white,
-        primaryContainer: Color(0xFF332C16),
+        onSurface: textPrimary,
+        onSurfaceVariant: gray,
+        primaryContainer: goldTint,
         onPrimaryContainer: gold,
-        secondaryContainer: Color(0xFF29292D),
-        onSecondaryContainer: white,
+        secondaryContainer: raised,
+        onSecondaryContainer: textPrimary,
+        error: danger,
         outline: border,
+        outlineVariant: border,
         surfaceTint: Colors.transparent,
       ),
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(
+      textTheme: TextTheme(
+        displaySmall: _text.copyWith(
+          fontSize: 30,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -.6,
+          height: 1.15,
+        ),
+        headlineSmall: _text.copyWith(
           fontSize: 24,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w800,
           letterSpacing: -.4,
           height: 1.2,
-          color: white,
         ),
-        titleLarge: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -.2,
-          color: white,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: white,
-        ),
-        titleSmall: TextStyle(
-          fontSize: 14,
+        titleLarge: _text.copyWith(
+          fontSize: 19,
           fontWeight: FontWeight.w700,
-          color: white,
+          letterSpacing: -.2,
         ),
-        bodyLarge: TextStyle(fontSize: 14, height: 1.5, color: white),
-        bodyMedium: TextStyle(fontSize: 13, height: 1.5, color: gray),
-        bodySmall: TextStyle(fontSize: 12, height: 1.4, color: gray),
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        titleMedium: _text.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+        titleSmall: _text.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+        bodyLarge: _text.copyWith(fontSize: 15, height: 1.5),
+        bodyMedium: _text.copyWith(fontSize: 14, height: 1.45, color: gray),
+        bodySmall: _text.copyWith(fontSize: 12.5, height: 1.4, color: gray),
+        labelLarge: _text.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+        labelMedium: _text.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: gray,
+        ),
+        labelSmall: _text.copyWith(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+          color: muted,
+        ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: background,
-        foregroundColor: white,
+        foregroundColor: textPrimary,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
+        centerTitle: false,
+        titleTextStyle: _text.copyWith(
           fontSize: 18,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
           letterSpacing: -.2,
-          color: white,
         ),
-        iconTheme: IconThemeData(color: white, size: 22),
+        iconTheme: const IconThemeData(color: textPrimary, size: 22),
       ),
       cardTheme: CardThemeData(
         color: card,
@@ -103,7 +153,7 @@ class GrindFitTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(radiusLg),
           side: const BorderSide(color: border),
         ),
       ),
@@ -112,15 +162,15 @@ class GrindFitTheme {
             FilledButton.styleFrom(
               backgroundColor: gold,
               foregroundColor: background,
-              disabledBackgroundColor: border,
-              disabledForegroundColor: gray,
+              disabledBackgroundColor: raised,
+              disabledForegroundColor: muted,
               minimumSize: const Size(0, 52),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               shape: shape,
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                letterSpacing: .2,
+              textStyle: _text.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: .1,
               ),
             ).copyWith(
               overlayColor: const WidgetStatePropertyAll(Color(0x22121212)),
@@ -130,33 +180,46 @@ class GrindFitTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: gold,
           foregroundColor: background,
+          disabledBackgroundColor: raised,
+          disabledForegroundColor: muted,
           surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.transparent,
           elevation: 0,
           minimumSize: const Size(0, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: shape,
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+          textStyle: _text.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style:
             OutlinedButton.styleFrom(
-              foregroundColor: gold,
-              side: const BorderSide(color: border, width: 1.2),
+              foregroundColor: textPrimary,
+              disabledForegroundColor: muted,
+              side: const BorderSide(color: borderStrong),
               minimumSize: const Size(0, 48),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               shape: shape,
-              textStyle: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              textStyle: _text.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ).copyWith(
               overlayColor: const WidgetStatePropertyAll(Color(0x14F5B800)),
+              iconColor: const WidgetStatePropertyAll(gold),
             ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: gold,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          minimumSize: const Size(0, 44),
+          textStyle: _text.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: textPrimary,
+          minimumSize: const Size(44, 44),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -166,58 +229,85 @@ class GrindFitTheme {
           horizontal: 16,
           vertical: 16,
         ),
-        hintStyle: const TextStyle(color: gray, fontSize: 13),
-        labelStyle: const TextStyle(color: gray, fontSize: 13),
-        counterStyle: const TextStyle(color: gray, fontSize: 11),
+        hintStyle: _text.copyWith(color: muted, fontSize: 14),
+        labelStyle: _text.copyWith(color: gray, fontSize: 14),
+        floatingLabelStyle: _text.copyWith(color: gold, fontSize: 14),
+        helperStyle: _text.copyWith(color: gray, fontSize: 12),
+        errorStyle: _text.copyWith(color: danger, fontSize: 12),
+        counterStyle: _text.copyWith(color: muted, fontSize: 11),
+        prefixIconColor: gray,
+        suffixIconColor: gray,
         border: inputBorder(border),
         enabledBorder: inputBorder(border),
-        focusedBorder: inputBorder(gold),
+        focusedBorder: inputBorder(gold, 1.5),
+        errorBorder: inputBorder(danger),
+        focusedErrorBorder: inputBorder(danger, 1.5),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: field,
+        backgroundColor: card,
         selectedColor: gold,
+        disabledColor: field,
         checkmarkColor: background,
         side: const BorderSide(color: border),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusSm),
+        ),
         labelStyle: WidgetStateTextStyle.resolveWith(
-          (states) => TextStyle(
-            fontSize: 12,
+          (states) => _text.copyWith(
+            fontSize: 13,
             fontWeight: states.contains(WidgetState.selected)
-                ? FontWeight.w800
-                : FontWeight.w600,
-            color: states.contains(WidgetState.selected) ? background : white,
+                ? FontWeight.w700
+                : FontWeight.w500,
+            color: states.contains(WidgetState.selected)
+                ? background
+                : textPrimary,
           ),
         ),
-        secondaryLabelStyle: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
+        secondaryLabelStyle: _text.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
           color: background,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? gold : card,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected) ? background : textPrimary,
+          ),
+          side: const WidgetStatePropertyAll(BorderSide(color: border)),
+          textStyle: WidgetStatePropertyAll(
+            _text.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(radiusLg + 2),
           side: const BorderSide(color: border),
         ),
-        titleTextStyle: const TextStyle(
-          color: white,
+        titleTextStyle: _text.copyWith(
           fontSize: 18,
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700,
         ),
-        contentTextStyle: const TextStyle(
+        contentTextStyle: _text.copyWith(
           color: gray,
-          fontSize: 13,
+          fontSize: 14,
           height: 1.5,
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: card,
         surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        dragHandleColor: borderStrong,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
       ),
       sliderTheme: const SliderThemeData(
@@ -236,22 +326,48 @@ class GrindFitTheme {
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? gold : Colors.transparent,
+        ),
+        checkColor: const WidgetStatePropertyAll(background),
+        side: const BorderSide(color: borderStrong, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected) ? gold : borderStrong,
+        ),
+      ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: gold,
         linearTrackColor: border,
+        circularTrackColor: border,
         linearMinHeight: 6,
         borderRadius: BorderRadius.all(Radius.circular(8)),
       ),
-      listTileTheme: const ListTileThemeData(
+      listTileTheme: ListTileThemeData(
         iconColor: gold,
-        textColor: white,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        titleTextStyle: TextStyle(
-          color: white,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+        textColor: textPrimary,
+        minVerticalPadding: 12,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        titleTextStyle: _text.copyWith(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
         ),
-        subtitleTextStyle: TextStyle(color: gray, fontSize: 12, height: 1.5),
+        subtitleTextStyle: _text.copyWith(
+          color: gray,
+          fontSize: 13,
+          height: 1.45,
+        ),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: raised,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: border),
+        ),
+        textStyle: _text.copyWith(fontSize: 12),
       ),
       textSelectionTheme: const TextSelectionThemeData(
         cursorColor: gold,
@@ -259,13 +375,14 @@ class GrindFitTheme {
         selectionHandleColor: gold,
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: const Color(0xFF2A2A2D),
-        contentTextStyle: const TextStyle(color: white, fontSize: 13),
+        backgroundColor: raised,
+        contentTextStyle: _text.copyWith(fontSize: 14),
+        actionTextColor: gold,
         behavior: SnackBarBehavior.floating,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: const BorderSide(color: Color(0x55F5B800)),
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: borderStrong),
         ),
       ),
     );

@@ -21,7 +21,9 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
   static const Color _border = Color(0xFF2E2E31);
   static const Color _iconTile = Color(0xFF2A2A2D);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF); // secondary text
   static const Color _hint = Color(0xFF6B7280);
@@ -171,7 +173,7 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                 'Select Fitness Level',
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),
@@ -318,20 +320,6 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
         backgroundColor: _bg,
         body: Stack(
           children: [
-            Positioned(
-              top: -140,
-              right: -120,
-              child: Container(
-                width: 340,
-                height: 340,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [_gold.withAlpha(55), _gold.withAlpha(0)],
-                  ),
-                ),
-              ),
-            ),
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -367,11 +355,11 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    RichText(
-                      text: const TextSpan(
+                    Text.rich(
+                      const TextSpan(
                         style: TextStyle(
                           fontSize: 32,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           color: _white,
                           letterSpacing: -0.5,
                         ),
@@ -693,13 +681,7 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                               colors: [_goldLight, _gold],
                             ),
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _gold.withAlpha(70),
-                                blurRadius: 22,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
+                            boxShadow: [],
                           ),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),

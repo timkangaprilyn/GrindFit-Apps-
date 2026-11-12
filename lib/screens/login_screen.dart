@@ -24,7 +24,9 @@ class _LoginScreenState extends State<LoginScreen> {
   static const Color _card = Color(0xFF18181C);
   static const Color _border = Color(0xFF38383F);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _hint = Color(0xFF6B7280);
@@ -129,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(
             'Admin and trainer accounts must use the GrindFit Admin web portal, not the mobile app.',
           ),
-          backgroundColor: Colors.amber,
         ),
       );
       return;
@@ -271,20 +272,6 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         body: Stack(
           children: [
-            Positioned(
-              top: -100,
-              right: -80,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
-                  ),
-                ),
-              ),
-            ),
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -294,11 +281,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: staggered([
-                    RichText(
-                      text: const TextSpan(
+                    Text.rich(
+                      const TextSpan(
                         style: TextStyle(
                           fontSize: 32,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: -0.5,
                         ),
                         children: [
@@ -396,13 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               colors: [_goldLight, _gold],
                             ),
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _gold.withAlpha(90),
-                                blurRadius: 24,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
+                            boxShadow: [],
                           ),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(16),

@@ -18,8 +18,12 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
   static const Color _border = Color(0xFF2C2F36);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
-  static const Color _goldDeep = Color(0xFFE0A100);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
+  static const Color _goldDeep = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9AA3AE);
 
@@ -98,15 +102,7 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
             color: isSelected ? _goldBright : _border,
             width: isSelected ? 1.4 : 1.2,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
+          boxShadow: isSelected ? [] : const [],
         ),
         child: Stack(
           children: [
@@ -148,15 +144,7 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
             color: isSelected ? _goldBright : _border,
             width: isSelected ? 1.6 : 1.2,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.28),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
+          boxShadow: isSelected ? [] : const [],
         ),
         child: Stack(
           children: [
@@ -308,8 +296,8 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Title
-                              RichText(
-                                text: const TextSpan(
+                              Text.rich(
+                                const TextSpan(
                                   style: TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
@@ -396,13 +384,7 @@ class _WorkoutScheduleScreenState extends State<WorkoutScheduleScreen> {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withValues(alpha: 0.28),
-                              blurRadius: 20,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(14),

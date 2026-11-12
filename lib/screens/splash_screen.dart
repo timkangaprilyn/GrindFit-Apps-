@@ -166,7 +166,7 @@ class _SplashScreenState extends State<SplashScreen>
                   style: TextStyle(
                     color: GrindColors.white,
                     fontSize: 32,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     fontStyle: FontStyle.italic,
                   ),
                 ),

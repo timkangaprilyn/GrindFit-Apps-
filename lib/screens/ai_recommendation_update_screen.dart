@@ -11,7 +11,9 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
   static const Color _card = Color(0xFF1C1C1E); // Card surface
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800); // Gold highlight
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF); // Secondary text
 
@@ -53,7 +55,7 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
           'Updated for You',
           style: TextStyle(
             color: _white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
@@ -64,23 +66,6 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -140,
-            right: -120,
-            child: Container(
-              width: 340,
-              height: 340,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _gold.withValues(alpha: 0.15),
-                    _gold.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -133,7 +118,7 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                           "What's Changed?",
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: _white,
                           ),
                         ),
@@ -181,7 +166,7 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                                     "Why?",
                                     style: TextStyle(
                                       fontSize: 13,
-                                      fontWeight: FontWeight.w900,
+                                      fontWeight: FontWeight.w800,
                                       color: _white,
                                     ),
                                   ),
@@ -219,13 +204,7 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withValues(alpha: 0.28),
-                              blurRadius: 22,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),

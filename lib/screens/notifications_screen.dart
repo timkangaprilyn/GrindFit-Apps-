@@ -383,7 +383,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           'Notifications',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 22,
           ),
         ),
@@ -521,7 +521,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -641,7 +641,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                       style: TextStyle(
                         color: selected ? _gold : Colors.black,
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -749,7 +749,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
                                   color: Colors.white,
                                   fontSize: 14.5,
                                   fontWeight: unread
-                                      ? FontWeight.w900
+                                      ? FontWeight.w800
                                       : FontWeight.w700,
                                 ),
                               ),

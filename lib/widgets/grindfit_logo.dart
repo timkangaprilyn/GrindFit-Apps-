@@ -35,7 +35,7 @@ class GrindFitLogo extends StatelessWidget {
                 'GrindFit',
                 style: TextStyle(
                   fontSize: 22,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: Color(0xFF0F172A),
                 ),
               ),

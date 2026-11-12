@@ -81,7 +81,7 @@ class _WorkoutShareCardState extends State<WorkoutShareCard> {
                 'GRINDFIT',
                 style: TextStyle(
                   color: GrindFitTheme.gold,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   fontSize: 26,
                   letterSpacing: 3,
                 ),

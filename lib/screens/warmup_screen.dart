@@ -199,7 +199,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
                   style: TextStyle(
                     color: _white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -290,7 +290,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
               : 'Warm-up (${_currentStep + 1}/${_warmupSteps.length})',
           style: const TextStyle(
             color: _gold,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 16,
           ),
         ),
@@ -325,7 +325,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
                 _isResting ? 'Rest and Recover' : step['title'] as String,
                 style: const TextStyle(
                   fontSize: 26,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
                 textAlign: TextAlign.center,
@@ -384,7 +384,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
                     'Instructions',
                     style: TextStyle(
                       color: _gold,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
                   ),
@@ -424,7 +424,7 @@ class _WarmupScreenState extends State<WarmupScreen> {
               _isResting ? 'Skip Rest' : 'Skip to Rest',
               style: const TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: Colors.black,
               ),
             ),

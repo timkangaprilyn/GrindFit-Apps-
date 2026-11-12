@@ -18,7 +18,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static const Color _card = Color(0xFF18181C);
   static const Color _border = Color(0xFF38383F);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _hint = Color(0xFF6B7280);
@@ -166,20 +168,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -100,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -189,11 +177,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: const TextSpan(
+                  Text.rich(
+                    const TextSpan(
                       style: TextStyle(
                         fontSize: 30,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
                       ),
                       children: [
@@ -286,15 +274,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                   colors: [_goldLight, _gold],
                                 ),
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: _cooldownSeconds > 0
-                              ? []
-                              : [
-                                  BoxShadow(
-                                    color: _gold.withAlpha(90),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
+                          boxShadow: _cooldownSeconds > 0 ? [] : [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),

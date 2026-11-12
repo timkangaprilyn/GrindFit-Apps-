@@ -20,7 +20,9 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -138,7 +140,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           'Workout History',
           style: TextStyle(
             color: _white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 20,
             letterSpacing: -0.3,
           ),
@@ -146,25 +148,6 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -150,
-            right: -130,
-            child: IgnorePointer(
-              child: Container(
-                width: 360,
-                height: 360,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _gold.withValues(alpha: 0.16),
-                      _gold.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           Column(
             children: [
               const SizedBox(height: 6),
@@ -358,15 +341,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           color: isSelected ? null : _card,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: isSelected ? _gold : _border),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.28),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
+          boxShadow: isSelected ? [] : null,
         ),
         child: Text(
           filter,
@@ -515,7 +490,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                   style: const TextStyle(
                     fontSize: 17,
                     color: _white,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
@@ -590,7 +565,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                             workout['title']!,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: _white,
                             ),
                           ),
@@ -741,7 +716,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
               'No workouts found',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: _white,
               ),
             ),
@@ -838,7 +813,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: _white,
               ),
             ),
@@ -904,7 +879,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                           workout['title']!,
                           style: const TextStyle(
                             fontSize: 19,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: _white,
                           ),
                         ),
@@ -951,7 +926,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                   style: TextStyle(
                     color: _white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1055,13 +1030,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                         colors: [_goldLight, _gold],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _gold.withValues(alpha: 0.28),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                      boxShadow: [],
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),

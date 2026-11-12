@@ -343,7 +343,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           'Personalized Workout Recommendations',
           style: TextStyle(
             color: _white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
@@ -354,23 +354,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -140,
-            right: -120,
-            child: Container(
-              width: 340,
-              height: 340,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    _gold.withValues(alpha: 0.15),
-                    _gold.withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -391,13 +374,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                         color: _gold.withValues(alpha: 0.4),
                         width: 1.2,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _gold.withValues(alpha: 0.1),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      boxShadow: [],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,7 +407,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                           '${session.weekLabel} • ${AppState.instance.durationLabel} program',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: _white,
                           ),
                         ),
@@ -696,7 +673,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           title,
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             color: _white,
           ),
         ),
@@ -727,7 +704,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           '${weekOffset == 0 ? 'This week' : 'Next week'} • ${sessions.first.weekLabel}',
           style: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             color: _white,
           ),
         ),
@@ -840,7 +817,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               style: TextStyle(
                 color: _white,
                 fontSize: 18,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 4),
@@ -911,7 +888,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 style: TextStyle(
                   color: _white,
                   fontSize: 18,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 4),

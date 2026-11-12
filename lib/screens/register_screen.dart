@@ -22,7 +22,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const Color _card = Color(0xFF18181C);
   static const Color _border = Color(0xFF38383F);
   static const Color _gold = Color(0xFFF5B800);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _hint = Color(0xFF6B7280);
@@ -207,7 +209,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             content: Text(
               'Admin and trainer accounts must use the GrindFit Admin web portal, not the mobile app.',
             ),
-            backgroundColor: Colors.amber,
           ),
         );
         return;
@@ -345,20 +346,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -100,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [_gold.withAlpha(50), _gold.withAlpha(0)],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -491,13 +478,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withAlpha(90),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),

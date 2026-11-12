@@ -29,7 +29,9 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   static const Color _grid = Color(0xFF2A2A2D);
   static const Color _gold = Color(0xFFD3A72F);
   static const Color _goldBright = Color(0xFFE0BC61);
-  static const Color _goldLight = Color(0xFFE8CB7A);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -329,7 +331,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               style: const TextStyle(
                 color: _white,
                 fontSize: 18,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 8),
@@ -640,7 +642,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                 'Analytics',
                 style: TextStyle(
                   color: _white,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   fontSize: 30,
                   letterSpacing: -0.5,
                 ),
@@ -778,7 +780,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               key: ValueKey(value),
               style: const TextStyle(
                 fontSize: 26,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: _white,
                 letterSpacing: -0.5,
               ),
@@ -833,7 +835,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       'Workout Frequency',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: _white,
                       ),
                     ),
@@ -1098,7 +1100,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             valueText,
             style: const TextStyle(
               fontSize: 22,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
               letterSpacing: -0.3,
             ),
@@ -1198,7 +1200,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     '${(value * 100).round()}%',
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: _white,
                     ),
                   ),
@@ -1215,7 +1217,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   'Progress to Goal',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: _white,
                   ),
                 ),
@@ -1261,7 +1263,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             'Achievements',
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
             ),
           ),
@@ -1321,7 +1323,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             value,
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
             ),
           ),

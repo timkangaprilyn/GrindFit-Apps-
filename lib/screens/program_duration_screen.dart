@@ -18,7 +18,9 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
   static const Color _border = Color(0xFF2C2F36);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9AA3AE);
 
@@ -136,15 +138,7 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
             color: isSelected ? _gold : _border,
             width: isSelected ? 1.8 : 1.2,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: _gold.withValues(alpha: 0.22),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ]
-              : const [],
+          boxShadow: isSelected ? [] : const [],
         ),
         child: Row(
           children: [
@@ -285,8 +279,8 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                   const SizedBox(height: 40),
 
                   // Title
-                  RichText(
-                    text: const TextSpan(
+                  Text.rich(
+                    const TextSpan(
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.w800,
@@ -348,13 +342,7 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                             colors: [_goldLight, _gold],
                           ),
                           borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _gold.withValues(alpha: 0.3),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          boxShadow: [],
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(30),

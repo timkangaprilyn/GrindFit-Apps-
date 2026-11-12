@@ -23,7 +23,9 @@ class _RestDayScreenState extends State<RestDayScreen>
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
 
@@ -91,26 +93,6 @@ class _RestDayScreenState extends State<RestDayScreen>
       body: Stack(
         children: [
           // Gold glow sa taas
-          Positioned(
-            top: -160,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                width: 440,
-                height: 440,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _gold.withValues(alpha: 0.20),
-                      _gold.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
 
           SafeArea(
             child: SingleChildScrollView(
@@ -165,7 +147,7 @@ class _RestDayScreenState extends State<RestDayScreen>
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 30,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: _white,
                             letterSpacing: -0.5,
                           ),
@@ -268,12 +250,7 @@ class _RestDayScreenState extends State<RestDayScreen>
                   shape: BoxShape.circle,
                   color: _card,
                   border: Border.all(color: _gold, width: 1.6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _gold.withValues(alpha: 0.35),
-                      blurRadius: 28,
-                    ),
-                  ],
+                  boxShadow: [],
                 ),
                 child: const Icon(
                   Icons.self_improvement_rounded,
@@ -330,13 +307,7 @@ class _RestDayScreenState extends State<RestDayScreen>
           ],
         ),
         border: Border.all(color: _gold.withValues(alpha: 0.45), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: _gold.withValues(alpha: 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Row(
         children: [
@@ -427,7 +398,7 @@ class _RestDayScreenState extends State<RestDayScreen>
                 'For better results:',
                 style: TextStyle(
                   fontSize: 17,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),
@@ -647,13 +618,7 @@ class _RestDayScreenState extends State<RestDayScreen>
               colors: [_goldLight, _gold],
             ),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: _gold.withValues(alpha: 0.30),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            boxShadow: [],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),

@@ -96,7 +96,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           backgroundColor: _card,
           title: const Text(
             'Health and injury reminder',
-            style: TextStyle(color: _white, fontWeight: FontWeight.w900),
+            style: TextStyle(color: _white, fontWeight: FontWeight.w800),
           ),
           content: Text(
             state.injuryDetails.trim().isEmpty
@@ -369,20 +369,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       backgroundColor: _bg,
       body: Stack(
         children: [
-          Positioned(
-            top: -140,
-            right: -120,
-            child: Container(
-              width: 340,
-              height: 340,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [_gold.withAlpha(40), _gold.withAlpha(0)],
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -463,7 +449,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     'Weekly Activity',
                     style: TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       color: _white,
                     ),
                   ),
@@ -491,7 +477,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 26,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),
@@ -734,7 +720,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             value,
             style: const TextStyle(
               fontSize: 22,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w800,
               color: _white,
             ),
           ),
@@ -797,13 +783,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _gold.withAlpha(90), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: _gold.withAlpha(30),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(21),
@@ -863,7 +843,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                           style: TextStyle(
                             fontSize: 22,
                             height: 1.15,
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.w800,
                             color: _white,
                           ),
                         ),
@@ -1069,7 +1049,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         'Good',
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                           color: _good,
                         ),
                       ),
@@ -1159,7 +1139,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 '${_currentWeight.toStringAsFixed(1)} kg → ${_targetWeight.toStringAsFixed(1)} kg',
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),

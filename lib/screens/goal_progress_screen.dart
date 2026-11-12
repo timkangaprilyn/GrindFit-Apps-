@@ -24,7 +24,9 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(0xFFFFD34D);
+  static const Color _goldLight = Color(
+    0xFFF5B800,
+  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -182,7 +184,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           'Goal Progress',
           style: TextStyle(
             color: _white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             fontSize: 20,
             letterSpacing: -0.3,
           ),
@@ -190,25 +192,6 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
       ),
       body: Stack(
         children: [
-          Positioned(
-            top: -150,
-            right: -130,
-            child: IgnorePointer(
-              child: Container(
-                width: 360,
-                height: 360,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _gold.withValues(alpha: 0.16),
-                      _gold.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
           _isLoading
               ? const Center(child: CircularProgressIndicator(color: _gold))
               : SingleChildScrollView(
@@ -256,13 +239,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           ],
         ),
         border: Border.all(color: _gold.withValues(alpha: 0.35), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: _gold.withValues(alpha: 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,7 +272,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                       _goalTitle,
                       style: const TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: _white,
                       ),
                     ),
@@ -345,7 +322,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                             '${(value * 100).round()}%',
                             style: const TextStyle(
                               fontSize: 24,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               color: _white,
                               letterSpacing: -0.5,
                             ),
@@ -414,7 +391,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           '${kg.toStringAsFixed(kg % 1 == 0 ? 0 : 1)} kg',
           style: const TextStyle(
             fontSize: 20,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
             color: _white,
             letterSpacing: -0.4,
           ),
@@ -448,7 +425,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   'Weight Progress (kg)',
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     color: _white,
                   ),
                 ),
@@ -539,13 +516,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [_goldLight, _gold]),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: _gold.withValues(alpha: 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
+            boxShadow: [],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
@@ -716,7 +687,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                 'Update Current Weight',
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                   color: _white,
                 ),
               ),
@@ -849,7 +820,7 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                       'Update Your Fitness Goal',
                       style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                         color: _white,
                       ),
                     ),

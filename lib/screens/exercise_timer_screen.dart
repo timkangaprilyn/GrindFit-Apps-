@@ -360,7 +360,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                     _formatTime(_totalTimeRemaining),
                     style: const TextStyle(
                       color: _gold,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
@@ -407,7 +407,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                       style: const TextStyle(
                         color: _white,
                         fontSize: 28,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -434,7 +434,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                               color: _isResting
                                   ? Colors.lightBlueAccent
                                   : _gold,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                               letterSpacing: 1.4,
                             ),
                           ),
@@ -463,7 +463,7 @@ class _ExerciseTimerScreenState extends State<ExerciseTimerScreen> {
                                   style: const TextStyle(
                                     color: _white,
                                     fontSize: 38,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ],
@@ -579,7 +579,7 @@ class _InfoCard extends StatelessWidget {
                   style: const TextStyle(
                     color: Color(0xFFF5B800),
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 0.8,
                   ),
                 ),

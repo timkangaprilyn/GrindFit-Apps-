@@ -265,7 +265,7 @@ class _WorkoutPlanDetailScreenState extends State<WorkoutPlanDetailScreen> {
                               style: TextStyle(
                                 color: _gold,
                                 fontSize: 11,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: 1.4,
                               ),
                             ),
@@ -275,7 +275,7 @@ class _WorkoutPlanDetailScreenState extends State<WorkoutPlanDetailScreen> {
                               style: TextStyle(
                                 color: _white,
                                 fontSize: 22,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -338,7 +338,7 @@ class _WorkoutPlanDetailScreenState extends State<WorkoutPlanDetailScreen> {
                     style: const TextStyle(
                       fontSize: 15,
                       letterSpacing: 0.8,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -396,7 +396,7 @@ class _WorkoutHero extends StatelessWidget {
                     style: const TextStyle(
                       color: WorkoutPlanDetailScreen._gold,
                       fontSize: 10,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -408,7 +408,7 @@ class _WorkoutHero extends StatelessWidget {
                     style: const TextStyle(
                       color: WorkoutPlanDetailScreen._white,
                       fontSize: 21,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
@@ -534,7 +534,7 @@ class _ExerciseCard extends StatelessWidget {
                         style: const TextStyle(
                           color: WorkoutPlanDetailScreen._background,
                           fontSize: 11,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
