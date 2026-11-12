@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../animations/fade_slide_in.dart';
 import '../animations/motion.dart';
 import '../models/app_state.dart';
-import '../models/meal_plan.dart';
-import '../models/meal_recommendation.dart';
 import '../models/training_program.dart';
 import '../models/workout_plan.dart';
-import 'rest_day_screen.dart';
 import 'manual_log_workout_screen.dart';
-import 'meal_recommendations_screen.dart';
 import '../widgets/workout_image.dart';
 import '../widgets/exercise_actions.dart';
 import '../services/offline_store.dart';
 import '../services/ai_workout_service.dart';
-import '../services/meal_preferences_store.dart';
 import '../services/network_status.dart';
 
 class AiRecommendationsScreen extends StatefulWidget {
@@ -29,8 +23,6 @@ class AiRecommendationsScreen extends StatefulWidget {
 
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   final TextEditingController _requestController = TextEditingController();
-  final TextEditingController _budgetController = TextEditingController();
-  String? _budgetError;
   bool _saving = false;
   static final _focuses = [
     TrainingProgram.programFocus,
@@ -60,32 +52,13 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   void initState() {
     super.initState();
     _requestController.text = AppState.instance.workoutRequest;
-    _budgetController.text = '${AppState.instance.mealBudget}';
     AppState.instance.addListener(_refreshForAppStateChanges);
     NetworkStatus.instance.addListener(_refreshForAppStateChanges);
-    _loadMealPreferences();
-  }
-
-  /// Uses the diet filters saved on this device so the meal plan below
-  /// matches the Meal Plan screen.
-  Future<void> _loadMealPreferences() async {
-    String? uid;
-    try {
-      uid = FirebaseAuth.instance.currentUser?.uid;
-    } catch (_) {
-      return;
-    }
-    if (uid == null) return;
-    final saved = await MealPreferencesStore.readLocal(uid);
-    if (saved != null && mounted) {
-      AppState.instance.setMealPreferences(saved);
-    }
   }
 
   @override
   void dispose() {
     _requestController.dispose();
-    _budgetController.dispose();
     AppState.instance.removeListener(_refreshForAppStateChanges);
     NetworkStatus.instance.removeListener(_refreshForAppStateChanges);
     super.dispose();
@@ -119,8 +92,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     if (_saving) return;
     final request = _requestController.text.trim();
     if (request.length > 500) return;
-    final buildsPlan = generate || offline;
-    if (buildsPlan && !await _applyBudget()) return;
     setState(() => _saving = true);
     AppState.instance.updateWorkoutRequest(request, focus);
     await _savePreferences({'workoutRequest': request, 'workoutFocus': focus});
@@ -152,38 +123,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       }
     }
     if (mounted) setState(() => _saving = false);
-    if (buildsPlan && mounted) {
-      final meals = AppState.instance.todayMealPlan();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            meals.budgetTooLow
-                ? 'Workout ready. Meal plan uses the cheapest options (about ₱${meals.cheapestCost.round()}/day).'
-                : 'Workout and meal plan ready: about ₱${meals.cost.round()} of your ₱${meals.budget} budget.',
-          ),
-        ),
-      );
-    }
-  }
-
-  /// Reads the food budget field; returns false when it is not valid.
-  Future<bool> _applyBudget() async {
-    final value = int.tryParse(_budgetController.text.trim());
-    if (value == null ||
-        value < MealPlanner.minBudget ||
-        value > MealPlanner.maxBudget) {
-      setState(
-        () => _budgetError =
-            'Enter ₱${MealPlanner.minBudget} to ₱${MealPlanner.maxBudget}',
-      );
-      return false;
-    }
-    setState(() => _budgetError = null);
-    if (value != AppState.instance.mealBudget) {
-      AppState.instance.clearMealChoices();
-      await saveMealBudget(value);
-    }
-    return true;
   }
 
   Future<void> _useOfflineWorkout({bool automatic = false}) async {
@@ -363,8 +302,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 children: staggered([
                   _buildPersonalization(),
                   const SizedBox(height: 20),
-                  _buildMealSuggestions(),
-                  const SizedBox(height: 20),
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
@@ -441,52 +378,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  Pressable(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RestDayScreen(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _card,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: _border, width: 1.2),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.self_improvement_rounded,
-                                  color: _gold,
-                                  size: 24,
-                                ),
-                                SizedBox(width: 12),
-                                Text(
-                                  'View Rest Day / Recovery Mode',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: _white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Icon(Icons.chevron_right, color: _gold),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
 
                   Row(
                     children: [
@@ -629,7 +520,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   static String _focusLabel(String focus) => switch (focus) {
     TrainingProgram.programFocus => "Today's plan",
     TrainingProgram.fullBodyFocus => 'Full Body',
-    _ => focus,
+    _ => focus.replaceAll(' at ', ' & '),
   };
 
   static String _dateLabel(DateTime date) {
@@ -1072,7 +963,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Get today\'s workout and meal plan. Uses your ${state.workoutEnvironment} setting, ${state.workoutDays.length} days/week and ${state.sessionDuration} sessions.',
+            "Today's workout uses your ${state.workoutEnvironment} setting, ${state.workoutDays.length} days/week and ${state.sessionDuration} sessions.",
             style: const TextStyle(color: _gray),
           ),
           const SizedBox(height: 10),
@@ -1123,57 +1014,13 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
             children: [
               for (final focus in _focuses)
                 ChoiceChip(
-                  label: Text(switch (focus) {
-                    TrainingProgram.programFocus => "Today's plan",
-                    TrainingProgram.fullBodyFocus => 'Full Body',
-                    _ => focus,
-                  }),
+                  label: Text(_focusLabel(focus)),
                   selected: state.workoutFocus == focus,
                   onSelected: (_) => _saveBuilder(focus),
                 ),
             ],
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Food budget per day',
-            style: TextStyle(
-              color: _white,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'For breakfast, lunch, dinner and a snack. Meals and grams are matched to your goal and this budget.',
-            style: TextStyle(color: _gray, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _budgetController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(color: _white),
-            decoration: InputDecoration(
-              prefixText: '₱ ',
-              suffixText: 'per day',
-              errorText: _budgetError,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final preset in MealPlanner.budgetPresets)
-                ActionChip(
-                  label: Text('₱$preset'),
-                  onPressed: () => setState(() {
-                    _budgetController.text = '$preset';
-                    _budgetError = null;
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving
                 ? null
@@ -1182,20 +1029,13 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
               _saving
                   ? 'Building…'
                   : NetworkStatus.instance.offline
-                  ? 'Generate offline workout & meal plan'
-                  : 'Generate workout & meal plan',
+                  ? 'Build offline workout'
+                  : 'Generate workout',
             ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _saving
-                ? null
-                : () => _saveBuilder(state.workoutFocus, offline: true),
-            icon: const Icon(Icons.offline_bolt_outlined),
-            label: const Text('Use offline plan'),
-          ),
           const Text(
-            'Offline recommendations use your goal, equipment, focus and daily check-in, and take over automatically when online recommendations are unavailable.',
+            'No internet or online service unavailable? An offline workout is built automatically.',
             style: TextStyle(color: _gray, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -1225,110 +1065,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                 ? state.planSource
                 : 'On-device plan • Available offline',
             style: const TextStyle(color: _gray, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openMealPlan() => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const MealRecommendationsScreen()),
-  );
-
-  Future<void> _editMealBudget() async {
-    final value = await showMealBudgetSheet(
-      context,
-      AppState.instance.mealBudget,
-    );
-    if (value == null) return;
-    AppState.instance.clearMealChoices();
-    await saveMealBudget(value);
-    if (mounted) setState(() => _budgetController.text = '$value');
-  }
-
-  Widget _buildMealSuggestions() {
-    final state = AppState.instance;
-    final plan = state.todayMealPlan();
-    final target = plan.target;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.restaurant_menu, color: _gold),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  "Today's meal plan",
-                  style: TextStyle(
-                    color: _white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: _editMealBudget,
-                child: Text('₱${plan.budget}/day'),
-              ),
-            ],
-          ),
-          Text(
-            '${target.goal} • ${target.kcal} kcal • ${target.protein} g protein',
-            style: const TextStyle(color: _gold, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
-          for (final slot in MealSlot.values)
-            if (plan.mealFor(slot) case final meal?)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${slot.label}: ${meal.recipe.name}',
-                      style: const TextStyle(
-                        color: _white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      meal.foods
-                          .where((f) => f.food.id != 'oil')
-                          .map((f) => '${f.food.name} ${f.amount}')
-                          .join(' • '),
-                      style: const TextStyle(color: _gray, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-          Text(
-            plan.budgetTooLow
-                ? 'Budget is tight: the lowest-cost plan is about ₱${plan.cheapestCost.round()}.'
-                : 'About ₱${plan.cost.round()} of your ₱${plan.budget} budget.',
-            style: TextStyle(
-              color: plan.budgetTooLow || plan.overBudget
-                  ? Colors.orangeAccent
-                  : _gray,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openMealPlan,
-              icon: const Icon(Icons.restaurant_outlined),
-              label: const Text('Open meal plan'),
-            ),
           ),
         ],
       ),
