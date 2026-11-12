@@ -13,16 +13,13 @@ class WorkoutHistoryScreen extends StatefulWidget {
 }
 
 class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
-  // Black + Gold + White + Gray palette
+  // Black + Gold + White + Gray palette (flat brand gold: no gradients)
   static const Color _bg = Color(0xFF121212);
   static const Color _card = Color(0xFF1C1C1E);
   static const Color _tile = Color(0xFF2A2A2D);
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(
-    0xFFF5B800,
-  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -55,6 +52,14 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     'December',
   ];
 
+  bool get _hasFilters =>
+      _selectedCategory != 'All' || _selectedMonth != 'All Months';
+
+  void _clearFilters() => setState(() {
+    _selectedCategory = 'All';
+    _selectedMonth = 'All Months';
+  });
+
   // ───────────────────────── Helpers ─────────────────────────
 
   IconData _categoryIcon(String category) {
@@ -68,6 +73,10 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         return Icons.fitness_center_rounded;
     }
   }
+
+  /// Short chip label; the filter value itself stays unchanged.
+  String _categoryLabel(String category) =>
+      category == 'Home (no equipment)' ? 'Home' : category;
 
   int _intensityLevel(String intensity) {
     switch (intensity) {
@@ -96,6 +105,19 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     return m == 0 ? '${h}h' : '${h}h ${m}m';
   }
 
+  /// Real date of a workout document, or null when it has none.
+  DateTime? _docDate(Map<String, dynamic> data) {
+    if (data['timestamp'] is Timestamp) {
+      return (data['timestamp'] as Timestamp).toDate();
+    }
+    if (data['date'] != null) {
+      try {
+        return DateFormat('MMM dd, yyyy').parse(data['date'].toString());
+      } catch (_) {}
+    }
+    return null;
+  }
+
   // ───────────────────────── Build ─────────────────────────
 
   @override
@@ -115,21 +137,26 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
             ? Padding(
                 padding: const EdgeInsets.only(left: 20),
                 child: Center(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => Navigator.maybePop(context),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: _card,
+                  child: Tooltip(
+                    message: 'Back',
+                    child: Material(
+                      color: _card,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: _border),
+                        side: const BorderSide(color: _border),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: _white,
-                        size: 18,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => Navigator.maybePop(context),
+                        child: const SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: _white,
+                            size: 18,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -146,161 +173,204 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           ),
         ),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              const SizedBox(height: 6),
-              _buildCategoryFilters(),
-              const SizedBox(height: 10),
-              _buildMonthFilterDropdown(),
-              const SizedBox(height: 14),
-              Expanded(
-                child: user == null
-                    ? _buildEmptyState('Please log in to view workout history.')
-                    : StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(user.uid)
-                            .collection('workouts')
-                            .orderBy('timestamp', descending: true)
-                            .snapshots(includeMetadataChanges: true),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(color: _gold),
-                            );
-                          }
+          const SizedBox(height: 4),
+          _buildCategoryFilters(),
+          const SizedBox(height: 10),
+          _buildMonthFilterDropdown(),
+          const SizedBox(height: 14),
+          Expanded(
+            child: user == null
+                ? _buildEmptyState(
+                    title: 'Not signed in',
+                    message: 'Please log in to view workout history.',
+                    icon: Icons.person_outline_rounded,
+                  )
+                : StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('workouts')
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(includeMetadataChanges: true),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: _gold),
+                        );
+                      }
 
-                          if (!snapshot.hasData ||
-                              snapshot.data!.docs.isEmpty) {
-                            return _buildEmptyState('No workouts logged yet.');
-                          }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return _buildEmptyState(
+                          title: 'No workouts yet',
+                          message: 'No workouts logged yet.',
+                        );
+                      }
 
-                          // I-filter ang mga nakuhang dokumento mula sa Firestore
-                          final docs = snapshot.data!.docs.where((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final category = data['category'] ?? 'Gym';
+                      // I-filter ang mga nakuhang dokumento mula sa Firestore
+                      final docs = snapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final category = data['category'] ?? 'Gym';
 
-                            // Petsa para sa Month filter
-                            DateTime date = DateTime.now();
-                            if (data['timestamp'] is Timestamp) {
-                              date = (data['timestamp'] as Timestamp).toDate();
-                            } else if (data['date'] != null) {
-                              try {
-                                date = DateFormat('MMM dd, yyyy')
-                                    .parse(data['date']);
-                              } catch (_) {}
-                            }
+                        // Petsa para sa Month filter
+                        final date = _docDate(data) ?? DateTime.now();
+                        final monthName = DateFormat('MMMM').format(date);
 
-                            final monthName = DateFormat('MMMM').format(date);
+                        final normalizedCategory =
+                            category.toString().toLowerCase() == 'home'
+                            ? 'home (no equipment)'
+                            : category.toString().toLowerCase();
+                        final matchCategory =
+                            _selectedCategory == 'All' ||
+                            normalizedCategory ==
+                                _selectedCategory.toLowerCase();
+                        final matchMonth =
+                            _selectedMonth == 'All Months' ||
+                            monthName.toLowerCase() ==
+                                _selectedMonth.toLowerCase();
 
-                            final normalizedCategory =
-                                category.toString().toLowerCase() == 'home'
-                                ? 'home (no equipment)'
-                                : category.toString().toLowerCase();
-                            bool matchCategory =
-                                _selectedCategory == 'All' ||
-                                normalizedCategory ==
-                                    _selectedCategory.toLowerCase();
-                            bool matchMonth =
-                                _selectedMonth == 'All Months' ||
-                                monthName.toLowerCase() ==
-                                    _selectedMonth.toLowerCase();
+                        return matchCategory && matchMonth;
+                      }).toList();
 
-                            return matchCategory && matchMonth;
-                          }).toList();
+                      // Kuhanin ang Total Minutes
+                      var totalMinutes = 0;
+                      for (final doc in docs) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final durStr = data['duration']?.toString() ?? '0 min';
+                        totalMinutes += _parseMinutes(durStr);
+                      }
 
-                          // Kuhanin ang Total Minutes
-                          int totalMinutes = 0;
-                          for (var doc in docs) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final durStr =
-                                data['duration']?.toString() ?? '0 min';
-                            totalMinutes += _parseMinutes(durStr);
-                          }
+                      return Column(
+                        children: [
+                          _buildSummary(docs.length, totalMinutes),
+                          const SizedBox(height: 6),
+                          Expanded(
+                            child: docs.isEmpty
+                                ? _buildEmptyState(
+                                    title: 'No matches',
+                                    message: 'No workouts found for the selected filter.',
+                                    icon: Icons.filter_alt_off_outlined,
+                                    action: _hasFilters
+                                        ? OutlinedButton.icon(
+                                            onPressed: _clearFilters,
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Clear filters'),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: _goldBright,
+                                              side: BorderSide(
+                                                color: _gold.withValues(
+                                                  alpha: 0.5,
+                                                ),
+                                              ),
+                                              minimumSize: const Size(0, 44),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                            ),
+                                          )
+                                        : null,
+                                  )
+                                : ListView.builder(
+                                    physics: const BouncingScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      8,
+                                      20,
+                                      20,
+                                    ),
+                                    itemCount: docs.length,
+                                    itemBuilder: (context, index) {
+                                      final data =
+                                          docs[index].data()
+                                              as Map<String, dynamic>;
+                                      final date = _docDate(data);
 
-                          return Column(
-                            children: [
-                              _buildSummary(docs.length, totalMinutes),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                child: docs.isEmpty
-                                    ? _buildEmptyState(
-                                        'No workouts found for the selected filter.',
-                                      )
-                                    : ListView.builder(
-                                        physics: const BouncingScrollPhysics(),
-                                        padding: const EdgeInsets.fromLTRB(
-                                          20,
-                                          8,
-                                          20,
-                                          20,
-                                        ),
-                                        itemCount: docs.length,
-                                        itemBuilder: (context, index) {
-                                          final data =
-                                              docs[index].data()
-                                                  as Map<String, dynamic>;
+                                      // Month header whenever the month
+                                      // changes (list is newest first).
+                                      String? monthHeader;
+                                      if (date != null) {
+                                        final label = DateFormat('MMMM yyyy')
+                                            .format(date);
+                                        final prev = index == 0
+                                            ? null
+                                            : _docDate(
+                                                docs[index - 1].data()
+                                                    as Map<String, dynamic>,
+                                              );
+                                        final prevLabel = prev == null
+                                            ? null
+                                            : DateFormat('MMMM yyyy')
+                                                  .format(prev);
+                                        if (prevLabel != label) {
+                                          monthHeader = label;
+                                        }
+                                      }
 
-                                          // Format ng totoong petsa mula Firestore
-                                          String formattedDate =
-                                              'Date unavailable';
-                                          if (data['timestamp'] is Timestamp) {
-                                            formattedDate =
-                                                DateFormat('MMM dd, yyyy')
-                                                    .format(
-                                                      (data['timestamp']
-                                                              as Timestamp)
-                                                          .toDate(),
-                                                    );
-                                          } else if (data['date'] != null) {
-                                            formattedDate = data['date']
-                                                .toString();
-                                          }
+                                      // Format ng totoong petsa mula Firestore
+                                      var formattedDate = 'Date unavailable';
+                                      if (data['timestamp'] is Timestamp) {
+                                        formattedDate =
+                                            DateFormat('MMM dd, yyyy').format(
+                                              (data['timestamp'] as Timestamp)
+                                                  .toDate(),
+                                            );
+                                      } else if (data['date'] != null) {
+                                        formattedDate = data['date'].toString();
+                                      }
 
-                                          final workoutMap = {
-                                            // Done offline, not on the server yet.
-                                            'pending': docs[index]
-                                                .metadata
-                                                .hasPendingWrites,
-                                            'date': formattedDate,
-                                            'title':
-                                                data['title']?.toString() ??
-                                                data['workoutName']
-                                                    ?.toString() ??
-                                                'Workout Session',
-                                            'category':
-                                                data['category']?.toString() ??
-                                                'Gym',
-                                            'duration':
-                                                data['duration']?.toString() ??
-                                                '45 min',
-                                            'intensity':
-                                                data['intensity']?.toString() ??
-                                                'Moderate',
-                                            'notes':
-                                                data['notes']?.toString() ?? '',
-                                            'exercises':
-                                                data['exercises'] is List
-                                                ? data['exercises'] as List
-                                                : const <dynamic>[],
-                                            'feedback':
-                                                data['feedback']?.toString() ??
-                                                '',
-                                          };
+                                      final workoutMap = {
+                                        // Done offline, not on the server yet.
+                                        'pending': docs[index]
+                                            .metadata
+                                            .hasPendingWrites,
+                                        'date': formattedDate,
+                                        'dateValue': date,
+                                        'title':
+                                            data['title']?.toString() ??
+                                            data['workoutName']?.toString() ??
+                                            'Workout Session',
+                                        'category':
+                                            data['category']?.toString() ??
+                                            'Gym',
+                                        'duration':
+                                            data['duration']?.toString() ??
+                                            '45 min',
+                                        'intensity':
+                                            data['intensity']?.toString() ??
+                                            'Moderate',
+                                        'notes':
+                                            data['notes']?.toString() ?? '',
+                                        'exercises': data['exercises'] is List
+                                            ? data['exercises'] as List
+                                            : const <dynamic>[],
+                                        'feedback':
+                                            data['feedback']?.toString() ?? '',
+                                      };
 
-                                          return _buildWorkoutCard(workoutMap);
-                                        },
-                                      ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-              ),
-            ],
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (monthHeader != null)
+                                            _buildMonthHeader(
+                                              monthHeader,
+                                              first: index == 0,
+                                            ),
+                                          _buildWorkoutCard(workoutMap),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -310,45 +380,60 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   // ───────────────────────── Category Filters ─────────────────────────
 
+  /// Scrollable row so "Home (no equipment)" never gets squeezed or wrapped
+  /// on narrow phones (the old Row of four Expanded chips did).
   Widget _buildCategoryFilters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          for (int i = 0; i < _categories.length; i++) ...[
-            if (i != 0) const SizedBox(width: 8),
-            Expanded(child: _buildFilterChip(_categories[i])),
-          ],
-        ],
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: _categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => _buildFilterChip(_categories[i]),
       ),
     );
   }
 
   Widget _buildFilterChip(String filter) {
     final bool isSelected = _selectedCategory == filter;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _selectedCategory = filter),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: isSelected
-              ? const LinearGradient(colors: [_goldLight, _gold])
-              : null,
-          color: isSelected ? null : _card,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '${_categoryLabel(filter)} workouts',
+      excludeSemantics: true,
+      child: Material(
+        color: isSelected ? _gold : _card,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? _gold : _border),
-          boxShadow: isSelected ? [] : null,
+          side: BorderSide(color: isSelected ? _gold : _border),
         ),
-        child: Text(
-          filter,
-          style: TextStyle(
-            color: isSelected ? Colors.black : _gray,
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => setState(() => _selectedCategory = filter),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (filter != 'All') ...[
+                  Icon(
+                    _categoryIcon(filter),
+                    size: 16,
+                    color: isSelected ? Colors.black : _gray,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  _categoryLabel(filter),
+                  style: TextStyle(
+                    color: isSelected ? Colors.black : _gray,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -361,28 +446,30 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        height: 48,
+        padding: const EdgeInsets.only(left: 14, right: 8),
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
+          border: Border.all(
+            color: _selectedMonth == 'All Months'
+                ? _border
+                : _gold.withValues(alpha: 0.5),
+          ),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Row(
-              children: [
-                Icon(Icons.calendar_month_rounded, color: _gold, size: 18),
-                SizedBox(width: 10),
-                Text(
-                  'Filter Month:',
-                  style: TextStyle(
-                    color: _gray,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
+            const Icon(Icons.calendar_month_rounded, color: _gold, size: 18),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Month',
+                style: TextStyle(
+                  color: _gray,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
+              ),
             ),
             DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -421,27 +508,38 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   // ───────────────────────── Summary ─────────────────────────
 
+  /// Workouts + total time as one divided strip instead of two tiles.
   Widget _buildSummary(int count, int minutes) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: _summaryTile(
-              icon: Icons.local_fire_department_rounded,
-              label: 'Workouts',
-              value: '$count',
-            ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _border),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _summaryTile(
+                  icon: Icons.local_fire_department_rounded,
+                  label: 'Workouts',
+                  value: '$count',
+                ),
+              ),
+              const VerticalDivider(width: 1, thickness: 1, color: _border),
+              Expanded(
+                child: _summaryTile(
+                  icon: Icons.timer_outlined,
+                  label: 'Total time',
+                  value: _formatMinutes(minutes),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _summaryTile(
-              icon: Icons.timer_outlined,
-              label: 'Total time',
-              value: _formatMinutes(minutes),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -451,66 +549,73 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
     required String label,
     required String value,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border, width: 1.2),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _gold.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(icon, color: _gold, size: 19),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: _muted,
-                    fontWeight: FontWeight.w700,
+    return Semantics(
+      label: '$label: $value',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Icon(icon, color: _gold, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: _white,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    color: _white,
-                    fontWeight: FontWeight.w800,
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: _muted,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  // ───────────────────────── Workout Card ─────────────────────────
+  // ───────────────────────── Workout List ─────────────────────────
+
+  Widget _buildMonthHeader(String label, {required bool first}) {
+    return Padding(
+      padding: EdgeInsets.only(left: 4, top: first ? 4 : 14, bottom: 10),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          letterSpacing: 1.4,
+          color: _muted,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
 
   Widget _buildWorkoutCard(Map<String, dynamic> workout) {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(20),
       side: const BorderSide(color: _border, width: 1.2),
     );
+    final DateTime? date = workout['dateValue'] as DateTime?;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: _card,
         shape: shape,
@@ -519,113 +624,120 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           onTap: () => _showDetailsModal(context, workout),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _gold.withValues(alpha: 0.28),
-                            _gold.withValues(alpha: 0.10),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: _gold.withValues(alpha: 0.35),
-                        ),
-                      ),
-                      child: Icon(
-                        _categoryIcon(workout['category']!),
-                        color: _gold,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            workout['date']!,
-                            style: const TextStyle(
-                              fontSize: 11.5,
-                              color: _goldBright,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            workout['title']!,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _white,
-                            ),
-                          ),
-                          if (workout['pending'] == true)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 4),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.cloud_upload_outlined,
-                                    size: 14,
-                                    color: _muted,
-                                  ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Saved on this phone • not synced yet',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: _muted,
-                                    ),
-                                  ),
-                                ],
+                // Date block: day + weekday, easy to scan down the list.
+                Container(
+                  width: 52,
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: _gold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: date == null
+                      ? Icon(
+                          _categoryIcon(workout['category']!),
+                          color: _gold,
+                          size: 22,
+                        )
+                      : Column(
+                          children: [
+                            Text(
+                              DateFormat('EEE').format(date).toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 10.5,
+                                color: _goldBright,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
                               ),
                             ),
+                            const SizedBox(height: 1),
+                            Text(
+                              '${date.day}',
+                              style: const TextStyle(
+                                fontSize: 19,
+                                color: _white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              workout['title']!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w800,
+                                color: _white,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: _muted,
+                            size: 24,
+                          ),
                         ],
                       ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: _muted,
-                      size: 26,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(height: 1, color: _border),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Wrap(
+                      const SizedBox(height: 2),
+                      Text(
+                        workout['date']!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _gray,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (workout['pending'] == true)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cloud_upload_outlined,
+                                size: 14,
+                                color: _muted,
+                              ),
+                              SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Saved on this phone • not synced yet',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: _muted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 12),
+                      Wrap(
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _infoChip(Icons.place_outlined, workout['category']!),
+                          _infoChip(
+                            _categoryIcon(workout['category']!),
+                            workout['category']!,
+                          ),
                           _infoChip(Icons.timer_outlined, workout['duration']!),
                           _intensityChip(workout['intensity']!),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'View Details',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: _goldBright,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -662,39 +774,47 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   Widget _intensityChip(String intensity) {
     final int level = _intensityLevel(intensity);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: _gold.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _gold.withValues(alpha: 0.30)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (int i = 0; i < 3; i++)
-            Icon(
-              Icons.bolt_rounded,
-              size: 13,
-              color: i < level ? _goldBright : _gold.withValues(alpha: 0.25),
+    return Semantics(
+      label: 'Intensity $intensity',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _gold.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (int i = 0; i < 3; i++)
+              Icon(
+                Icons.bolt_rounded,
+                size: 13,
+                color: i < level ? _goldBright : _gold.withValues(alpha: 0.25),
+              ),
+            const SizedBox(width: 4),
+            Text(
+              intensity,
+              style: const TextStyle(
+                fontSize: 12,
+                color: _goldBright,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          const SizedBox(width: 4),
-          Text(
-            intensity,
-            style: const TextStyle(
-              fontSize: 12,
-              color: _goldBright,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   // ───────────────────────── Empty State ─────────────────────────
 
-  Widget _buildEmptyState(String message) {
+  Widget _buildEmptyState({
+    required String title,
+    required String message,
+    IconData icon = Icons.history_rounded,
+    Widget? action,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -702,19 +822,19 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 84,
-              height: 84,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _gold.withValues(alpha: 0.10),
-                border: Border.all(color: _gold.withValues(alpha: 0.30)),
               ),
-              child: const Icon(Icons.history_rounded, color: _gold, size: 40),
+              child: Icon(icon, color: _gold, size: 36),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'No workouts found',
-              style: TextStyle(
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: _white,
@@ -731,6 +851,7 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
                 height: 1.4,
               ),
             ),
+            if (action != null) ...[const SizedBox(height: 18), action],
           ],
         ),
       ),
@@ -798,35 +919,37 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
 
   Widget _detailTile(IconData icon, String label, String value) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: _tile,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: _gold, size: 22),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: _white,
+      child: Semantics(
+        label: '$label: $value',
+        excludeSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+          child: Column(
+            children: [
+              Icon(icon, color: _gold, size: 20),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: _white,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11.5,
-                color: _gray,
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  color: _gray,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -848,204 +971,278 @@ class _WorkoutHistoryScreenState extends State<WorkoutHistoryScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        // Height cap + scroll: a workout with many exercises used to
+        // overflow the sheet. Close stays pinned at the bottom.
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _gold.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _gold.withValues(alpha: 0.4)),
-                    ),
-                    child: Icon(
-                      _categoryIcon(workout['category']!),
-                      color: _gold,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          workout['title']!,
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: _white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          workout['date']!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: _goldBright,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  _detailTile(
-                    Icons.place_outlined,
-                    'Category',
-                    workout['category']!,
-                  ),
-                  const SizedBox(width: 10),
-                  _detailTile(
-                    Icons.timer_outlined,
-                    'Duration',
-                    workout['duration']!,
-                  ),
-                  const SizedBox(width: 10),
-                  _detailTile(
-                    Icons.bolt_rounded,
-                    'Intensity',
-                    workout['intensity']!,
-                  ),
-                ],
-              ),
-              if (exercises.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                const Text(
-                  'Exercises',
-                  style: TextStyle(
-                    color: _white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                for (final exercise in exercises)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _tile,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Text(
-                            exercise['name']?.toString() ?? 'Exercise',
-                            style: const TextStyle(
-                              color: _white,
-                              fontWeight: FontWeight.w800,
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _gold.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              _categoryIcon(workout['category']!),
+                              color: _gold,
+                              size: 24,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps'
-                            '${exercise['weight']?.toString().isNotEmpty == true ? ' • ${exercise['weight']} kg' : ''}'
-                            '${exercise['skipped'] == true ? ' • Skipped' : ''}',
-                            style: const TextStyle(color: _gray, fontSize: 12),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  workout['title']!,
+                                  style: const TextStyle(
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w800,
+                                    color: _white,
+                                    height: 1.25,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  workout['date']!,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: _goldBright,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-              ],
-              if ((workout['feedback'] as String?)?.isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Workout feedback: ${workout['feedback']}',
-                  style: const TextStyle(
-                    color: _goldBright,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: _gold.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _gold.withValues(alpha: 0.25)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: _gold,
-                          size: 20,
+                      const SizedBox(height: 18),
+                      // Category / duration / intensity as one divided strip.
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: _bg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _border),
                         ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Workout Completed Successfully',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              color: _white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        child: IntrinsicHeight(
+                          child: Row(
+                            children: [
+                              _detailTile(
+                                _categoryIcon(workout['category']!),
+                                'Category',
+                                workout['category']!,
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: _border,
+                              ),
+                              _detailTile(
+                                Icons.timer_outlined,
+                                'Duration',
+                                workout['duration']!,
+                              ),
+                              const VerticalDivider(
+                                width: 1,
+                                thickness: 1,
+                                color: _border,
+                              ),
+                              _detailTile(
+                                Icons.bolt_rounded,
+                                'Intensity',
+                                workout['intensity']!,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (exercises.isNotEmpty) ...[
+                        const SizedBox(height: 22),
+                        Text(
+                          'EXERCISES · ${exercises.length}',
+                          style: const TextStyle(
+                            color: _muted,
+                            fontSize: 12,
+                            letterSpacing: 1.4,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _bg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _border),
+                          ),
+                          child: Column(
+                            children: [
+                              for (final (i, exercise)
+                                  in exercises.indexed) ...[
+                                if (i != 0)
+                                  const Divider(
+                                    height: 1,
+                                    thickness: 1,
+                                    color: _border,
+                                  ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 26,
+                                        child: Text(
+                                          (i + 1).toString().padLeft(2, '0'),
+                                          style: const TextStyle(
+                                            color: _muted,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              exercise['name']?.toString() ??
+                                                  'Exercise',
+                                              style: TextStyle(
+                                                color:
+                                                    exercise['skipped'] == true
+                                                    ? _gray
+                                                    : _white,
+                                                fontWeight: FontWeight.w800,
+                                                decoration:
+                                                    exercise['skipped'] == true
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                                decorationColor: _gray,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              '${exercise['sets'] ?? 0} sets × ${exercise['reps'] ?? 0} reps'
+                                              '${exercise['weight']?.toString().isNotEmpty == true ? ' • ${exercise['weight']} kg' : ''}'
+                                              '${exercise['skipped'] == true ? ' • Skipped' : ''}',
+                                              style: const TextStyle(
+                                                color: _gray,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                    if (notes.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Notes: $notes',
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: _gray,
-                          fontStyle: FontStyle.italic,
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: _gold.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _gold.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: _gold,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Workout Completed Successfully',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      color: _white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if ((workout['feedback'] as String?)?.isNotEmpty ==
+                                true) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Workout feedback: ${workout['feedback']}',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: _goldBright,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                            if (notes.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Notes: $notes',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: _gray,
+                                  fontStyle: FontStyle.italic,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: Material(
-                  color: Colors.transparent,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_goldLight, _gold],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _gold,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [],
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.pop(context),
-                      child: const Center(
-                        child: Text(
-                          'Close',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black,
-                          ),
-                        ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
+                    child: const Text('Close'),
                   ),
                 ),
               ),

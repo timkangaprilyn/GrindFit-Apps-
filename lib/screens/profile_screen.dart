@@ -30,9 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _border = Color(0xFF2E2E31);
   static const Color _gold = Color(0xFFF5B800);
   static const Color _goldBright = Color(0xFFFFCC1A);
-  static const Color _goldLight = Color(
-    0xFFF5B800,
-  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -271,7 +268,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: _bg,
       body: Stack(
         children: [
-          // Gold glow sa taas na kanan
           SafeArea(
             child: RefreshIndicator(
               color: _gold,
@@ -281,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: staggered([
@@ -290,17 +286,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                         color: _white,
                         fontWeight: FontWeight.w800,
-                        fontSize: 30,
+                        fontSize: 28,
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Your account, body stats and training settings.',
+                      style: TextStyle(
+                        color: _gray,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Identity + body stats in one card instead of a
+                    // header card followed by three identical stat tiles.
                     _buildHeaderCard(name, email, created),
-                    const SizedBox(height: 16),
-                    _buildStatsRow(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _buildBmiCard(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     _sectionLabel('Account'),
                     _group([
                       _settingsTile(
@@ -431,31 +436,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 'Health & Injuries',
                 'Share relevant conditions so your workout recommendations can account for them.',
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _bg,
+              // Material (not a coloured Container) so the switch tile has a
+              // surface to paint on; a coloured box throws in debug builds.
+              Material(
+                color: _bg,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _border),
+                  side: const BorderSide(color: _border),
                 ),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  activeThumbColor: _gold,
-                  title: const Text(
-                    'I have an injury or condition',
-                    style: TextStyle(
-                      color: _white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
                   ),
-                  value: hasCondition,
-                  onChanged: saving
-                      ? null
-                      : (value) => setS(() => hasCondition = value),
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    activeThumbColor: _gold,
+                    title: const Text(
+                      'I have an injury or condition',
+                      style: TextStyle(
+                        color: _white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    value: hasCondition,
+                    onChanged: saving
+                        ? null
+                        : (value) => setS(() => hasCondition = value),
+                  ),
                 ),
               ),
               if (hasCondition) ...[
@@ -556,95 +566,148 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildHeaderCard(String name, String email, DateTime? created) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 10, 18),
       decoration: BoxDecoration(
+        color: _card,
         borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(_gold.withValues(alpha: 0.14), _card),
-            _card,
-          ],
-        ),
         border: Border.all(color: _gold.withValues(alpha: 0.35), width: 1.2),
-        boxShadow: [],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [_goldLight, _gold],
-              ),
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: _card,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _initials(name),
-                style: const TextStyle(
-                  color: _goldBright,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: _white,
-                  ),
-                ),
-                if (email.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    email,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: _gray,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _pill(Icons.bolt_rounded, AppState.instance.fitnessLevel),
-                    if (created != null)
-                      _pill(
-                        Icons.calendar_today_rounded,
-                        'Since ${DateFormat('MMM yyyy').format(created)}',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAvatar(name),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: _white,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                  ],
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: _gray,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _pill(
+                            Icons.bolt_rounded,
+                            AppState.instance.fitnessLevel,
+                          ),
+                          if (created != null)
+                            _pill(
+                              Icons.calendar_today_rounded,
+                              'Since ${DateFormat('MMM yyyy').format(created)}',
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              IconButton(
+                tooltip: 'Edit personal information',
+                onPressed: _editPersonalInfo,
+                icon: const Icon(Icons.edit_outlined, color: _gold, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _buildStatsRow(),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Profile photo from the sign-in provider (Google), if the account has one.
+  /// Google returns a 96px image by default; ask for a sharper one.
+  String? get _photoUrl {
+    final user = _user;
+    if (user == null) return null;
+    String? url = user.photoURL;
+    if (url == null || url.isEmpty) {
+      for (final p in user.providerData) {
+        if (p.photoURL != null && p.photoURL!.isNotEmpty) {
+          url = p.photoURL;
+          break;
+        }
+      }
+    }
+    if (url == null || url.isEmpty) return null;
+    return url.replaceFirst(RegExp(r'=s\d+-c$'), '=s256-c');
+  }
+
+  /// Gold ring with the account photo, or the initials when there is no
+  /// photo or it cannot load (offline, expired link).
+  Widget _buildAvatar(String name) {
+    final initials = Text(
+      _initials(name),
+      style: const TextStyle(
+        color: _goldBright,
+        fontWeight: FontWeight.w800,
+        fontSize: 22,
+        letterSpacing: 0.5,
+      ),
+    );
+    final url = _photoUrl;
+    return Semantics(
+      image: true,
+      label: url != null ? 'Profile photo of $name' : 'Initials of $name',
+      excludeSemantics: true,
+      child: Container(
+        width: 64,
+        height: 64,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _gold.withValues(alpha: 0.12),
+          border: Border.all(color: _gold, width: 2),
+        ),
+        child: url == null
+            ? initials
+            : ClipOval(
+                child: Image.network(
+                  url,
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                  // Initials stay visible while the photo loads.
+                  frameBuilder: (context, child, frame, wasSync) =>
+                      frame == null && !wasSync
+                      ? Center(child: initials)
+                      : child,
+                  errorBuilder: (context, _, _) => Center(child: initials),
+                ),
+              ),
       ),
     );
   }
@@ -653,9 +716,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: _gold.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _gold.withValues(alpha: 0.30)),
+        color: _gold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -675,60 +737,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Age / height / weight as one inset strip inside the header card.
   Widget _buildStatsRow() {
     final app = AppState.instance;
-    return Row(
-      children: [
-        Expanded(child: _statTile(Icons.cake_outlined, '${app.age}', 'Age')),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _statTile(
-            Icons.straighten_rounded,
-            app.heightCm.toStringAsFixed(0),
-            'Height (cm)',
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: _bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(child: _statTile('${app.age}', 'yrs', 'Age')),
+            const VerticalDivider(width: 1, thickness: 1, color: _border),
+            Expanded(
+              child: _statTile(app.heightCm.toStringAsFixed(0), 'cm', 'Height'),
+            ),
+            const VerticalDivider(width: 1, thickness: 1, color: _border),
+            Expanded(
+              child: _statTile(app.weightKg.toStringAsFixed(0), 'kg', 'Weight'),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _statTile(
-            Icons.monitor_weight_outlined,
-            app.weightKg.toStringAsFixed(0),
-            'Weight (kg)',
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _statTile(IconData icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _border, width: 1.2),
-      ),
+  Widget _statTile(String value, String unit, String label) {
+    return Semantics(
+      label: '$label $value $unit',
+      excludeSemantics: true,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: _gold, size: 22),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: _white,
-              letterSpacing: -0.3,
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: _white,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _gray,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
-            label,
-            textAlign: TextAlign.center,
+            label.toUpperCase(),
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 10.5,
               color: _muted,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
             ),
           ),
         ],
@@ -744,6 +818,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Scale: 15 → 40
     final double frac = ((bmi - 15) / 25).clamp(0.0, 1.0);
 
+    // Scale marks placed at their real position on the 15–40 bar, so each
+    // number lines up with the segment boundary it describes.
+    const marks = [15.0, 18.5, 25.0, 30.0, 40.0];
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -754,27 +832,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'BODY MASS INDEX',
+            style: TextStyle(
+              fontSize: 11.5,
+              letterSpacing: 1.4,
+              color: _muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Expanded(
-                child: Text(
-                  'Body Mass Index',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: _white,
-                  ),
+              Text(
+                bmi > 0 ? bmi.toStringAsFixed(1) : '—',
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  color: _white,
+                  letterSpacing: -0.8,
+                  height: 1.1,
                 ),
               ),
+              const SizedBox(width: 12),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(
-                  color: _gold.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _gold.withValues(alpha: 0.35)),
+                  color: _gold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   category,
@@ -787,104 +876,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            bmi > 0 ? bmi.toStringAsFixed(1) : '—',
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              color: _white,
-              letterSpacing: -0.8,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, c) {
               final w = c.maxWidth;
-              return SizedBox(
-                height: 22,
-                child: Stack(
-                  clipBehavior: Clip.none,
+              return Semantics(
+                label: bmi > 0
+                    ? 'BMI ${bmi.toStringAsFixed(1)}, $category'
+                    : 'BMI not available',
+                excludeSemantics: true,
+                child: Column(
                   children: [
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      top: 7,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: SizedBox(
-                          height: 8,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 35,
-                                child: Container(
-                                  color: _gray.withValues(alpha: 0.45),
+                    SizedBox(
+                      height: 22,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 7,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: SizedBox(
+                                height: 8,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 35,
+                                      child: Container(
+                                        color: _gray.withValues(alpha: 0.45),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Expanded(
+                                      flex: 65,
+                                      child: Container(color: _gold),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Expanded(
+                                      flex: 50,
+                                      child: Container(
+                                        color: _gold.withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Expanded(
+                                      flex: 100,
+                                      child: Container(
+                                        color: _gray.withValues(alpha: 0.25),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                flex: 65,
-                                child: Container(color: _gold),
-                              ),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                flex: 50,
-                                child: Container(
-                                  color: _gold.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              Expanded(
-                                flex: 100,
-                                child: Container(
-                                  color: _gray.withValues(alpha: 0.25),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          if (bmi > 0)
+                            AnimatedPositioned(
+                              duration: Motion.slow,
+                              curve: Motion.curve,
+                              left: (frac * w - 9).clamp(0.0, w - 18),
+                              top: 2,
+                              child: Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: _white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: _bg, width: 3),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    if (bmi > 0)
-                      Positioned(
-                        left: (frac * w - 9).clamp(0.0, w - 18),
-                        top: 2,
-                        child: Container(
-                          width: 18,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: _white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: _bg, width: 3),
-                            boxShadow: [],
-                          ),
-                        ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 14,
+                      child: Stack(
+                        children: [
+                          for (final m in marks)
+                            Align(
+                              alignment: Alignment(-1 + 2 * ((m - 15) / 25), 0),
+                              child: Text(
+                                m == m.roundToDouble()
+                                    ? m.toStringAsFixed(0)
+                                    : m.toStringAsFixed(1),
+                                style: _scaleStyle,
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               );
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('15', style: _scaleStyle),
-              Text('18.5', style: _scaleStyle),
-              Text('25', style: _scaleStyle),
-              Text('30', style: _scaleStyle),
-              Text('40', style: _scaleStyle),
+              Icon(Icons.info_outline_rounded, size: 14, color: _muted),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'A general guide only — not a medical diagnosis.',
+                  style: TextStyle(fontSize: 11.5, color: _muted),
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'A general guide only — not a medical diagnosis.',
-            style: TextStyle(
-              fontSize: 11,
-              color: _muted,
-              fontStyle: FontStyle.italic,
-            ),
           ),
         ],
       ),
@@ -947,94 +1048,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: _gold.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: Icon(icon, color: _gold, size: 21),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: _white,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: _gray,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: _muted, size: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogoutTile() {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: BorderSide(color: _danger.withValues(alpha: 0.35), width: 1.2),
-    );
-    return Material(
-      color: _danger.withValues(alpha: 0.08),
-      shape: shape,
-      child: InkWell(
-        customBorder: shape,
-        onTap: _confirmLogout,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: _danger.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(13),
+                  color: _gold.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: _danger,
-                  size: 21,
-                ),
+                child: Icon(icon, color: _gold, size: 20),
               ),
               const SizedBox(width: 14),
-              const Expanded(
-                child: Text(
-                  'Log Out',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: _danger,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: _white,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: _gray,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: _muted, size: 22),
             ],
           ),
         ),
@@ -1042,50 +1102,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDeleteDataTile() {
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: BorderSide(color: _danger.withValues(alpha: 0.35), width: 1.2),
+  /// Log out is a plain, centered outlined action at the end of the page,
+  /// separate from settings so it is not tapped by accident.
+  Widget _buildLogoutTile() {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: _confirmLogout,
+        icon: const Icon(Icons.logout_rounded, size: 20),
+        label: const Text('Log Out'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _danger,
+          side: BorderSide(color: _danger.withValues(alpha: 0.45), width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        ),
+      ),
     );
-    return Material(
-      color: _danger.withValues(alpha: 0.06),
-      shape: shape,
-      child: InkWell(
-        customBorder: shape,
-        onTap: _confirmDeleteMyData,
+  }
+
+  /// Destructive row that sits inside the Privacy group (no nested border),
+  /// marked by red text and icon instead.
+  Widget _buildDeleteDataTile() {
+    return InkWell(
+      onTap: _confirmDeleteMyData,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: _danger.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(13),
+                  color: _danger.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.delete_forever_outlined,
                   color: _danger,
-                  size: 22,
+                  size: 21,
                 ),
               ),
               const SizedBox(width: 14),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'Delete my data',
                       style: TextStyle(
                         fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         color: _danger,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    SizedBox(height: 2),
                     Text(
                       'Permanently remove your GrindFit profile and account',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12.5,
                         color: _gray,
@@ -1095,7 +1176,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _muted, size: 24),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: _muted, size: 22),
             ],
           ),
         ),
@@ -1217,27 +1299,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Flat selectable chip. Uses InkWell + Semantics so it gets a ripple,
+  /// keyboard focus and a "selected" state for screen readers.
   Widget _choiceChip(String label, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          gradient: selected
-              ? const LinearGradient(colors: [_goldLight, _gold])
-              : null,
-          color: selected ? null : _bg,
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? _gold : _bg,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? _gold : _border),
+          side: BorderSide(color: selected ? _gold : _border),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w800,
-            color: selected ? Colors.black : _gray,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: Colors.black,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? Colors.black : _gray,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1255,6 +1354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         border: Border.all(color: _danger.withValues(alpha: 0.35)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.error_outline_rounded, color: _danger, size: 18),
           const SizedBox(width: 8),
@@ -1265,6 +1365,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontSize: 13,
                 color: _white,
                 fontWeight: FontWeight.w600,
+                height: 1.35,
               ),
             ),
           ),
@@ -1273,39 +1374,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Flat brand-gold primary button with loading and disabled states.
   Widget _goldButton(
     String label,
     VoidCallback? onTap, {
     bool loading = false,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: Material(
-        color: Colors.transparent,
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [_goldLight, _gold]),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [],
-          ),
+    final enabled = onTap != null && !loading;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: loading ? '$label, saving' : label,
+      excludeSemantics: true,
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: Material(
+          color: onTap == null && !loading
+              ? _gold.withValues(alpha: 0.35)
+              : _gold,
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: loading ? null : onTap,
+            onTap: enabled ? onTap : null,
             child: Center(
               child: loading
                   ? const SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 22,
+                      height: 22,
                       child: CircularProgressIndicator(
                         color: Colors.black,
-                        strokeWidth: 3,
+                        strokeWidth: 2.6,
                       ),
                     )
                   : Text(
                       label,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         color: Colors.black,
                       ),
@@ -1608,31 +1713,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   for (int d = 1; d <= 7; d++) ...[
                     if (d != 1) const SizedBox(width: 6),
                     Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => setS(() => days = d),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          height: 46,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            gradient: d == days
-                                ? const LinearGradient(
-                                    colors: [_goldLight, _gold],
-                                  )
-                                : null,
-                            color: d == days ? null : _bg,
+                      child: Semantics(
+                        button: true,
+                        selected: d == days,
+                        label: '$d days per week',
+                        excludeSemantics: true,
+                        child: Material(
+                          color: d == days ? _gold : _bg,
+                          shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
+                            side: BorderSide(
                               color: d == days ? _gold : _border,
                             ),
                           ),
-                          child: Text(
-                            '$d',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: d == days ? Colors.black : _gray,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => setS(() => days = d),
+                            child: SizedBox(
+                              height: 48,
+                              child: Center(
+                                child: Text(
+                                  '$d',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: d == days ? Colors.black : _gray,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

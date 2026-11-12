@@ -204,6 +204,16 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Meal Plan'), findsOneWidget);
+      // The meal cards sit below the target and budget cards, so scroll
+      // until the list has built the first one.
+      for (
+        var i = 0;
+        i < 10 && find.byTooltip('Save favorite').evaluate().isEmpty;
+        i++
+      ) {
+        await tester.drag(find.byType(ListView).first, const Offset(0, -200));
+        await tester.pumpAndSettle();
+      }
       await tester.ensureVisible(find.byTooltip('Save favorite').first);
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Save favorite').first);
@@ -219,14 +229,21 @@ void main() {
       expect(find.text(originalMeal), findsNothing);
       await tester.drag(find.byType(ListView).first, const Offset(0, 1200));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Favorites (1)'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Favorites (1)'));
       await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('SAVED MEAL'), findsOneWidget);
+      await tester.drag(find.byType(ListView).first, const Offset(0, 1200));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.byIcon(Icons.tune));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.tune));
       await tester.pumpAndSettle();
-      expect(find.text('Meal preferences'), findsOneWidget);
+      // The sheet title matches the row label behind it.
+      expect(find.text('Apply preferences'), findsOneWidget);
       await tester.tap(find.text('Plant-based only'));
       await tester.tap(find.text('Apply preferences'));
       await tester.pumpAndSettle();

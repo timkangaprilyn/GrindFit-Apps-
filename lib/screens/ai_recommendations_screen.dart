@@ -18,6 +18,47 @@ import '../services/ai_workout_service.dart';
 import '../services/meal_preferences_store.dart';
 import '../services/network_status.dart';
 
+/// Black + Gold + White palette (same colors as before, shared by the
+/// helper widgets at the bottom of this file).
+class _C {
+  static const Color bg = Color(0xFF121212); // Charcoal background
+  static const Color card = Color(0xFF1C1C1E); // Card surface
+  static const Color border = Color(0xFF2E2E31);
+  static const Color gold = Color(0xFFF5B800); // Gold highlight
+  static const Color white = Colors.white;
+  static const Color gray = Color(0xFF9CA3AF); // Secondary text
+  static const Color warn = Colors.orangeAccent; // Budget warnings
+}
+
+/// Type scale used across the screen so every section reads the same way.
+class _T {
+  static const overline = TextStyle(
+    color: _C.gold,
+    fontSize: 11,
+    fontWeight: FontWeight.w800,
+    letterSpacing: 1.4,
+  );
+  static const h1 = TextStyle(
+    color: _C.white,
+    fontSize: 22,
+    fontWeight: FontWeight.w800,
+    height: 1.2,
+  );
+  static const h2 = TextStyle(
+    color: _C.white,
+    fontSize: 17,
+    fontWeight: FontWeight.w800,
+    height: 1.25,
+  );
+  static const label = TextStyle(
+    color: _C.white,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+  );
+  static const body = TextStyle(color: _C.gray, fontSize: 13, height: 1.45);
+  static const caption = TextStyle(color: _C.gray, fontSize: 12, height: 1.4);
+}
+
 class AiRecommendationsScreen extends StatefulWidget {
   const AiRecommendationsScreen({super.key});
 
@@ -29,6 +70,7 @@ class AiRecommendationsScreen extends StatefulWidget {
 class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   final TextEditingController _requestController = TextEditingController();
   final TextEditingController _budgetController = TextEditingController();
+  final GlobalKey _workoutKey = GlobalKey();
   String? _budgetError;
   bool _saving = false;
   static final _focuses = [
@@ -45,13 +87,6 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     'No Equipment',
     'Limited Mobility',
   ];
-  // Black + Gold + White palette
-  static const Color _bg = Color(0xFF121212); // Charcoal background
-  static const Color _card = Color(0xFF1C1C1E); // Card surface
-  static const Color _border = Color(0xFF2E2E31);
-  static const Color _gold = Color(0xFFF5B800); // Gold highlight
-  static const Color _white = Colors.white;
-  static const Color _gray = Color(0xFF9CA3AF); // Secondary text
 
   int _selectedTab = 0; // 0: Today, 1: This Week, 2: Next Week
 
@@ -152,6 +187,8 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     }
     if (mounted) setState(() => _saving = false);
     if (buildsPlan && mounted) {
+      // The builder sits above the workout, so bring the new plan into view.
+      _scrollToWorkout();
       final meals = AppState.instance.todayMealPlan();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -163,6 +200,17 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
         ),
       );
     }
+  }
+
+  void _scrollToWorkout() {
+    if (_selectedTab != 0) setState(() => _selectedTab = 0);
+    final target = _workoutKey.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      duration: Motion.slow,
+      curve: Motion.curve,
+    );
   }
 
   /// Reads the food budget field; returns false when it is not valid.
@@ -213,41 +261,54 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: _card,
-          title: const Text('Daily check-in', style: TextStyle(color: _white)),
+          backgroundColor: _C.card,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text('Daily check-in', style: _T.h2),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Sleep: $sleep hours',
-                style: const TextStyle(color: _white),
+              const Text(
+                "Your sleep and energy adjust today's workout.",
+                style: _T.caption,
               ),
+              const SizedBox(height: 20),
+              _sliderLabel('Sleep', '$sleep hours'),
               Slider(
                 value: sleep.toDouble(),
                 min: 0,
                 max: 12,
                 divisions: 12,
+                label: '$sleep h',
+                activeColor: _C.gold,
+                inactiveColor: _C.border,
                 onChanged: (v) => setDialogState(() => sleep = v.round()),
               ),
-              Text(
-                'Energy: $energy / 5',
-                style: const TextStyle(color: _white),
-              ),
+              const SizedBox(height: 8),
+              _sliderLabel('Energy', '$energy / 5'),
               Slider(
                 value: energy.toDouble(),
                 min: 1,
                 max: 5,
                 divisions: 4,
+                label: '$energy',
+                activeColor: _C.gold,
+                inactiveColor: _C.border,
                 onChanged: (v) => setDialogState(() => energy = v.round()),
               ),
             ],
           ),
           actions: [
             TextButton(
+              style: TextButton.styleFrom(foregroundColor: _C.gray),
               onPressed: () => Navigator.pop(context, false),
               child: const Text('Cancel'),
             ),
             FilledButton(
+              style: _primaryStyle(height: 44),
               onPressed: () => Navigator.pop(context, true),
               child: const Text('Save'),
             ),
@@ -264,6 +325,21 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     });
   }
 
+  static Widget _sliderLabel(String label, String value) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Text(label, style: _T.label),
+      Text(
+        value,
+        style: const TextStyle(
+          color: _C.gold,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
+  );
+
   Future<void> _showSwap(PlanExercise exercise) async {
     final choices = WorkoutPlan.alternativesFor(
       exercise,
@@ -279,20 +355,31 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     }
     final choice = await showModalBottomSheet<PlanExercise>(
       context: context,
-      backgroundColor: _card,
+      backgroundColor: _C.card,
+      showDragHandle: true,
       builder: (context) => SafeArea(
         child: ListView(
           shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           children: [
-            const ListTile(
-              title: Text('Replace exercise', style: TextStyle(color: _gold)),
+            const Text('Replace exercise', style: _T.h2),
+            const SizedBox(height: 4),
+            Text(
+              'Pick an alternative for ${exercise.name}.',
+              style: _T.caption,
             ),
+            const SizedBox(height: 12),
             for (final option in choices)
               ListTile(
-                title: Text(option.name, style: const TextStyle(color: _white)),
+                contentPadding: EdgeInsets.zero,
+                title: Text(option.name, style: _T.label),
                 subtitle: Text(
                   '${option.muscles} • ${option.equipment}',
-                  style: const TextStyle(color: _gray),
+                  style: _T.caption,
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _C.gold,
                 ),
                 onTap: () => Navigator.pop(context, option),
               ),
@@ -316,23 +403,26 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     final String goal = AppState.instance.fitnessGoal.isNotEmpty
         ? AppState.instance.fitnessGoal
         : "Muscle Gain / Strength";
-    final exercises = AppState.instance.recommendedPlan;
 
     // Alamin kung pwede pang mag-pop (kung binuksan ito mula sa ibang screen gaya ng notification)
     final bool canPop = Navigator.canPop(context);
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: _C.bg,
       appBar: AppBar(
-        backgroundColor: _card,
+        backgroundColor: _C.card,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         // Mag-aadjust ang leading depende kung galing sa push navigation o tab
         automaticallyImplyLeading: canPop,
+        titleSpacing: canPop ? 0 : 20,
         leading: canPop
             ? IconButton(
+                tooltip: 'Back',
                 icon: const Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: _white,
+                  color: _C.white,
                   size: 18,
                 ),
                 onPressed: () => Navigator.pop(context),
@@ -340,244 +430,221 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
             : null,
         title: const Text(
           'Personalized Workout Recommendations',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: _white,
+            color: _C.white,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 17,
           ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: _border, height: 1.0),
+          child: Container(color: _C.border, height: 1.0),
         ),
       ),
-      body: Stack(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: staggered([
+              _buildPersonalization(),
+              const SizedBox(height: 20),
+              _buildProgramHeader(session, goal),
+              const SizedBox(height: 28),
+              _buildWorkoutSection(session),
+              const SizedBox(height: 28),
+              _buildMealSuggestions(),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Program overview ----
+
+  Widget _buildProgramHeader(ProgramSession session, String goal) {
+    final state = AppState.instance;
+    final progress = (session.weekNumber / session.totalWeeks)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final percent = (progress * 100).round();
+    final onDevice = state.generatedContext != state.planContext;
+
+    return _Surface(
+      padding: const EdgeInsets.all(20),
+      borderColor: _C.gold.withValues(alpha: .35),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 40.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: staggered([
-                  _buildPersonalization(),
-                  const SizedBox(height: 20),
-                  _buildMealSuggestions(),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: _card,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _gold.withValues(alpha: 0.4),
-                        width: 1.2,
+          Text('GOAL • ${goal.toUpperCase()}', style: _T.overline),
+          const SizedBox(height: 10),
+          Text(session.weekLabel, style: _T.h1),
+          const SizedBox(height: 2),
+          Text('${state.durationLabel} program', style: _T.body),
+          const SizedBox(height: 16),
+          Semantics(
+            label: 'Program progress',
+            value: '$percent percent',
+            child: Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: progress),
+                      duration: Motion.slow,
+                      curve: Motion.curve,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        value: value,
+                        minHeight: 6,
+                        color: _C.gold,
+                        backgroundColor: _C.border,
                       ),
-                      boxShadow: [],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Goal: $goal',
-                                style: const TextStyle(
-                                  color: _gold,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${WorkoutPlan.titleForGoal(goal)} is tailored to your goal and workout setting.',
-                          style: const TextStyle(
-                            color: _gray,
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${session.weekLabel} • ${AppState.instance.durationLabel} program',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: _white,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: TweenAnimationBuilder<double>(
-                            tween: Tween(
-                              begin: 0,
-                              end: (session.weekNumber / session.totalWeeks)
-                                  .clamp(0.0, 1.0),
-                            ),
-                            duration: Motion.slow,
-                            curve: Motion.curve,
-                            builder: (context, value, _) =>
-                                LinearProgressIndicator(value: value),
-                          ),
-                        ),
-                        if (session.isLighterWeek) ...[
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Lighter week: fewer sets and reps so your body can recover before the next, harder block.',
-                            style: TextStyle(
-                              color: _gold,
-                              fontSize: 12,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedTab = 0),
-                          child: AnimatedContainer(
-                            duration: Motion.medium,
-                            curve: Motion.curve,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: _selectedTab == 0 ? _gold : _card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _selectedTab == 0 ? _gold : _border,
-                              ),
-                            ),
-                            child: Text(
-                              'Today',
-                              style: TextStyle(
-                                color: _selectedTab == 0 ? _bg : _white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedTab = 1),
-                          child: AnimatedContainer(
-                            duration: Motion.medium,
-                            curve: Motion.curve,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: _selectedTab == 1 ? _gold : _card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _selectedTab == 1 ? _gold : _border,
-                              ),
-                            ),
-                            child: Text(
-                              'This Week',
-                              style: TextStyle(
-                                color: _selectedTab == 1 ? _bg : _white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedTab = 2),
-                          child: AnimatedContainer(
-                            duration: Motion.medium,
-                            curve: Motion.curve,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: _selectedTab == 2 ? _gold : _card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _selectedTab == 2 ? _gold : _border,
-                              ),
-                            ),
-                            child: Text(
-                              'Next Week',
-                              style: TextStyle(
-                                color: _selectedTab == 2 ? _bg : _white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$percent%',
+                  style: const TextStyle(
+                    color: _C.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: 24),
-
-                  if (_selectedTab == 0) ...[
-                    _buildTodayHeader(session),
-                    const SizedBox(height: 12),
-                    // Re-keyed when the plan changes so new cards animate in.
-                    KeyedSubtree(
-                      key: ValueKey(exercises.map((e) => e.name).join('|')),
-                      child: Column(
-                        children: [
-                          for (final (index, exercise) in exercises.indexed)
-                            FadeSlideIn(
-                              delay: Motion.step * index.clamp(0, 8),
-                              duration: Motion.slow,
-                              offset: const Offset(0, .06),
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Pressable(
-                                  child: _buildExerciseCard(exercise),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: AppState.instance.needsRecovery
-                          ? null
-                          : _showAddExercise,
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add exercise for today'),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Added exercises are for today only. Tomorrow follows your plan again.',
-                      style: TextStyle(color: _gray, fontSize: 12),
-                    ),
-                  ] else
-                    KeyedSubtree(
-                      key: ValueKey(_selectedTab),
-                      child: _buildWeekView(_selectedTab == 1 ? 0 : 1),
-                    ),
-                  const SizedBox(height: 30),
-                ]),
-              ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '${WorkoutPlan.titleForGoal(goal)} is tailored to your goal and workout setting.',
+            style: _T.body,
+          ),
+          if (session.isLighterWeek) ...[
+            const SizedBox(height: 12),
+            const _Notice(
+              icon: Icons.spa_outlined,
+              text: 'Lighter week: fewer sets and reps so your body can recover before the next, harder block.',
+            ),
+          ],
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusPill(
+                icon: onDevice
+                    ? Icons.phone_android_rounded
+                    : Icons.cloud_done_outlined,
+                label: onDevice
+                    ? 'On-device plan • Available offline'
+                    : state.planSource,
+              ),
+              if (NetworkStatus.instance.offline)
+                const _StatusPill(
+                  icon: Icons.wifi_off_rounded,
+                  label: 'Offline',
+                  color: _C.warn,
+                ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // ---- Weekly program, today-only extras and equipment ----
+  // ---- Workout: Today / This Week / Next Week ----
+
+  Widget _buildWorkoutSection(ProgramSession session) {
+    return Column(
+      key: _workoutKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('WORKOUT', style: _T.overline),
+        const SizedBox(height: 10),
+        _SegmentedTabs(
+          labels: const ['Today', 'This Week', 'Next Week'],
+          selected: _selectedTab,
+          onChanged: (i) => setState(() => _selectedTab = i),
+        ),
+        const SizedBox(height: 20),
+        if (_selectedTab == 0)
+          ..._buildTodayView(session)
+        else
+          KeyedSubtree(
+            key: ValueKey(_selectedTab),
+            child: _buildWeekView(_selectedTab == 1 ? 0 : 1),
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _buildTodayView(ProgramSession session) {
+    final state = AppState.instance;
+    final exercises = state.recommendedPlan;
+    final notices = [
+      if (state.needsRecovery)
+        'Low sleep or energy today: a gentle mobility session is recommended.',
+      if (state.adaptationReason.isNotEmpty) state.adaptationReason,
+    ];
+
+    return [
+      _buildTodayHeader(session, exercises.length),
+      const SizedBox(height: 18),
+      _buildFocusPicker(),
+      const SizedBox(height: 18),
+      for (final notice in notices)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _Notice(icon: Icons.bedtime_outlined, text: notice),
+        ),
+      if (exercises.isEmpty)
+        const _EmptyState(
+          icon: Icons.fitness_center_rounded,
+          title: 'No exercises yet',
+          message: "Generate a workout below to fill today's session.",
+        )
+      else
+        // Re-keyed when the plan changes so new cards animate in.
+        KeyedSubtree(
+          key: ValueKey(exercises.map((e) => e.name).join('|')),
+          child: Column(
+            children: [
+              for (final (index, exercise) in exercises.indexed)
+                FadeSlideIn(
+                  delay: Motion.step * index.clamp(0, 8),
+                  duration: Motion.slow,
+                  offset: const Offset(0, .06),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Pressable(
+                      child: _buildExerciseCard(exercise, index),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      const SizedBox(height: 6),
+      OutlinedButton.icon(
+        style: _outlinedStyle(),
+        onPressed: state.needsRecovery ? null : _showAddExercise,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add exercise for today'),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        state.needsRecovery
+            ? 'Adding exercises is paused while today is a recovery session.'
+            : 'Added exercises are for today only. Tomorrow follows your plan again.',
+        style: _T.caption,
+      ),
+    ];
+  }
 
   static String _focusLabel(String focus) => switch (focus) {
     TrainingProgram.programFocus => "Today's plan",
@@ -606,7 +673,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
   Future<void> _persistTodayPlan() =>
       _savePreferences({'todayPlan': AppState.instance.todayPlanJson});
 
-  Widget _buildTodayHeader(ProgramSession session) {
+  Widget _buildTodayHeader(ProgramSession session, int count) {
     final focus = AppState.instance.workoutFocus;
     final custom = focus != TrainingProgram.programFocus;
     final title = custom
@@ -619,21 +686,58 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
         : session.isToday
         ? '${session.weekLabel}${session.isLighterWeek ? ' • Lighter week' : ''}'
         : 'Next session: ${_dateLabel(session.date)} • ${session.dayName}. Want to train anyway? Here it is.';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: _T.h2),
+              const SizedBox(height: 4),
+              Text(subtitle, style: _T.caption),
+            ],
+          ),
+        ),
+        if (count > 0) ...[
+          const SizedBox(width: 12),
+          _StatusPill(
+            icon: Icons.format_list_numbered_rounded,
+            label: '$count ${count == 1 ? 'exercise' : 'exercises'}',
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFocusPicker() {
+    final state = AppState.instance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: _white,
-          ),
-        ),
+        const Text("Today's focus", style: _T.label),
         const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(color: _gray, fontSize: 12, height: 1.4),
+        const Text(
+          "Today's plan follows your weekly schedule. Pick another focus to change today's workout only.",
+          style: _T.caption,
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          child: Row(
+            children: [
+              for (final focus in _focuses)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _choiceChip(
+                    label: _focusLabel(focus),
+                    selected: state.workoutFocus == focus,
+                    onSelected: _saving ? null : (_) => _saveBuilder(focus),
+                  ),
+                ),
+            ],
+          ),
         ),
       ],
     );
@@ -645,9 +749,9 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     bool isToday(DateTime d) =>
         d.year == today.year && d.month == today.month && d.day == today.day;
     if (sessions.isEmpty) {
-      return const Text(
-        'No training days scheduled.',
-        style: TextStyle(color: _gray),
+      return const _EmptyState(
+        icon: Icons.event_busy_outlined,
+        title: 'No training days scheduled.',
       );
     }
     return Column(
@@ -655,96 +759,135 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       children: [
         Text(
           '${weekOffset == 0 ? 'This week' : 'Next week'} • ${sessions.first.weekLabel}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: _white,
-          ),
+          style: _T.h2,
         ),
         const SizedBox(height: 4),
         Text(
           sessions.first.isLighterWeek
               ? 'Lighter week for recovery. The next block starts harder.'
               : 'Each training day works different muscles, and the numbers grow week by week.',
-          style: const TextStyle(color: _gray, fontSize: 12, height: 1.4),
+          style: _T.caption,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         for (final (index, session) in sessions.indexed)
           FadeSlideIn(
             delay: Motion.step * index,
             duration: Motion.slow,
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _card,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isToday(session.date) ? _gold : _border,
-                  width: 1.2,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.dayName,
-                          style: const TextStyle(
-                            color: _white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        isToday(session.date)
-                            ? 'Today'
-                            : _dateLabel(session.date),
-                        style: TextStyle(
-                          color: isToday(session.date) ? _gold : _gray,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  for (final exercise in session.exercises)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              exercise.name,
-                              style: const TextStyle(
-                                color: _white,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            exercise.detail.split(' • ').take(2).join(' • '),
-                            style: const TextStyle(
-                              color: _gold,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildDayCard(session, isToday(session.date)),
             ),
           ),
       ],
     );
   }
+
+  Widget _buildDayCard(ProgramSession session, bool today) {
+    final weekday = TrainingProgram.weekdays[session.date.weekday - 1];
+    final shortDay = weekday.length > 3 ? weekday.substring(0, 3) : weekday;
+    return _Surface(
+      padding: const EdgeInsets.all(14),
+      borderColor: today ? _C.gold : null,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date block: quick to scan down the week.
+          Container(
+            width: 52,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: today ? _C.gold : _C.bg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  shortDay.toUpperCase(),
+                  style: TextStyle(
+                    color: today ? _C.bg : _C.gray,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${session.date.day}',
+                  style: TextStyle(
+                    color: today ? _C.bg : _C.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        session.dayName,
+                        style: const TextStyle(
+                          color: _C.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    if (today)
+                      const Text(
+                        'Today',
+                        style: TextStyle(
+                          color: _C.gold,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                for (final exercise in session.exercises)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            exercise.name,
+                            style: const TextStyle(
+                              color: _C.white,
+                              fontSize: 13,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          exercise.detail.split(' • ').take(2).join(' • '),
+                          style: const TextStyle(
+                            color: _C.gold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---- Today-only extras and equipment ----
 
   Future<void> _showAddExercise() async {
     final state = AppState.instance;
@@ -757,6 +900,7 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      backgroundColor: _C.card,
       builder: (context) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: .75,
@@ -765,42 +909,28 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           controller: controller,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            const Text(
-              'Add exercise for today',
-              style: TextStyle(
-                color: _white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            const Text('Add exercise for today', style: _T.h2),
             const SizedBox(height: 4),
             Text(
               'Matched to your ${state.fitnessGoal} goal and ${Gear.describe(state.ownedEquipment).toLowerCase()}. For today only.',
-              style: const TextStyle(color: _gray, fontSize: 12, height: 1.4),
+              style: _T.caption,
             ),
             for (final (label, items) in groups) ...[
               Padding(
-                padding: const EdgeInsets.only(top: 18, bottom: 6),
-                child: Text(
-                  label.toUpperCase(),
-                  style: const TextStyle(
-                    color: _gold,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+                padding: const EdgeInsets.only(top: 20, bottom: 4),
+                child: Text(label.toUpperCase(), style: _T.overline),
               ),
               for (final exercise in items)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(exercise.name),
+                  title: Text(exercise.name, style: _T.label),
                   subtitle: Text(
                     '${exercise.muscles} • ${exercise.equipmentLabel}',
+                    style: _T.caption,
                   ),
                   trailing: const Icon(
                     Icons.add_circle_outline_rounded,
-                    color: _gold,
+                    color: _C.gold,
                   ),
                   onTap: () => Navigator.pop(context, exercise.name),
                 ),
@@ -825,160 +955,212 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
 
   Future<void> _editEquipment() async {
     final state = AppState.instance;
+    final hadGym = state.equipment.contains(Gear.gym);
+    final gymSetting = state.workoutEnvironment.toLowerCase().contains('gym');
     var selected = {...state.equipment}..remove(Gear.gym);
     final saved = await showModalBottomSheet<Set<String>>(
       context: context,
+      // Scroll-controlled so a long equipment list never pushes the chips or
+      // the Save button off-screen.
+      isScrollControlled: true,
       showDragHandle: true,
+      backgroundColor: _C.card,
       builder: (context) => StatefulBuilder(
-        builder: (context, setSheet) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'What equipment do you have?',
-                style: TextStyle(
-                  color: _white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Workouts only use what you select. Leave all off for bodyweight only.',
-                style: TextStyle(color: _gray, fontSize: 12),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+        builder: (context, setSheet) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * .85,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final (id, label) in Gear.options)
-                    if (id != Gear.gym)
-                      FilterChip(
-                        label: Text(label),
-                        selected: selected.contains(id),
-                        onSelected: (on) => setSheet(() {
-                          selected = {...selected};
-                          on ? selected.add(id) : selected.remove(id);
-                        }),
-                      ),
+                  const Text('What equipment do you have?', style: _T.h2),
+                  const SizedBox(height: 4),
+                  Text(
+                    selected.isEmpty
+                        ? 'Nothing selected: bodyweight only.'
+                        : '${selected.length} selected. Workouts only use what you select.',
+                    style: _T.caption,
+                  ),
+                  if (gymSetting) ...[
+                    const SizedBox(height: 12),
+                    const _Notice(
+                      icon: Icons.fitness_center_rounded,
+                      text: 'Your workout setting is a gym, so gym equipment stays included.',
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 10,
+                    children: [
+                      for (final (id, label) in Gear.options)
+                        if (id != Gear.gym)
+                          FilterChip(
+                            label: Text(label),
+                            selected: selected.contains(id),
+                            showCheckmark: true,
+                            checkmarkColor: _C.gold,
+                            backgroundColor: _C.bg,
+                            selectedColor: _C.gold.withValues(alpha: .16),
+                            side: BorderSide(
+                              color: selected.contains(id)
+                                  ? _C.gold
+                                  : _C.border,
+                            ),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
+                            labelStyle: TextStyle(
+                              color: selected.contains(id) ? _C.gold : _C.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                            onSelected: (on) => setSheet(() {
+                              selected = {...selected};
+                              on ? selected.add(id) : selected.remove(id);
+                            }),
+                          ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      style: TextButton.styleFrom(foregroundColor: _C.gray),
+                      onPressed: selected.isEmpty
+                          ? null
+                          : () => setSheet(() => selected = <String>{}),
+                      child: const Text('Clear all (bodyweight only)'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    style: _primaryStyle(),
+                    onPressed: () => Navigator.pop(context, selected),
+                    child: const Text('Save equipment'),
+                  ),
                 ],
               ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context, selected),
-                  child: const Text('Save equipment'),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
     if (saved == null) return;
-    state.updateEquipment(saved);
+    // Keep the gym marker if it was there, so saving here never drops it.
+    state.updateEquipment(hadGym ? {...saved, Gear.gym} : saved);
     await _savePreferences({'equipment': state.equipment.toList()..sort()});
   }
 
-  Widget _buildExerciseCard(PlanExercise exercise) {
+  Widget _buildExerciseCard(PlanExercise exercise, int index) {
     final addedToday = AppState.instance.isTodayExtra(exercise.name);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border, width: 1.2),
-      ),
-      child: Row(
+    return _Surface(
+      padding: const EdgeInsets.fromLTRB(14, 14, 8, 4),
+      borderColor: addedToday ? _C.gold.withValues(alpha: .45) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 64,
-              height: 64,
-              child: WorkoutImage(
-                imageUrl: exercise.imageUrl ?? '',
-                exerciseName: exercise.name,
-                backgroundColor: _bg,
-                iconColor: _gold,
-                iconSize: 24,
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  exercise.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: _white,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  exercise.detail,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _gold,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${exercise.muscles} • ${exercise.equipment}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _gray,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (addedToday) ...[
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: WorkoutImage(
+                      imageUrl: exercise.imageUrl ?? '',
+                      exerciseName: exercise.name,
+                      backgroundColor: _C.bg,
+                      iconColor: _C.gold,
+                      iconSize: 24,
                     ),
-                    decoration: BoxDecoration(
-                      color: _gold.withValues(alpha: .14),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Added by you • today only',
-                      style: TextStyle(
-                        color: _gold,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Order number: the list is the order to train in.
+                      Text(
+                        (index + 1).toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          color: _C.gray,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Text(
+                        exercise.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: _C.white,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        exercise.detail,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _C.gold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${exercise.muscles} • ${exercise.equipment}',
+                        style: _T.caption,
+                      ),
+                      if (addedToday) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _C.gold.withValues(alpha: .14),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Added by you • today only',
+                            style: TextStyle(
+                              color: _C.gold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
+          const SizedBox(height: 10),
+          const Divider(height: 1, thickness: 1, color: _C.border),
+          // Labeled actions are easier to find than a column of bare icons.
+          Row(
             children: [
-              if (addedToday)
-                IconButton(
-                  icon: const Icon(
-                    Icons.remove_circle_outline_rounded,
-                    color: _gray,
-                  ),
-                  tooltip: 'Remove from today',
-                  onPressed: () => _removeTodayExtra(exercise.name),
-                ),
-              IconButton(
-                icon: const Icon(Icons.edit_note_rounded, color: _gold),
+              _cardAction(
+                icon: Icons.edit_note_rounded,
+                label: 'Log',
                 tooltip: 'Log this exercise',
+                primary: true,
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -986,15 +1168,201 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
                   ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.swap_horiz, color: _gold),
+              _cardAction(
+                icon: Icons.swap_horiz_rounded,
+                label: 'Swap',
                 tooltip: 'Replace exercise',
                 onPressed: () => _showSwap(exercise),
               ),
-              IconButton(
-                icon: const Icon(Icons.info_outline, color: _gray),
+              _cardAction(
+                icon: Icons.info_outline_rounded,
+                label: 'Form',
                 tooltip: 'Form guide',
                 onPressed: () => _showFormGuide(exercise),
+              ),
+              const Spacer(),
+              if (addedToday)
+                IconButton(
+                  icon: const Icon(
+                    Icons.remove_circle_outline_rounded,
+                    color: _C.gray,
+                  ),
+                  tooltip: 'Remove from today',
+                  onPressed: () => _removeTodayExtra(exercise.name),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cardAction({
+    required IconData icon,
+    required String label,
+    required String tooltip,
+    required VoidCallback onPressed,
+    bool primary = false,
+  }) => Tooltip(
+    message: tooltip,
+    child: TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: TextButton.styleFrom(
+        foregroundColor: primary ? _C.gold : _C.white.withValues(alpha: .85),
+        minimumSize: const Size(0, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      ),
+    ),
+  );
+
+  // ---- Plan builder ----
+
+  Widget _buildPersonalization() {
+    final state = AppState.instance;
+    final offline = NetworkStatus.instance.offline;
+    final checkedIn =
+        state.checkInDate ==
+        DateTime.now().toLocal().toIso8601String().substring(0, 10);
+
+    return _Surface(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('PLAN BUILDER', style: _T.overline),
+          const SizedBox(height: 8),
+          const Text('Build your plan', style: _T.h2),
+          const SizedBox(height: 6),
+          Text(
+            'Get today\'s workout and meal plan. Uses your ${state.workoutEnvironment} setting, ${state.workoutDays.length} days/week and ${state.sessionDuration} sessions.',
+            style: _T.body,
+          ),
+          const SizedBox(height: 18),
+          _SettingTile(
+            icon: Icons.handyman_outlined,
+            title: 'Equipment',
+            value: Gear.describe(
+              Gear.effective(state.workoutEnvironment, state.equipment),
+            ),
+            // Always tappable so equipment can be picked in any setting.
+            onTap: _editEquipment,
+            trailing: const Text(
+              'Edit',
+              style: TextStyle(
+                color: _C.gold,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _SettingTile(
+            icon: Icons.bedtime_outlined,
+            title: 'Daily check-in',
+            value: checkedIn
+                ? 'Sleep ${state.sleepHours}h • Energy ${state.energyLevel}/5'
+                : 'Daily sleep and energy check-in',
+            onTap: _showCheckIn,
+            trailing: const Icon(Icons.chevron_right_rounded, color: _C.gold),
+          ),
+          const SizedBox(height: 22),
+          const Text('Goal or limits', style: _T.label),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _requestController,
+            maxLength: 500,
+            minLines: 3,
+            maxLines: 3,
+            cursorColor: _C.gold,
+            style: const TextStyle(color: _C.white, fontSize: 14),
+            decoration: _inputDecoration(
+              hint: 'Describe your goal or limits in your own words',
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text('Food budget per day', style: _T.label),
+          const SizedBox(height: 4),
+          const Text(
+            'For breakfast, lunch, dinner and a snack. Meals and grams are matched to your goal and this budget.',
+            style: _T.caption,
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _budgetController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            cursorColor: _C.gold,
+            style: const TextStyle(
+              color: _C.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+            onChanged: (_) => setState(() => _budgetError = null),
+            decoration: _inputDecoration(
+              prefixText: '₱ ',
+              suffixText: 'per day',
+              errorText: _budgetError,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final preset in MealPlanner.budgetPresets)
+                _presetChip(preset),
+            ],
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            style: _primaryStyle(),
+            onPressed: _saving
+                ? null
+                : () => _saveBuilder(state.workoutFocus, generate: true),
+            icon: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: _C.bg,
+                    ),
+                  )
+                : Icon(
+                    offline
+                        ? Icons.cloud_off_rounded
+                        : Icons.fitness_center_rounded,
+                    size: 20,
+                  ),
+            label: Text(
+              _saving
+                  ? 'Building…'
+                  : offline
+                  ? 'Generate offline workout & meal plan'
+                  : 'Generate workout & meal plan',
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: _C.gray,
+                ),
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'No internet or online service unavailable? An offline workout is built automatically.',
+                  style: _T.caption,
+                ),
               ),
             ],
           ),
@@ -1003,175 +1371,26 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     );
   }
 
-  Widget _buildPersonalization() {
-    final state = AppState.instance;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
+  Widget _presetChip(int preset) {
+    final active = _budgetController.text.trim() == '$preset';
+    return ActionChip(
+      label: Text('₱$preset'),
+      backgroundColor: active ? _C.gold.withValues(alpha: .16) : _C.bg,
+      side: BorderSide(color: active ? _C.gold : _C.border),
+      shape: const StadiumBorder(),
+      labelStyle: TextStyle(
+        color: active ? _C.gold : _C.white,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Build your plan',
-            style: TextStyle(
-              color: _white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Get today\'s workout and meal plan. Uses your ${state.workoutEnvironment} setting, ${state.workoutDays.length} days/week and ${state.sessionDuration} sessions.',
-            style: const TextStyle(color: _gray),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.handyman_outlined, color: _gold, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Equipment: ${Gear.describe(Gear.effective(state.workoutEnvironment, state.equipment))}',
-                  style: const TextStyle(color: _white, fontSize: 13),
-                ),
-              ),
-              if (!state.workoutEnvironment.toLowerCase().contains('gym'))
-                TextButton(
-                  onPressed: _editEquipment,
-                  child: const Text('Edit'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _requestController,
-            maxLength: 500,
-            maxLines: 3,
-            style: const TextStyle(color: _white),
-            decoration: const InputDecoration(
-              hintText: 'Describe your goal or limits in your own words',
-            ),
-          ),
-          const Text(
-            "Today's focus",
-            style: TextStyle(
-              color: _white,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Today's plan follows your weekly schedule. Pick another focus to change today's workout only.",
-            style: TextStyle(color: _gray, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 2,
-            children: [
-              for (final focus in _focuses)
-                ChoiceChip(
-                  label: Text(_focusLabel(focus)),
-                  selected: state.workoutFocus == focus,
-                  onSelected: (_) => _saveBuilder(focus),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const Text(
-            'Food budget per day',
-            style: TextStyle(
-              color: _white,
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'For breakfast, lunch, dinner and a snack. Meals and grams are matched to your goal and this budget.',
-            style: TextStyle(color: _gray, fontSize: 12),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _budgetController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(color: _white),
-            decoration: InputDecoration(
-              prefixText: '₱ ',
-              suffixText: 'per day',
-              errorText: _budgetError,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final preset in MealPlanner.budgetPresets)
-                ActionChip(
-                  label: Text('₱$preset'),
-                  onPressed: () => setState(() {
-                    _budgetController.text = '$preset';
-                    _budgetError = null;
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: _saving
-                ? null
-                : () => _saveBuilder(state.workoutFocus, generate: true),
-            child: Text(
-              _saving
-                  ? 'Building…'
-                  : NetworkStatus.instance.offline
-                  ? 'Generate offline workout & meal plan'
-                  : 'Generate workout & meal plan',
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'No internet or online service unavailable? An offline workout is built automatically.',
-            style: TextStyle(color: _gray, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _showCheckIn,
-            icon: const Icon(Icons.bedtime_outlined),
-            label: Text(
-              state.checkInDate ==
-                      DateTime.now().toLocal().toIso8601String().substring(
-                        0,
-                        10,
-                      )
-                  ? 'Sleep ${state.sleepHours}h • Energy ${state.energyLevel}/5'
-                  : 'Daily sleep and energy check-in',
-            ),
-          ),
-          if (state.needsRecovery)
-            const Text(
-              'Low sleep or energy today: a gentle mobility session is recommended.',
-              style: TextStyle(color: _gold),
-            ),
-          if (state.adaptationReason.isNotEmpty)
-            Text(state.adaptationReason, style: const TextStyle(color: _gold)),
-          const SizedBox(height: 6),
-          Text(
-            state.generatedContext == state.planContext
-                ? state.planSource
-                : 'On-device plan • Available offline',
-            style: const TextStyle(color: _gray, fontSize: 11),
-          ),
-        ],
-      ),
+      onPressed: () => setState(() {
+        _budgetController.text = '$preset';
+        _budgetError = null;
+      }),
     );
   }
+
+  // ---- Meal plan ----
 
   Future<void> _openMealPlan() => Navigator.push(
     context,
@@ -1193,80 +1412,150 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
     final state = AppState.instance;
     final plan = state.todayMealPlan();
     final target = plan.target;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
-      ),
+    final warn = plan.budgetTooLow || plan.overBudget;
+
+    return _Surface(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.restaurant_menu, color: _gold),
-              const SizedBox(width: 8),
               const Expanded(
-                child: Text(
-                  "Today's meal plan",
-                  style: TextStyle(
-                    color: _white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: _editMealBudget,
-                child: Text('₱${plan.budget}/day'),
-              ),
-            ],
-          ),
-          Text(
-            '${target.goal} • ${target.kcal} kcal • ${target.protein} g protein',
-            style: const TextStyle(color: _gold, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
-          for (final slot in MealSlot.values)
-            if (plan.mealFor(slot) case final meal?)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '${slot.label}: ${meal.recipe.name}',
-                      style: const TextStyle(
-                        color: _white,
-                        fontWeight: FontWeight.w600,
+                    Text('NUTRITION', style: _T.overline),
+                    SizedBox(height: 8),
+                    Text("Today's meal plan", style: _T.h2),
+                  ],
+                ),
+              ),
+              Tooltip(
+                message: 'Change daily budget',
+                child: OutlinedButton.icon(
+                  onPressed: _editMealBudget,
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: Text('₱${plan.budget}/day'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _C.gold,
+                    side: BorderSide(color: _C.gold.withValues(alpha: .5)),
+                    shape: const StadiumBorder(),
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusPill(icon: Icons.flag_outlined, label: target.goal),
+              _StatusPill(
+                icon: Icons.local_fire_department_outlined,
+                label: '${target.kcal} kcal',
+              ),
+              _StatusPill(
+                icon: Icons.egg_alt_outlined,
+                label: '${target.protein} g protein',
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (final slot in MealSlot.values)
+            if (plan.mealFor(slot) case final meal?)
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: _C.border)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 84,
+                      child: Text(
+                        slot.label.toUpperCase(),
+                        style: const TextStyle(
+                          color: _C.gray,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          height: 1.6,
+                        ),
                       ),
                     ),
-                    Text(
-                      meal.foods
-                          .where((f) => f.food.id != 'oil')
-                          .map((f) => '${f.food.name} ${f.amount}')
-                          .join(' • '),
-                      style: const TextStyle(color: _gray, fontSize: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            meal.recipe.name,
+                            style: const TextStyle(
+                              color: _C.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            meal.foods
+                                .where((f) => f.food.id != 'oil')
+                                .map((f) => '${f.food.name} ${f.amount}')
+                                .join(' • '),
+                            style: _T.caption,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-          Text(
-            plan.budgetTooLow
-                ? 'Budget is tight: the lowest-cost plan is about ₱${plan.cheapestCost.round()}.'
-                : 'About ₱${plan.cost.round()} of your ₱${plan.budget} budget.',
-            style: TextStyle(
-              color: plan.budgetTooLow || plan.overBudget
-                  ? Colors.orangeAccent
-                  : _gray,
-              fontSize: 12,
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: warn ? _C.warn.withValues(alpha: .10) : _C.bg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  warn ? Icons.warning_amber_rounded : Icons.payments_outlined,
+                  size: 18,
+                  color: warn ? _C.warn : _C.gold,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    plan.budgetTooLow
+                        ? 'Budget is tight: the lowest-cost plan is about ₱${plan.cheapestCost.round()}.'
+                        : 'About ₱${plan.cost.round()} of your ₱${plan.budget} budget.',
+                    style: TextStyle(
+                      color: warn ? _C.warn : _C.white,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
+              style: _outlinedStyle(),
               onPressed: _openMealPlan,
               icon: const Icon(Icons.restaurant_outlined),
               label: const Text('Open meal plan'),
@@ -1276,4 +1565,332 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
       ),
     );
   }
+
+  // ---- Shared styles ----
+
+  static ButtonStyle _primaryStyle({double height = 52}) =>
+      FilledButton.styleFrom(
+        backgroundColor: _C.gold,
+        foregroundColor: _C.bg,
+        disabledBackgroundColor: _C.gold.withValues(alpha: .35),
+        disabledForegroundColor: _C.bg,
+        minimumSize: Size(0, height),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+      );
+
+  static ButtonStyle _outlinedStyle() => OutlinedButton.styleFrom(
+    foregroundColor: _C.white,
+    iconColor: _C.gold,
+    disabledForegroundColor: _C.gray.withValues(alpha: .6),
+    disabledIconColor: _C.gray.withValues(alpha: .6),
+    side: const BorderSide(color: _C.border, width: 1.2),
+    minimumSize: const Size.fromHeight(48),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+  );
+
+  static Widget _choiceChip({
+    required String label,
+    required bool selected,
+    ValueChanged<bool>? onSelected,
+  }) => ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    onSelected: onSelected,
+    showCheckmark: false,
+    selectedColor: _C.gold,
+    backgroundColor: _C.card,
+    disabledColor: _C.card,
+    side: BorderSide(color: selected ? _C.gold : _C.border),
+    shape: const StadiumBorder(),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+    labelStyle: TextStyle(
+      color: selected ? _C.bg : _C.white,
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+    ),
+  );
+
+  static InputDecoration _inputDecoration({
+    String? hint,
+    String? prefixText,
+    String? suffixText,
+    String? errorText,
+  }) {
+    OutlineInputBorder outline(Color color, [double width = 1.2]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: color, width: width),
+        );
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: _C.gray, fontSize: 14),
+      prefixText: prefixText,
+      prefixStyle: const TextStyle(
+        color: _C.gold,
+        fontSize: 15,
+        fontWeight: FontWeight.w800,
+      ),
+      suffixText: suffixText,
+      suffixStyle: const TextStyle(color: _C.gray, fontSize: 13),
+      errorText: errorText,
+      errorStyle: const TextStyle(color: _C.warn, fontSize: 12),
+      counterStyle: const TextStyle(color: _C.gray, fontSize: 11),
+      filled: true,
+      fillColor: _C.bg,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      enabledBorder: outline(_C.border),
+      focusedBorder: outline(_C.gold, 1.6),
+      errorBorder: outline(_C.warn),
+      focusedErrorBorder: outline(_C.warn, 1.6),
+    );
+  }
+}
+
+// ---- Small building blocks used only by this screen ----
+
+/// Standard card surface: one radius, one border weight, everywhere.
+class _Surface extends StatelessWidget {
+  const _Surface({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.borderColor,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: padding,
+    decoration: BoxDecoration(
+      color: _C.card,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: borderColor ?? _C.border, width: 1.2),
+    ),
+    child: child,
+  );
+}
+
+/// One segmented control instead of three copy-pasted tab buttons.
+/// Keyboard/screen-reader friendly via InkWell + Semantics.
+class _SegmentedTabs extends StatelessWidget {
+  const _SegmentedTabs({
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<String> labels;
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: _C.card,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: _C.border, width: 1.2),
+    ),
+    child: Row(
+      children: [
+        for (final (i, label) in labels.indexed)
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: i == selected,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => onChanged(i),
+                  child: AnimatedContainer(
+                    duration: Motion.medium,
+                    curve: Motion.curve,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: i == selected ? _C.gold : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: i == selected ? _C.bg : _C.gray,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+/// Small metadata pill (plan source, offline, kcal, etc.).
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.icon,
+    required this.label,
+    this.color = _C.gold,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: _C.bg,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _C.border),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color == _C.gold ? _C.white : color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Gold-tinted inline message for adaptive changes (recovery, lighter week).
+class _Notice extends StatelessWidget {
+  const _Notice({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: _C.gold.withValues(alpha: .10),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: _C.gold.withValues(alpha: .30)),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: _C.gold),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: _C.white, fontSize: 13, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Shown when a list has nothing to display.
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.icon, required this.title, this.message});
+
+  final IconData icon;
+  final String title;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+    decoration: BoxDecoration(
+      color: _C.card,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _C.border, width: 1.2),
+    ),
+    child: Column(
+      children: [
+        Icon(icon, size: 28, color: _C.gold.withValues(alpha: .8)),
+        const SizedBox(height: 10),
+        Text(title, style: _T.label, textAlign: TextAlign.center),
+        if (message != null) ...[
+          const SizedBox(height: 4),
+          Text(message!, style: _T.caption, textAlign: TextAlign.center),
+        ],
+      ],
+    ),
+  );
+}
+
+/// Tappable settings row (equipment, check-in) with a 48dp+ touch target.
+class _SettingTile extends StatelessWidget {
+  const _SettingTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: _C.bg,
+    borderRadius: BorderRadius.circular(14),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: _C.gold),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: _T.caption),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: _C.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+          ],
+        ),
+      ),
+    ),
+  );
 }

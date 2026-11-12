@@ -29,9 +29,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   static const Color _grid = Color(0xFF2A2A2D);
   static const Color _gold = Color(0xFFD3A72F);
   static const Color _goldBright = Color(0xFFE0BC61);
-  static const Color _goldLight = Color(
-    0xFFF5B800,
-  ); // flat brand gold: no gradients
   static const Color _white = Colors.white;
   static const Color _gray = Color(0xFF9CA3AF);
   static const Color _muted = Color(0xFF6B7280);
@@ -212,38 +209,18 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           _buildHeader(),
           const SizedBox(height: 20),
           _buildPeriodToggle(),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.fitness_center_rounded,
-                  label: 'Total Sessions',
-                  value: '${analytics.periodSessions}',
-                  caption: periodLabel,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _buildStatCard(
-                  icon: Icons.timer_outlined,
-                  label: 'Avg. Duration',
-                  value: avgDuration,
-                  caption: 'per session',
-                ),
-              ),
-            ],
+          if (fromCache) ...[const SizedBox(height: 12), _buildCacheNotice()],
+          const SizedBox(height: 16),
+          // Both headline numbers in one card instead of two identical tiles.
+          _buildSummaryCard(
+            sessions: '${analytics.periodSessions}',
+            avgDuration: avgDuration,
+            periodLabel: periodLabel,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           _buildFrequencyCard(analytics.frequency),
-          const SizedBox(height: 18),
-          if (fromCache) ...[
-            const Text(
-              'Offline / cached logs · estimates may change after sync',
-              style: TextStyle(color: _gray, fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-          ],
+          const SizedBox(height: 28),
+          _sectionLabel('Insights'),
           WorkoutInsightsCard(insights: insights, lowRecovery: lowRecovery),
           const SizedBox(height: 8),
           AnalyticsCloudSync(
@@ -252,7 +229,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
             insights: insights,
             sourceCached: fromCache,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
+          _sectionLabel('Trends'),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -271,19 +249,12 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GoalProgressScreen()),
-              );
-            },
-            child: _buildProgressToGoalCard(analytics),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
+          _sectionLabel('Progress'),
+          _buildProgressToGoalCard(analytics),
+          const SizedBox(height: 14),
           _buildAchievementsCard(analytics),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           if (analytics.totalWorkouts == 0)
             _buildNoWorkoutsPrompt()
           else
@@ -688,25 +659,34 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
+  /// Segment with ripple, keyboard focus and a "selected" state for
+  /// screen readers (the old GestureDetector had none of these).
   Widget _buildToggleTab(String label, bool isSelected, VoidCallback onTap) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? _gold : Colors.transparent,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(11),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w800,
-            color: isSelected ? Colors.black : _gray,
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? _gold : Colors.transparent,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: isSelected ? Colors.black : _gray,
+              ),
+            ),
           ),
         ),
       ),
@@ -716,8 +696,44 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   BoxDecoration _cardDecoration({double radius = 20}) => BoxDecoration(
     color: _card,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: _border, width: 0.8),
+    border: Border.all(color: _border, width: 1),
   );
+
+  Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: 10),
+    child: Text(
+      text.toUpperCase(),
+      style: const TextStyle(
+        fontSize: 12,
+        letterSpacing: 1.4,
+        color: _muted,
+        fontWeight: FontWeight.w800,
+      ),
+    ),
+  );
+
+  Widget _buildCacheNotice() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: _gold.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _gold.withValues(alpha: 0.25)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 16, color: _goldBright),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Offline / cached logs · estimates may change after sync',
+              style: TextStyle(color: _white, fontSize: 12, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _iconTile(IconData icon, {double size = 36, double iconSize = 18}) {
     return Container(
@@ -731,71 +747,109 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     );
   }
 
+  Widget _buildSummaryCard({
+    required String sessions,
+    required String avgDuration,
+    required String periodLabel,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration: _cardDecoration(),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.fitness_center_rounded,
+                label: 'Total Sessions',
+                value: sessions,
+                caption: periodLabel,
+              ),
+            ),
+            const VerticalDivider(width: 1, thickness: 1, color: _border),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.timer_outlined,
+                label: 'Avg. Duration',
+                value: avgDuration,
+                caption: 'per session',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One metric inside the summary card.
   Widget _buildStatCard({
     required IconData icon,
     required String label,
     required String value,
     required String caption,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _iconTile(icon),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  softWrap: true,
-                  maxLines: 2,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: _gray,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
+    return Semantics(
+      label: '$label: $value, $caption',
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _iconTile(icon, size: 30, iconSize: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _gray,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.25),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.25),
-                  end: Offset.zero,
-                ).animate(anim),
-                child: child,
+              child: Text(
+                value,
+                key: ValueKey(value),
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: _white,
+                  letterSpacing: -0.5,
+                  height: 1.1,
+                ),
               ),
             ),
-            child: Text(
-              value,
-              key: ValueKey(value),
+            const SizedBox(height: 4),
+            Text(
+              caption,
               style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: _white,
-                letterSpacing: -0.5,
+                fontSize: 12,
+                color: _muted,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: const TextStyle(
-              fontSize: 11.5,
-              color: _muted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -840,8 +894,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      'Sessions per day',
+                    const Text(
+                      'Sessions per day · tap a bar for details',
                       style: const TextStyle(
                         fontSize: 12,
                         color: _muted,
@@ -863,7 +917,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   border: Border.all(color: _border),
                 ),
                 child: Text(
-                  '${labels[selected]} · ${values[selected]}',
+                  '${_isWeekly ? labels[selected] : 'Day ${labels[selected]}'} · ${values[selected]} ${values[selected] == 1 ? 'session' : 'sessions'}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -931,17 +985,24 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                 children: [
                                   for (int i = 0; i < values.length; i++)
                                     Expanded(
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () =>
-                                            setState(() => _selectedBar = i),
-                                        child: Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: _buildBar(
-                                            height:
-                                                values[i] / maxY * plotH * t,
-                                            width: _isWeekly ? 18 : 5,
-                                            selected: i == selected,
+                                      child: Semantics(
+                                        button: true,
+                                        selected: i == selected,
+                                        label:
+                                            '${_isWeekly ? labels[i] : 'Day ${labels[i]}'}: ${values[i]} ${values[i] == 1 ? 'session' : 'sessions'}',
+                                        excludeSemantics: true,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onTap: () =>
+                                              setState(() => _selectedBar = i),
+                                          child: Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: _buildBar(
+                                              height:
+                                                  values[i] / maxY * plotH * t,
+                                              width: _isWeekly ? 20 : 6,
+                                              selected: i == selected,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -965,7 +1026,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                       : '',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: _isWeekly ? 11 : 8,
+                                    fontSize: _isWeekly ? 11 : 10,
                                     fontWeight: FontWeight.w800,
                                     color: i == selected ? _goldBright : _muted,
                                   ),
@@ -1172,89 +1233,123 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     final progressCaption = remainingSessions == 0
         ? '${analytics.programMonths}-month program target reached'
         : '$remainingSessions sessions to go in your ${analytics.programMonths}-month plan';
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration(),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 76,
-            height: 76,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 1100),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(76, 76),
-                    painter: _RingPainter(
-                      progress: value,
-                      track: _tile,
-                      start: _gold,
-                      end: _goldLight,
-                    ),
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: const BorderSide(color: _border),
+    );
+    // Material + InkWell instead of GestureDetector: ripple + focus.
+    return Material(
+      color: _card,
+      shape: shape,
+      child: InkWell(
+        customBorder: shape,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GoalProgressScreen()),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 76,
+                height: 76,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: progress),
+                  duration: const Duration(milliseconds: 1100),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(76, 76),
+                        painter: _RingPainter(
+                          progress: value,
+                          track: _tile,
+                          // Flat brand gold: same color at both ends.
+                          start: _gold,
+                          end: _gold,
+                        ),
+                      ),
+                      Text(
+                        '${(value * 100).round()}%',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: _white,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '${(value * 100).round()}%',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: _white,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Progress to Goal',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: _white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '${analytics.programSessions}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: _goldBright,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                ' / ${analytics.programTargetSessions} sessions',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: _gray,
+                            ),
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      progressCaption,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: _gray,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: _muted, size: 26),
+            ],
           ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Progress to Goal',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: _white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${analytics.programSessions} / ${analytics.programTargetSessions} sessions',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: _goldBright,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  progressCaption,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: _gray,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: _muted, size: 26),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildAchievementsCard(_WorkoutAnalytics analytics) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1267,33 +1362,36 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               color: _white,
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildAchievementItem(
-                  Icons.local_fire_department_rounded,
-                  '${analytics.streakDays} Day',
-                  'Streak',
+          const SizedBox(height: 16),
+          // One divided strip instead of three boxed tiles.
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildAchievementItem(
+                    Icons.local_fire_department_rounded,
+                    '${analytics.streakDays}',
+                    'Day Streak',
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildAchievementItem(
-                  Icons.bolt_rounded,
-                  '${analytics.totalWorkouts}',
-                  '12-Mo Workouts',
+                const VerticalDivider(width: 1, thickness: 1, color: _border),
+                Expanded(
+                  child: _buildAchievementItem(
+                    Icons.bolt_rounded,
+                    '${analytics.totalWorkouts}',
+                    '12-Mo Workouts',
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildAchievementItem(
-                  Icons.fitness_center_rounded,
-                  '${analytics.distinctExercises}',
-                  'Exercises',
+                const VerticalDivider(width: 1, thickness: 1, color: _border),
+                Expanded(
+                  child: _buildAchievementItem(
+                    Icons.fitness_center_rounded,
+                    '${analytics.distinctExercises}',
+                    'Exercises',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -1301,37 +1399,28 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Widget _buildAchievementItem(IconData icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: _tile,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Semantics(
+      label: '$value $label',
+      excludeSemantics: true,
       child: Column(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _gold.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: _gold, size: 21),
-          ),
+          Icon(icon, color: _gold, size: 22),
           const SizedBox(height: 8),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 22,
               fontWeight: FontWeight.w800,
               color: _white,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 1),
+          const SizedBox(height: 2),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 11.5,
               color: _gray,
               fontWeight: FontWeight.w600,
             ),
@@ -1342,16 +1431,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
   }
 
   Widget _buildHistoryButton() {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: const BorderSide(color: _border),
+    );
     return Material(
       color: _card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: _border, width: 0.8),
-      ),
+      shape: shape,
       child: InkWell(
-        customBorder: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        customBorder: shape,
         onTap: () {
           Navigator.push(
             context,
@@ -1365,13 +1453,27 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
               _iconTile(Icons.history_rounded, size: 40, iconSize: 22),
               const SizedBox(width: 14),
               const Expanded(
-                child: Text(
-                  'View Full Workout History',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w800,
-                    color: _goldBright,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'View Full Workout History',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: _white,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'See every session you have logged',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _gray,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Icon(
