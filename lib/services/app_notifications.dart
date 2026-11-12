@@ -72,8 +72,13 @@ class AppNotifications with WidgetsBindingObserver {
     if (_mobile) {
       try {
         tzdata.initializeTimeZones();
-        final zone = await FlutterTimezone.getLocalTimezone();
-        tz.setLocalLocation(tz.getLocation(zone.identifier));
+        try {
+          final zone = await FlutterTimezone.getLocalTimezone();
+          tz.setLocalLocation(tz.getLocation(zone.identifier));
+        } catch (error) {
+          // A timezone lookup failure must not disable immediate phone alerts.
+          debugPrint('Notification timezone lookup failed: $error');
+        }
         await _plugin.initialize(
           settings: const InitializationSettings(
             android: AndroidInitializationSettings('ic_stat_grindfit'),
@@ -103,7 +108,8 @@ class AppNotifications with WidgetsBindingObserver {
         if (launch?.didNotificationLaunchApp == true) {
           _handlePayload(launch?.notificationResponse?.payload);
         }
-      } catch (_) {
+      } catch (error) {
+        debugPrint('Phone notification initialization failed: $error');
         _nativeReady = false;
       } // In-app alerts still work.
     }
@@ -188,9 +194,9 @@ class AppNotifications with WidgetsBindingObserver {
     if (alert.ownerUid != _uid || !alert.enabledBy(_settings)) return;
     if (_foreground) {
       _events.add(alert);
-    } else {
-      unawaited(_showPhone(alert));
     }
+    // Keep an entry in the phone tray even when the app is open.
+    unawaited(_showPhone(alert));
   }
 
   void previewPopup() {

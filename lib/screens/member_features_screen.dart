@@ -446,6 +446,21 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                         .toList(),
                 onChanged: (v) => setState(() => _stage = v!),
               ),
+              const SizedBox(height: 12),
+              const Text(
+                'Activity guide for this stage',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(switch (_stage) {
+                'Clinician-cleared mobility' => 'Use only movements your clinician has cleared, such as gentle range-of-motion exercises. Follow their range, repetitions and restrictions; do not force a stretch.',
+                'Gradual return' => 'If cleared, reintroduce your prescribed exercises with reduced effort. Walking or light resistance may be options only when approved for your injury. Follow your clinician\'s progression plan.',
+                'Usual activity' => 'Resume your usual exercises only when cleared. Keep any remaining restrictions and record how you feel during and after activity.',
+                _ => 'Pause exercises that stress the injury. Record symptoms and your clinician\'s instructions here before choosing a mobility or return-to-activity stage.',
+              }),
+              const Text(
+                'These stages are a journal, not clearance to exercise. Stop activity that causes pain or worsening symptoms and contact your clinician. Recovery has no automatic deadline.',
+              ),
+              const SizedBox(height: 12),
               Text('Discomfort: $_discomfort / 10'),
               Slider(
                 value: _discomfort.toDouble(),
@@ -482,33 +497,94 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
                 },
                 child: const Text('Save recovery check-in'),
               ),
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _profile
-                    .collection('recovery')
-                    .orderBy('timestamp', descending: true)
-                    .limit(15)
-                    .snapshots(),
-                builder: (context, snap) {
-                  if (snap.hasError) {
-                    return const Text('Could not load recovery history.');
-                  }
+              const SizedBox(height: 12),
+              const Text(
+                'Recovery timeline · newest first',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              ListenableBuilder(
+                listenable: OfflineStore.instance,
+                builder: (context, _) {
+                  final pending =
+                      OfflineStore.instance.pendingItems
+                          .where(
+                            (item) =>
+                                item.path.startsWith('users/$_uid/recovery/'),
+                          )
+                          .toList()
+                        ..sort((a, b) {
+                          int time(Map<String, dynamic> data) {
+                            final stamp = data['timestamp'];
+                            return stamp is Map
+                                ? (stamp['__timestamp'] as num?)?.toInt() ?? 0
+                                : 0;
+                          }
+
+                          return time(b.data).compareTo(time(a.data));
+                        });
                   return Column(
                     children: [
-                      for (final d
-                          in snap.data?.docs ??
-                              <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+                      for (final item in pending)
                         ListTile(
-                          leading: const Icon(Icons.timeline),
+                          leading: const Icon(Icons.cloud_upload_outlined),
                           title: Text(
-                            '${d.data()['stage']} • ${d.data()['discomfort']}/10',
+                            '${item.data['stage']} · ${item.data['discomfort']}/10',
                           ),
                           subtitle: Text(
-                            '${_displayDate(d.data()['timestamp'])}\n${d.data()['note'] ?? ''}',
+                            'Saved on device · ${item.error == null ? 'waiting to sync' : 'sync will retry'}\n${item.data['note'] ?? ''}',
                           ),
                         ),
                     ],
                   );
                 },
+              ),
+              ListenableBuilder(
+                listenable: OfflineStore.instance,
+                builder: (context, _) =>
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _profile
+                          .collection('recovery')
+                          .orderBy('timestamp', descending: true)
+                          .limit(15)
+                          .snapshots(),
+                      builder: (context, snap) {
+                        if (snap.hasError) {
+                          return const Text('Could not load recovery history.');
+                        }
+                        if (snap.connectionState == ConnectionState.waiting &&
+                            !snap.hasData) {
+                          return const LinearProgressIndicator();
+                        }
+                        if (snap.data?.docs.isEmpty ?? true) {
+                          return const Text(
+                            'Synced recovery check-ins will appear here.',
+                          );
+                        }
+                        return Column(
+                          children: [
+                            for (final d
+                                in snap.data?.docs ??
+                                    <
+                                      QueryDocumentSnapshot<
+                                        Map<String, dynamic>
+                                      >
+                                    >[])
+                              if (!OfflineStore.instance.pendingItems.any(
+                                (item) => item.path == d.reference.path,
+                              ))
+                                ListTile(
+                                  leading: const Icon(Icons.timeline),
+                                  title: Text(
+                                    '${d.data()['stage']} • ${d.data()['discomfort']}/10',
+                                  ),
+                                  subtitle: Text(
+                                    '${_displayDate(d.data()['timestamp'])}\n${d.data()['note'] ?? ''}',
+                                  ),
+                                ),
+                          ],
+                        );
+                      },
+                    ),
               ),
             ]),
         ]),

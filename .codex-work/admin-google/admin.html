@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101010">
+    <title>GrindFit Admin</title>
+    <link rel="icon" href="/favicon.png">
+    <link rel="stylesheet" href="/admin.css">
+  </head>
+  <body>
+    <main id="loginView" class="login-shell">
+      <form id="loginForm" class="login-card">
+        <div class="brand-mark">GF</div>
+        <p class="eyebrow">GRINDFIT ADMIN</p>
+        <h1>Sign in to manage members</h1>
+        <p class="muted">Sign in with your staff account to continue.</p>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <p id="loginError" class="error" role="alert" aria-live="polite"></p>
+        <button id="loginButton" class="button primary" type="submit">Sign in</button>
+      </form>
+    </main>
+
+    <main id="adminView" class="admin-shell" hidden>
+      <header class="topbar">
+        <a class="brand" href="/admin.html">
+          <span class="brand-mark small">GF</span>
+          <span>GrindFit <b>Admin</b></span>
+        </a>
+        <div class="account">
+          <div class="user-profile">
+            <div id="userAvatar" class="user-avatar">A</div>
+            <div class="user-info">
+              <span id="adminName" class="user-name">System Administrator</span>
+              <span id="adminEmail" class="user-email">admin@grindfit.app</span>
+            </div>
+          </div>
+          <button id="logoutButton" class="button subtle logout-btn" type="button">Sign out</button>
+        </div>
+      </header>
+      <div class="layout">
+        <aside class="sidebar" aria-label="Admin navigation">
+          <button class="nav-button active" data-view="dashboardView">Overview</button>
+          <button class="nav-button" data-view="membersView">Members</button>
+          <button class="nav-button" data-view="reportsView">Reports</button>
+          <button class="nav-button" data-view="settingsView">System Settings</button>
+        </aside>
+        <section class="content">
+          <div id="pageError" class="error-banner" role="alert" hidden></div>
+          <section id="dashboardView" class="page-view">
+            <div class="page-heading">
+              <div><p class="eyebrow">MEMBER ACTIVITY</p><h1>Dashboard overview</h1></div>
+              <button id="refreshButton" class="button subtle" type="button">Refresh</button>
+            </div>
+            <div class="stat-grid">
+              <article class="stat-card"><span>Total members</span><strong id="totalMembers">—</strong></article>
+              <article class="stat-card"><span>Active in last 14 days</span><strong id="activeMembers">—</strong></article>
+              <article class="stat-card"><span>Retention rate (14 days)</span><strong id="retentionRate">—</strong><small id="retentionFormula">Active members / all members</small></article>
+              <article class="stat-card"><span>Workouts this week</span><strong id="weeklyWorkouts">—</strong></article>
+            </div>
+            <article class="panel">
+              <div class="panel-heading"><div><h2>Workout activity</h2><p class="muted">Sessions per week across the last four weeks</p></div></div>
+              <div id="activityChart" class="activity-chart" aria-label="Workout sessions by week"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><h2>Members requiring attention</h2><p class="muted">Injury, health, or high-frequency recovery alerts</p></div></div>
+              <div id="riskSummary" class="empty-state">Loading member activity…</div>
+            </article>
+          </section>
+
+          <section id="membersView" class="page-view" hidden>
+            <div class="page-heading"><div><p class="eyebrow">MEMBER MANAGEMENT</p><h1>Members</h1></div></div>
+            <div class="toolbar">
+              <input id="memberSearch" type="search" placeholder="Search name or goal">
+              <select id="memberFilter" aria-label="Filter members">
+                <option value="all">All members</option>
+                <option value="risk">Injury / health alert</option>
+                <option id="inactiveFilterLabel" value="inactive">No workout in 14 days</option>
+              </select>
+              <select id="memberSort" aria-label="Sort members">
+                <option value="recent">Sort: recent workout</option>
+                <option value="weekly">Sort: workouts this week</option>
+                <option value="risk">Sort: injury / recovery risk</option>
+                <option value="name">Sort: name</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Member</th><th>Goal</th><th>Last workout</th><th>This week</th><th>Injury risk</th></tr></thead>
+                <tbody id="memberRows"><tr><td colspan="5" class="muted">Loading members…</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="reportsView" class="page-view" hidden>
+            <div class="page-heading"><div><p class="eyebrow">DATA EXPORT</p><h1>Reports</h1></div></div>
+            <article class="panel">
+              <h2>Workout report</h2>
+              <p class="muted">Choose a date range. The CSV excludes member names, email addresses, and account IDs.</p>
+              <div class="toolbar report-toolbar">
+                <label>From <input id="reportFrom" type="date"></label>
+                <label>To <input id="reportTo" type="date"></label>
+                <button id="exportButton" class="button primary" type="button">Export CSV</button>
+              </div>
+              <p id="reportStatus" class="muted" role="status"></p>
+            </article>
+          </section>
+
+          <section id="settingsView" class="page-view" hidden>
+            <div class="page-heading"><div><p class="eyebrow">CONFIGURATION</p><h1>System Settings</h1></div></div>
+            <article class="panel settings-panel">
+              <h2>Alert rules</h2>
+              <p class="muted">These thresholds are stored in Firestore and used for admin review.</p>
+              <p id="settingsAccessNotice" class="muted" hidden>Trainers can view alert rules. Only admin accounts can update them.</p>
+              <label>Inactive member threshold (days)<input id="inactiveDays" type="number" min="1" max="365"></label>
+              <label>Injury alert review threshold (workouts in 4 days)<input id="injuryThreshold" type="number" min="1" max="14"></label>
+              <button id="saveSettingsButton" class="button primary" type="button">Save settings</button>
+              <p id="settingsStatus" class="muted" role="status"></p>
+            </article>
+            <article class="panel">
+              <h2>Admin accounts</h2>
+              <p class="muted">Admin/trainer access is granted through a trusted Firebase Authentication custom claim. This client does not create or promote staff accounts.</p>
+              <p id="adminAccountInfo"></p>
+            </article>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <dialog id="memberDialog" class="member-dialog">
+      <div class="dialog-heading"><div><p class="eyebrow">MEMBER PROGRESS</p><h2 id="detailName"></h2></div><button id="closeDialog" class="button subtle" type="button">Close</button></div>
+      <div id="detailSummary" class="detail-grid"></div>
+      <h3>Alerts</h3><div id="detailAlerts"></div>
+      <h3>Recent workouts</h3><div id="detailWorkouts" class="detail-workouts"></div>
+    </dialog>
+
+    <script type="module" src="/admin.js"></script>
+  </body>
+</html>

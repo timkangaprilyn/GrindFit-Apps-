@@ -35,7 +35,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   final Map<String, bool> _checklist = {
     'Warm-up': false,
     'Workout': false,
-    'Stretching': false,
   };
 
   double _currentWeight = AppState.instance.weightKg;

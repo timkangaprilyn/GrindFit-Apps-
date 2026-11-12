@@ -1,0 +1,20 @@
+const root = 'C:/Users/Acer/AppData/Roaming/npm/node_modules/firebase-tools/lib/';
+const { getGlobalDefaultAccount } = require(root + 'auth');
+const { requireAuth } = require(root + 'requireAuth');
+const { Client } = require(root + 'apiv2');
+(async () => {
+  const account = getGlobalDefaultAccount();
+  if (!account) throw Error('No signed-in Firebase account');
+  await requireAuth({ project: 'grindfit-app', ...account });
+  const client = new Client({urlPrefix: 'https://identitytoolkit.googleapis.com', apiVersion: 'admin/v2'});
+  const response = await client.get('/projects/grindfit-app/defaultSupportedIdpConfigs');
+  const configs = response.body.defaultSupportedIdpConfigs || [];
+  const google = configs.find(c => c.name.endsWith('/google.com'));
+  const config = require('../android/app/google-services.json');
+  const android = config.client.find(c => c.client_info.android_client_info.package_name === 'com.example.flutter_application_1');
+  const web = android.oauth_client.find(c => c.client_type === 3);
+  if (!google?.enabled || google.clientId !== web?.client_id) throw Error('Provider/client mismatch');
+  const management = new Client({urlPrefix:'https://firebase.googleapis.com',apiVersion:'v1beta1'});
+  const sha = await management.get('/projects/grindfit-app/androidApps/1:868787273216:android:d79dd46836b465868462e5/sha');
+  console.log(JSON.stringify({googleEnabled: true, oauthClientMatches: true, registeredCertificates: sha.body.certificates?.map(c => c.certType)}));
+})().catch(error => { console.error(error.message); process.exitCode = 1; });

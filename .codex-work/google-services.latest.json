@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "868787273216",
+    "firebase_url": "https://grindfit-app-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "grindfit-app",
+    "storage_bucket": "grindfit-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:868787273216:android:d79dd46836b465868462e5",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "868787273216-3859uge95hsei5fr7d3pemmt2c8eor3i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.flutter_application_1",
+            "certificate_hash": "345518e8797981f929a96644fe70c935eb84e7b1"
+          }
+        },
+        {
+          "client_id": "868787273216-g2sohgct3d00q0i55rvp4mo0grvu6l2p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuwS_agBfdUbOtNtei0tGWPBATYMISE0Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "868787273216-g2sohgct3d00q0i55rvp4mo0grvu6l2p.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "868787273216-pha1rodaco6536eu69cnntukdfm1qs65.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

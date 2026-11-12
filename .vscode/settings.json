@@ -1,5 +1,7 @@
 {
   "dart.showTodos": false,
+  "deno.enable": true,
+  "deno.enablePaths": ["./supabase/functions", "./supabase/dashboard"],
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.compile.nullAnalysis.mode": "automatic"
 }

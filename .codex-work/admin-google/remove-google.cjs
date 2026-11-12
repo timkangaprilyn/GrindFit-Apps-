@@ -1,0 +1,18 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const source = 'C:/Users/Acer/Desktop/grindfit_admin';
+let js = fs.readFileSync(path.join(source, 'admin.js'), 'utf8').replaceAll('\r\n', '\n');
+js = js.replace('  GoogleAuthProvider,\n', '').replace('  signInWithPopup,\n', '');
+js = js.replace('  $("googleLoginButton").disabled = busy;\n', '');
+const start = js.indexOf('function googleSignInError(error) {');
+const end = js.indexOf('$("loginForm").addEventListener', start);
+if (start < 0 || end < 0) throw new Error('Google handler did not match');
+js = js.slice(0, start) + js.slice(end);
+let html = fs.readFileSync(path.join(source, 'admin.html'), 'utf8');
+html = html.replace(/^.*id="googleLoginButton".*\r?\n/m, '');
+if (/GoogleAuthProvider|signInWithPopup|googleLoginButton/.test(js + html)) throw new Error('Google sign-in remains');
+if (!js.includes('signInWithEmailAndPassword(auth, emailVal, passVal)')) throw new Error('Password login missing');
+fs.writeFileSync(path.join(__dirname, 'admin.js'), js);
+fs.writeFileSync(path.join(__dirname, 'admin.html'), html);
+fs.writeFileSync(path.join(__dirname, 'GOOGLE_SIGN_IN.md'), `# Admin sign-in\n\nThe admin portal uses email/password only. Google sign-in is reserved for the\nmember Android app. There is no Google sign-in button or popup flow here.\n\nEnable Email/Password in Firebase Authentication. Staff access still requires\na trusted admin or trainer custom claim, granted through the Firebase Admin\nSDK. Email addresses and Firestore profile roles do not grant staff access.\n\nTest password login with admin and trainer accounts, rejection of a member\naccount, and sign out. Firebase settings and claims were not deployed by this\nchange.\n`);
+console.log('Removed admin Google UI, imports, popup handler, and busy-state reference; password login preserved.');

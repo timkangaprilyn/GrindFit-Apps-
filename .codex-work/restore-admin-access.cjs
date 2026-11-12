@@ -1,0 +1,24 @@
+const root='C:/Users/Acer/AppData/Roaming/npm/node_modules/firebase-tools/lib/';
+const {getGlobalDefaultAccount}=require(root+'auth');
+const {requireAuth}=require(root+'requireAuth');
+const {Client}=require(root+'apiv2');
+(async()=>{
+  await requireAuth({project:'grindfit-app',...getGlobalDefaultAccount()});
+  const auth=new Client({urlPrefix:'https://identitytoolkit.googleapis.com',apiVersion:'v1'});
+  const lookup=await auth.post('/projects/grindfit-app/accounts:lookup',{email:['admin@test.com']});
+  const user=lookup.body.users?.[0];
+  if(user?.email!=='admin@test.com'||user.localId!=='2TBdp8jLasQQc9vOXGZ7jYSIvX22'||user.disabled) throw Error('Target account mismatch or disabled');
+  const claims=user.customAttributes?JSON.parse(user.customAttributes):{};
+  claims.admin=true;
+  await auth.post('/projects/grindfit-app/accounts:update',{localId:user.localId,customAttributes:JSON.stringify(claims)});
+  const verified=await auth.post('/projects/grindfit-app/accounts:lookup',{localId:[user.localId]});
+  const updated=verified.body.users?.[0];
+  const applied=JSON.parse(updated?.customAttributes||'{}');
+  if(applied.admin!==true) throw Error('Admin claim was not applied');
+  console.log(JSON.stringify({email:updated.email,admin:applied.admin,passwordProviderPreserved:updated.providerUserInfo?.some(p=>p.providerId==='password')}));
+  const rules=new Client({urlPrefix:'https://firebaserules.googleapis.com',apiVersion:'v1'});
+  const release=await rules.get('/projects/grindfit-app/releases/cloud.firestore');
+  const ruleset=await rules.get('/'+release.body.rulesetName);
+  const text=(ruleset.body.source?.files||[]).map(f=>f.content).join('\n');
+  console.log(JSON.stringify({deployedRulesRecognizeAdminClaim:/request\.auth\.token\.admin\s*==\s*true/.test(text)}));
+})().catch(e=>{console.error(e.message);process.exitCode=1});
