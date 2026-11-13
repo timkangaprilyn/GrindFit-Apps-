@@ -265,8 +265,8 @@ class _FitnessGoalScreenState extends State<FitnessGoalScreen> {
                   const SizedBox(height: 26),
 
                   // Title na may gold na "goal?" at kurbadong underline
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
                         "What's your ",

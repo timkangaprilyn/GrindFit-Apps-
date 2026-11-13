@@ -294,7 +294,13 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _weightColumn('Start', _startWeight, CrossAxisAlignment.start),
+              Expanded(
+                child: _weightColumn(
+                  'Start',
+                  _startWeight,
+                  CrossAxisAlignment.start,
+                ),
+              ),
               TweenAnimationBuilder<double>(
                 key: ValueKey(_progressValue),
                 tween: Tween(begin: 0, end: _progressValue),
@@ -341,7 +347,13 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   ),
                 ),
               ),
-              _weightColumn('Target', _targetWeight, CrossAxisAlignment.end),
+              Expanded(
+                child: _weightColumn(
+                  'Target',
+                  _targetWeight,
+                  CrossAxisAlignment.end,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 22),
@@ -358,12 +370,16 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
               children: [
                 const Icon(Icons.flag_rounded, color: _goldBright, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  '${remaining.toStringAsFixed(remaining % 1 == 0 ? 0 : 1)} kg to go (${_currentWeight.toStringAsFixed(1)} kg now)',
-                  style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    color: _goldBright,
+                Flexible(
+                  child: Text(
+                    '${remaining.toStringAsFixed(remaining % 1 == 0 ? 0 : 1)} kg to go (${_currentWeight.toStringAsFixed(1)} kg now)',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: _goldBright,
+                    ),
                   ),
                 ),
               ],
@@ -380,6 +396,8 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontSize: 12,
             color: _muted,
@@ -387,13 +405,17 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          '${kg.toStringAsFixed(kg % 1 == 0 ? 0 : 1)} kg',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: _white,
-            letterSpacing: -0.4,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${kg.toStringAsFixed(kg % 1 == 0 ? 0 : 1)} kg',
+            maxLines: 1,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: _white,
+              letterSpacing: -0.4,
+            ),
           ),
         ),
       ],
@@ -530,12 +552,16 @@ class _GoalProgressScreenState extends State<GoalProgressScreen> {
                   size: 18,
                 ),
                 SizedBox(width: 8),
-                Text(
-                  'Update Weight',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
+                Flexible(
+                  child: Text(
+                    'Update Weight',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
               ],

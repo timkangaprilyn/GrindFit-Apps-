@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/user_profile.dart';
+import 'google_auth_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -30,6 +31,47 @@ class FirestoreService {
       });
     } catch (e) {
       throw _mapFirestoreError(e);
+    }
+  }
+
+  /// Creates the member profile on first sign-in and keeps the name and photo
+  /// from the sign-in provider (Google) up to date, so the admin and trainer
+  /// portals can recognise the member. Returns the stored profile data.
+  static Future<Map<String, dynamic>?> ensureMemberProfile(User user) async {
+    final ref = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await ref.get();
+    final name = user.displayName?.trim() ?? '';
+    final photo = GoogleAuthService.photoUrlOf(user);
+
+    if (!doc.exists) {
+      await ref.set({
+        'uid': user.uid,
+        'fullName': name,
+        'email': user.email ?? '',
+        'photoUrl': ?photo,
+        'role': 'member',
+        'setupCompleted': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return (await ref.get()).data();
+    }
+
+    final data = doc.data() ?? <String, dynamic>{};
+    final updates = <String, dynamic>{
+      if (photo != null && data['photoUrl'] != photo) 'photoUrl': photo,
+      if (name.isNotEmpty && (data['fullName'] as String? ?? '').trim().isEmpty)
+        'fullName': name,
+      if ((data['email'] as String? ?? '').isEmpty && user.email != null)
+        'email': user.email,
+    };
+    // Staff accounts are managed in the portal; never touch them from here.
+    final role = data['role'] as String? ?? 'member';
+    if (updates.isEmpty || role != 'member') return data;
+    try {
+      await ref.set(updates, SetOptions(merge: true));
+      return {...data, ...updates};
+    } catch (_) {
+      return data; // Not critical for signing in.
     }
   }
 

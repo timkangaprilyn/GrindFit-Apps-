@@ -1,3 +1,8 @@
+import 'member_features_screen.dart';
+import '../widgets/xp_builder.dart';
+import '../models/fitness_features.dart';
+import '../services/google_auth_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -619,6 +624,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.bolt_rounded,
                             AppState.instance.fitnessLevel,
                           ),
+                          if (_user != null)
+                            XpBuilder(
+                              uid: _user!.uid,
+                              builder: (context, xp, loading) => Semantics(
+                                button: true,
+                                label: 'Open XP and levels',
+                                child: GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const MemberFeaturesScreen(),
+                                    ),
+                                  ),
+                                  child: _pill(
+                                    Icons.local_fire_department_rounded,
+                                    loading
+                                        ? 'XP…'
+                                        : '${FitnessRank.name(xp)} · Lv ${FitnessRank.level(xp)} · $xp XP',
+                                  ),
+                                ),
+                              ),
+                            ),
                           if (created != null)
                             _pill(
                               Icons.calendar_today_rounded,
@@ -724,12 +752,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Icon(icon, size: 12, color: _goldBright),
           const SizedBox(width: 5),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: _goldBright,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: _goldBright,
+              ),
             ),
           ),
         ],
@@ -2450,7 +2482,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirmed != true) return;
 
     try {
-      await FirebaseAuth.instance.signOut();
+      await GoogleAuthService.signOutEverywhere();
     } catch (e) {
       debugPrint('Error signing out: $e');
       _snack('Could not log out. Please try again.', error: true);

@@ -8,6 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../animations/motion.dart';
 import '../models/app_state.dart';
+import '../models/fitness_features.dart';
+import '../services/offline_store.dart';
 import '../widgets/sync_status.dart';
 import '../widgets/online_only.dart';
 import '../services/app_notifications.dart';
@@ -36,6 +38,7 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
   late int _currentIndex = widget.initialIndex;
   DateTime? _lastBackPress;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _activity;
+  int? _lastLevel;
   late final AnimationController _tabController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 260),
@@ -80,12 +83,48 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
                     .whereType<Timestamp>()
                     .map((t) => t.toDate()),
               );
+              unawaited(
+                _announceLevel(uid, snapshot.docs.map((d) => d.data())),
+              );
             },
             onError: (Object _) {
               /* Keep the cached plan available offline. */
             },
           );
     }
+  }
+
+  /// Posts one Achievements notification per level reached (level 2+), with
+  /// a stable ID so it is never duplicated across devices or restarts.
+  Future<void> _announceLevel(
+    String uid,
+    Iterable<Map<String, dynamic>> workouts,
+  ) async {
+    final xp = FitnessRank.xpFromWorkouts(workouts);
+    final level = FitnessRank.level(xp);
+    final previous = _lastLevel;
+    _lastLevel = level;
+    if (level < 2 || level == previous) return;
+    final path = 'users/$uid/notifications/level-$level';
+    try {
+      if ((await FirebaseFirestore.instance.doc(path).get()).exists) return;
+    } catch (_) {
+      return; // Unknown whether it exists; avoid a duplicate.
+    }
+    final rank = FitnessRank.name(xp);
+    final newRank = rank != FitnessRank.name((level - 1) * 250 - 1);
+    try {
+      await OfflineStore.instance.write(path, {
+        'title': newRank ? 'New rank: $rank!' : 'Level $level reached!',
+        'subtitle': newRank
+            ? 'You reached Level $level and ranked up to $rank. Keep it going!'
+            : 'You now have $xp XP. Keep showing up to reach Level ${level + 1}.',
+        'type': 'Achievements',
+        'route': 'coach',
+        'isRead': false,
+        'timestamp': DateTime.now(),
+      });
+    } catch (_) {}
   }
 
   @override

@@ -226,7 +226,10 @@ class _WarmupScreenState extends State<WarmupScreen> {
                   style: const TextStyle(color: _gray, fontSize: 12),
                 ),
                 const SizedBox(height: 10),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     FilledButton.icon(
                       onPressed: _pauseOrResumeTimer,
@@ -250,7 +253,6 @@ class _WarmupScreenState extends State<WarmupScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     IconButton(
                       onPressed: _resetTimer,
                       tooltip: 'Reset timer',

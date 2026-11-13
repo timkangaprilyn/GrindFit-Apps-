@@ -108,3 +108,15 @@ test('staff must replace the password they were given', async () => {
   assert.match(newPasswordProblem('abcdefghijk1', 'abcdefghijk2'), /match/);
   assert.equal(newPasswordProblem('abcdefghijk1', 'abcdefghijk1', 'old'), '');
 });
+
+test('member avatar shows the saved Google photo over initials', async () => {
+  const {memberAvatarHtml, memberInitials} = await import('../web/admin-utils.mjs');
+  assert.equal(memberInitials('Juan Dela Cruz'), 'JD');
+  assert.equal(memberInitials('ana@example.com'), 'AE');
+  assert.equal(memberInitials(''), 'M');
+  const withPhoto = memberAvatarHtml({fullName: 'Juan Dela Cruz', photoUrl: 'https://lh3.googleusercontent.com/a/x=s256-c'});
+  assert.match(withPhoto, /<img src="https:\/\/lh3\.googleusercontent\.com\/a\/x=s256-c"/);
+  assert.match(withPhoto, /<span>JD<\/span>/);
+  const unsafe = memberAvatarHtml({fullName: '<b>X</b>', photoUrl: 'javascript:alert(1)'});
+  assert.doesNotMatch(unsafe, /<img|<b>/);
+});

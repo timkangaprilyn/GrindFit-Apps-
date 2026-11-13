@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
+
 import 'workout_plan.dart';
 
 String localDay(DateTime date) =>
@@ -58,6 +60,63 @@ class FitnessRank {
       : xp < 3000
       ? 3000
       : (level(xp) * 250);
+
+  static const int xpPerWorkout = 50;
+  static const int creditedWorkoutsPerDay = 3;
+
+  /// XP earned from the member's saved workouts, using the same rules as the
+  /// `awardWorkoutXp` Cloud Function: 50 XP for a workout of 1 minute to 6
+  /// hours with at least one completed, non-skipped set, up to three credited
+  /// workouts per UTC day. Lets XP and levels work before (or without) the
+  /// rewards backend being deployed.
+  static int xpFromWorkouts(Iterable<Map<String, dynamic>> workouts) {
+    final perDay = <String, int>{};
+    for (final workout in workouts) {
+      final day = _creditDay(workout);
+      if (day == null) continue;
+      perDay[day] = (perDay[day] ?? 0) + 1;
+    }
+    return perDay.values.fold<int>(
+      0,
+      (total, count) =>
+          total +
+          (count < creditedWorkoutsPerDay ? count : creditedWorkoutsPerDay) *
+              xpPerWorkout,
+    );
+  }
+
+  static String? _creditDay(Map<String, dynamic> workout) {
+    final duration = workout['durationSeconds'];
+    if (duration is! num || duration < 60 || duration > 21600) return null;
+    final raw = workout['timestamp'];
+    final DateTime? time = raw is DateTime
+        ? raw
+        : raw is Timestamp
+        ? raw.toDate()
+        // Offline outbox entries encode dates as {'__timestamp': millis}.
+        : raw is Map && raw['__timestamp'] is num
+        ? DateTime.fromMillisecondsSinceEpoch(
+            (raw['__timestamp'] as num).toInt(),
+          )
+        : null;
+    if (time == null || time.isAfter(DateTime.now().add(_clockSkew))) {
+      return null;
+    }
+    final exercises = workout['exercises'];
+    if (exercises is! List ||
+        !exercises.any(
+          (e) =>
+              e is Map &&
+              e['sets'] is num &&
+              e['sets'] > 0 &&
+              e['skipped'] != true,
+        )) {
+      return null;
+    }
+    return time.toUtc().toIso8601String().substring(0, 10);
+  }
+
+  static const Duration _clockSkew = Duration(minutes: 5);
 }
 
 class FormGuide {

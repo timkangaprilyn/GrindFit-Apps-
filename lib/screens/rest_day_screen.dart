@@ -350,12 +350,16 @@ class _RestDayScreenState extends State<RestDayScreen>
                       size: 12,
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      today,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: _goldBright,
-                        fontWeight: FontWeight.w700,
+                    Expanded(
+                      child: Text(
+                        today,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _goldBright,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],

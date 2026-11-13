@@ -20,6 +20,11 @@ class GoogleAuthService {
       }
 
       final googleSignIn = _googleSignIn ?? GoogleSignIn(scopes: ['email']);
+      // Forget the last picked account so "Continue with Google" always
+      // shows the account chooser (e.g. after logging out to switch users).
+      try {
+        await googleSignIn.signOut();
+      } catch (_) {}
       final account = await googleSignIn.signIn();
       if (account == null) return null;
 
@@ -46,6 +51,34 @@ class GoogleAuthService {
       if (error.code == 'sign_in_canceled') return null;
       rethrow;
     }
+  }
+
+  /// Signs out of Firebase and of the device's Google session, so the next
+  /// Google sign-in asks which account to use instead of reusing this one.
+  static Future<void> signOutEverywhere() async {
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (_) {
+        // Not signed in with Google, or Play services unavailable.
+      }
+    }
+    await FirebaseAuth.instance.signOut();
+  }
+
+  /// The account photo from Google (sharper than the default 96px), if any.
+  static String? photoUrlOf(User user) {
+    String? url = user.photoURL;
+    if (url == null || url.isEmpty) {
+      for (final p in user.providerData) {
+        if (p.photoURL != null && p.photoURL!.isNotEmpty) {
+          url = p.photoURL;
+          break;
+        }
+      }
+    }
+    if (url == null || url.isEmpty) return null;
+    return url.replaceFirst(RegExp(r'=s\d+-c$'), '=s256-c');
   }
 
   static String errorMessage(Object error) {

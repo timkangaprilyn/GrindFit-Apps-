@@ -67,3 +67,27 @@ export function newPasswordProblem(next, confirm, current = '') {
   if (next !== confirm) return 'The new passwords do not match.';
   return '';
 }
+
+const escapeAvatarText = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+
+/** Up to two initials from a member's name (or email), e.g. "Juan Dela Cruz" → "JD". */
+export function memberInitials(name) {
+  const parts = String(name ?? '').trim().split(/[\s@._-]+/).filter(Boolean);
+  if (!parts.length) return 'M';
+  return (parts.length > 1 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2)).toUpperCase();
+}
+
+/**
+ * Avatar for a member: their Google profile photo when the app saved one
+ * (users/{uid}.photoUrl, https only), over their initials, which stay visible
+ * if the photo is missing or fails to load.
+ */
+export function memberAvatarHtml(member = {}, {size = '', name} = {}) {
+  const label = name ?? member.fullName ?? member.memberName ?? member.email ?? 'Member';
+  const initials = escapeAvatarText(memberInitials(label));
+  const photo = typeof member.photoUrl === 'string' && /^https:\/\//i.test(member.photoUrl) ? member.photoUrl : '';
+  const image = photo
+    ? `<img src="${escapeAvatarText(photo)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
+    : '';
+  return `<span class="member-avatar${size ? ` ${size}` : ''}${photo ? ' has-photo' : ''}" aria-hidden="true"><span>${initials}</span>${image}</span>`;
+}

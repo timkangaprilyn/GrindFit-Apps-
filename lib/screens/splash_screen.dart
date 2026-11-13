@@ -1,3 +1,5 @@
+import '../services/google_auth_service.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/network_status.dart';
@@ -80,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen>
     AppState.instance.loadProfile(data, fallbackName: user.displayName);
 
     if (role == 'admin' || role == 'trainer') {
-      await FirebaseAuth.instance.signOut();
+      await GoogleAuthService.signOutEverywhere();
       return const WelcomeScreen(
         notice: 'Admin and trainer accounts must use the GrindFit Admin web portal, not the mobile app.',
       );

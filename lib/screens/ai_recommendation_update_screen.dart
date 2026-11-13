@@ -72,123 +72,135 @@ class AiRecommendationUpdateScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _gold.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _gold.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      'Active Goal: $userGoal',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _gold,
+                  // Scrolls on short screens / large fonts; button stays pinned.
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _gold.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _gold.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              'Active Goal: $userGoal',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _gold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            "Based on your recent activity, we've fine-tuned your routine to match your progress.",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _gray,
+                              fontWeight: FontWeight.w500,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Main Card Container
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _card,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _border, width: 1.2),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "What's Changed?",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: _white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildChangeItem(
+                                  "Adjusted exercise parameters for $userGoal",
+                                ),
+                                const SizedBox(height: 12),
+                                _buildChangeItem(
+                                  "Optimized set pacing and overall volume",
+                                ),
+                                const SizedBox(height: 12),
+                                _buildChangeItem(
+                                  "Fine-tuned recovery windows between sets",
+                                ),
+
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Divider(color: _border, height: 1),
+                                ),
+
+                                // Why Section
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: _gold.withValues(alpha: 0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.info_outline,
+                                        color: _gold,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start, // Itinama sa maliit na titik ang c
+                                        children: [
+                                          const Text(
+                                            "Why?",
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                              color: _white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            goalReason,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: _gray,
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    "Based on your recent activity, we've fine-tuned your routine to match your progress.",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _gray,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Main Card Container
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _card,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _border, width: 1.2),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "What's Changed?",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: _white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildChangeItem(
-                          "Adjusted exercise parameters for $userGoal",
-                        ),
-                        const SizedBox(height: 12),
-                        _buildChangeItem(
-                          "Optimized set pacing and overall volume",
-                        ),
-                        const SizedBox(height: 12),
-                        _buildChangeItem(
-                          "Fine-tuned recovery windows between sets",
-                        ),
-
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                          child: Divider(color: _border, height: 1),
-                        ),
-
-                        // Why Section
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: _gold.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.info_outline,
-                                color: _gold,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment
-                                    .start, // Itinama sa maliit na titik ang c
-                                children: [
-                                  const Text(
-                                    "Why?",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: _white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    goalReason,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: _gray,
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
+                  const SizedBox(height: 16),
 
                   // View New Plan Button
                   SizedBox(

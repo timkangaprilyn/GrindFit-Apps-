@@ -32,10 +32,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   static const Color _good = Color(0xFF22C55E);
 
   // Today's checklist
-  final Map<String, bool> _checklist = {
-    'Warm-up': false,
-    'Workout': false,
-  };
+  final Map<String, bool> _checklist = {'Warm-up': false, 'Workout': false};
 
   double _currentWeight = AppState.instance.weightKg;
   double _initialWeight = AppState.instance.weightKg;

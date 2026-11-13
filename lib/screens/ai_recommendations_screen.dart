@@ -1156,31 +1156,37 @@ class _AiRecommendationsScreenState extends State<AiRecommendationsScreen> {
           // Labeled actions are easier to find than a column of bare icons.
           Row(
             children: [
-              _cardAction(
-                icon: Icons.edit_note_rounded,
-                label: 'Log',
-                tooltip: 'Log this exercise',
-                primary: true,
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ManualLogWorkoutScreen(exercise: exercise),
-                  ),
+              Expanded(
+                child: Wrap(
+                  children: [
+                    _cardAction(
+                      icon: Icons.edit_note_rounded,
+                      label: 'Log',
+                      tooltip: 'Log this exercise',
+                      primary: true,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ManualLogWorkoutScreen(exercise: exercise),
+                        ),
+                      ),
+                    ),
+                    _cardAction(
+                      icon: Icons.swap_horiz_rounded,
+                      label: 'Swap',
+                      tooltip: 'Replace exercise',
+                      onPressed: () => _showSwap(exercise),
+                    ),
+                    _cardAction(
+                      icon: Icons.info_outline_rounded,
+                      label: 'Form',
+                      tooltip: 'Form guide',
+                      onPressed: () => _showFormGuide(exercise),
+                    ),
+                  ],
                 ),
               ),
-              _cardAction(
-                icon: Icons.swap_horiz_rounded,
-                label: 'Swap',
-                tooltip: 'Replace exercise',
-                onPressed: () => _showSwap(exercise),
-              ),
-              _cardAction(
-                icon: Icons.info_outline_rounded,
-                label: 'Form',
-                tooltip: 'Form guide',
-                onPressed: () => _showFormGuide(exercise),
-              ),
-              const Spacer(),
               if (addedToday)
                 IconButton(
                   icon: const Icon(

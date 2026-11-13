@@ -1,4 +1,4 @@
-import {memberPage, csvCell, portalRedirect, mustChangePassword, newPasswordProblem} from './admin-utils.mjs';
+import {memberPage, csvCell, portalRedirect, mustChangePassword, newPasswordProblem, memberAvatarHtml} from './admin-utils.mjs';
 import {setupInterface, renderExtras} from './admin-interface.js';
 import {firebaseConfig, supabaseConfig} from './admin-config.js';
 import {requestAdminData, requestStaff, lookupOwnAccount} from './admin-cloud.mjs';
@@ -382,7 +382,7 @@ function renderMembers() {
   $("nextPage").disabled = result.page >= result.pages;
   $("memberRows").innerHTML = members.length
     ? members.map((member) => `<tr data-member-id="${escapeHtml(member.id)}">
-        <td><button type="button" class="member-open"><div class="member-name">${escapeHtml(member.fullName || "Unnamed member")}</div><div class="member-email">${escapeHtml(member.email || "No email")}</div></button></td>
+        <td><button type="button" class="member-open member-cell">${memberAvatarHtml(member)}<span><div class="member-name">${escapeHtml(member.fullName || member.email || "Unnamed member")}</div><div class="member-email">${escapeHtml(member.email || "No email")}</div></span></button></td>
         <td>${escapeHtml(normalizeGoalLabel(member.fitnessGoal))}</td>
         <td>${escapeHtml(formatDate(member.lastWorkout))}</td>
         <td>${member.weeklyCount}</td>
@@ -411,6 +411,10 @@ async function openMember(uid) {
   $("saveCoachNoteButton").disabled = !state.isAdmin && member.trainerUid !== state.user?.uid;
   loadCoachNotes(uid);
   $("detailName").textContent = member.fullName || member.email || "Member";
+  const detailAvatar = $("detailAvatar");
+  if (detailAvatar) detailAvatar.outerHTML = memberAvatarHtml(member, {size: "large"}).replace('<span class="member-avatar', '<span id="detailAvatar" class="member-avatar');
+  const detailEmail = $("detailEmail");
+  if (detailEmail) detailEmail.textContent = member.email || "";
   $("detailSummary").innerHTML = [
     ["Fitness goal", normalizeGoalLabel(member.fitnessGoal)],
     ["Workout environment", member.workoutEnvironment || member.environment || "Not set"],
@@ -838,7 +842,23 @@ async function loadRequests() {
   try {
     const snapshot = await getDocs(query(collection(db, "trainer_requests"), ...constraints));
     if (state.user?.uid !== owner) return;
-    renderRequests(sortRequests(snapshot.docs.map((item) => ({id: item.id, ...item.data()}))), mine);
+    const requests = sortRequests(snapshot.docs.map((item) => ({id: item.id, ...item.data()})));
+    // Add the member's photo, email and saved name so staff can recognise who is asking.
+    await Promise.all(requests.map(async (request) => {
+      let profile = state.members?.find((member) => member.id === request.memberUid);
+      if (!profile && request.memberUid) {
+        profile = await getDoc(doc(db, "users", request.memberUid)).then((snap) => snap.data()).catch(() => null);
+      }
+      if (!profile) return;
+      request.photoUrl = profile.photoUrl;
+      request.memberEmail = profile.email;
+      // The profile holds the member's current name; the request keeps the one sent then.
+      const savedName = String(profile.fullName ?? "").trim();
+      if (savedName) request.memberName = savedName;
+      else if (!request.memberName || request.memberName === "Member") request.memberName = profile.email || request.memberName;
+    }));
+    if (state.user?.uid !== owner) return;
+    renderRequests(requests, mine);
   } catch (error) {
     if (state.user?.uid !== owner) return;
     $("requestCount").textContent = "Unavailable";
@@ -854,8 +874,8 @@ function renderRequests(requests, mine) {
     return;
   }
   $("requestList").innerHTML = requests.map((request) => `<div class="recent-row">
-      <span class="member-avatar" aria-hidden="true">${escapeHtml((request.memberName || "M").trim().slice(0, 2).toUpperCase())}</span>
-      <div class="recent-info"><strong>${escapeHtml(request.memberName || "Member")}</strong>
+      ${memberAvatarHtml(request, {name: request.memberName})}
+      <div class="recent-info"><strong>${escapeHtml(request.memberName || "Member")}</strong>${request.memberEmail ? `<p>${escapeHtml(request.memberEmail)}</p>` : ""}
         <p>${mine ? "" : `Requested <b>${escapeHtml(request.trainerName || "a trainer")}</b> · `}${escapeHtml(formatDate(request.createdAt))}</p>
         ${request.note ? `<p class="request-note">“${escapeHtml(request.note)}”</p>` : ""}</div>
       <div class="request-actions">

@@ -1,7 +1,8 @@
+import '../services/firestore_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/animations/motion.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../services/google_auth_service.dart';
 
@@ -103,28 +104,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _routeSignedInUser(User user) async {
-    final userRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid);
-    var doc = await userRef.get();
-
-    if (!doc.exists) {
-      await userRef.set({
-        'uid': user.uid,
-        'fullName': user.displayName ?? '',
-        'email': user.email ?? '',
-        'role': 'member',
-        'setupCompleted': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      doc = await userRef.get();
+    final Map<String, dynamic>? data;
+    try {
+      data = await FirestoreService.ensureMemberProfile(user);
+    } catch (_) {
+      // Do not leave the app half signed in when the profile cannot load.
+      await GoogleAuthService.signOutEverywhere();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Signed in, but your GrindFit profile could not be loaded. Check your internet connection and try again.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
     }
 
-    final data = doc.data();
     AppState.instance.loadProfile(data, fallbackName: user.displayName);
     final role = data?['role'] as String? ?? 'member';
     if (role == 'admin' || role == 'trainer') {
-      await FirebaseAuth.instance.signOut();
+      await GoogleAuthService.signOutEverywhere();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -475,12 +476,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 24,
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text(
-                                    'Continue with Google',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: _white,
+                                  const Flexible(
+                                    child: Text(
+                                      'Continue with Google',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: _white,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -489,8 +494,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           "Don't have an account? ",

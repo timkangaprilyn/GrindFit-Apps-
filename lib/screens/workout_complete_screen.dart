@@ -290,27 +290,31 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: _white,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: _white,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '$duration • ${exercises.length} exercises',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: _gray,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '$duration • ${exercises.length} exercises',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: _gray,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -320,11 +324,26 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildMetricItem('Total Sets', '$totalSets'),
+                              Expanded(
+                                child: _buildMetricItem(
+                                  'Total Sets',
+                                  '$totalSets',
+                                ),
+                              ),
                               Container(height: 30, width: 1, color: _border),
-                              _buildMetricItem('Total Reps', '$totalReps'),
+                              Expanded(
+                                child: _buildMetricItem(
+                                  'Total Reps',
+                                  '$totalReps',
+                                ),
+                              ),
                               Container(height: 30, width: 1, color: _border),
-                              _buildMetricItem('Feedback', _selectedFeedback),
+                              Expanded(
+                                child: _buildMetricItem(
+                                  'Feedback',
+                                  _selectedFeedback,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -582,6 +601,9 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 11,
             color: _gray,
@@ -591,6 +613,9 @@ class _WorkoutCompleteScreenState extends State<WorkoutCompleteScreen> {
         const SizedBox(height: 4),
         Text(
           value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w800,

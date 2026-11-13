@@ -1,4 +1,4 @@
-import {reportRange} from './admin-utils.mjs';
+import {reportRange, memberAvatarHtml} from './admin-utils.mjs';
 import {communityInsights, localDayKey} from './admin-insights.mjs';
 
 export function navigate(viewId) {
@@ -45,7 +45,7 @@ export function renderExtras(members, {escapeHtml, workoutDate, formatDate, open
     <div class="goal-item"><div class="goal-label"><span>${escapeHtml(goal)}</span><strong>${count} · ${Math.round(count / members.length * 100)}%</strong></div><div class="goal-track"><span style="width:${count / members.length * 100}%"></span></div></div>`).join('') : '<div class="empty-state">Member goals will appear after members complete their profiles.</div>';
   const recent = members.flatMap((member) => (member.workouts || []).map((workout) => ({member, workout, date: workoutDate(workout)}))).filter((entry) => entry.date && entry.date <= new Date()).sort((a, b) => b.date - a.date).slice(0, 5);
   $('recentActivity').innerHTML = recent.length ? recent.map(({member, workout, date}) => `
-    <div class="recent-row"><span class="member-avatar" aria-hidden="true">${escapeHtml((member.fullName || 'M').trim().slice(0, 2).toUpperCase())}</span><div class="recent-info"><button class="member-open text-link" data-recent-member="${escapeHtml(member.id)}">${escapeHtml(member.fullName || 'Member')}</button><p>${escapeHtml(workout.title || workout.workoutName || 'Workout session')}</p></div><span class="recent-time">${escapeHtml(formatDate(date))}</span></div>`).join('') : '<div class="empty-state">No workouts recorded in the last 28 days.</div>';
+    <div class="recent-row">${memberAvatarHtml(member)}<div class="recent-info"><button class="member-open text-link" data-recent-member="${escapeHtml(member.id)}">${escapeHtml(member.fullName || member.email || 'Member')}</button><p>${escapeHtml(workout.title || workout.workoutName || 'Workout session')}</p></div><span class="recent-time">${escapeHtml(formatDate(date))}</span></div>`).join('') : '<div class="empty-state">No workouts recorded in the last 28 days.</div>';
   $('recentActivity').querySelectorAll('[data-recent-member]').forEach((button) => button.addEventListener('click', () => openMember(button.dataset.recentMember)));
   const insights = communityInsights(members, {workoutDate, inactiveDays});
   $('pulseSessions').textContent = insights.recent;
@@ -54,7 +54,7 @@ export function renderExtras(members, {escapeHtml, workoutDate, formatDate, open
   $('pulseFollowUps').textContent = insights.followUps.length;
   $('pulseFollowUpLabel').textContent = `No workout in ${inactiveDays} days, or no history on an older/undated profile`;
   const empty = (text) => `<div class="empty-state">${escapeHtml(text)}</div>`;
-  const memberRow = (member, caption, tag='Review profile') => `<div class="recent-row"><span class="member-avatar" aria-hidden="true">${escapeHtml((member.fullName||'M').slice(0,2).toUpperCase())}</span><div class="recent-info"><strong>${escapeHtml(member.fullName||'Member')}</strong><p>${escapeHtml(caption)}</p></div><button class="text-link" type="button" data-insight-member="${escapeHtml(member.id)}">${escapeHtml(tag)} →</button></div>`;
+  const memberRow = (member, caption, tag='Review profile') => `<div class="recent-row">${memberAvatarHtml(member)}<div class="recent-info"><strong>${escapeHtml(member.fullName||member.email||'Member')}</strong><p>${escapeHtml(caption)}</p></div><button class="text-link" type="button" data-insight-member="${escapeHtml(member.id)}">${escapeHtml(tag)} →</button></div>`;
   $('followUpList').innerHTML = insights.followUps.length ? insights.followUps.slice(0,5).map((m)=>memberRow(m,m.lastWorkout ? `Last workout: ${formatDate(m.lastWorkout)}` : 'No workout history recorded')).join('') : empty('No members currently match the follow-up rule.');
   $('consistentMembers').innerHTML = insights.regulars.length ? insights.regulars.slice(0,5).map(({member,days},i)=>memberRow(member,`${days} logged workout ${days === 1 ? 'day' : 'days'} · rank ${i+1}`,'View progress')).join('') : empty('Consistency highlights appear after members log their workouts.');
   $('newMemberList').innerHTML = insights.joiners.length ? insights.joiners.slice(0,6).map(({member,joined})=>`<div class="new-member-card">${memberRow(member,`Joined ${formatDate(joined)}`,'Welcome')}</div>`).join('') : empty('No dated member profiles were created in the last 30 days.');

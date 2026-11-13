@@ -29,7 +29,11 @@ class _ChooseCoachScreenState extends State<ChooseCoachScreen> {
     final name = AppState.instance.fullName.trim();
     final authName =
         FirebaseAuth.instance.currentUser?.displayName?.trim() ?? '';
-    return name.isNotEmpty && name != 'Juan Dela Cruz' ? name : authName;
+    if (name.isNotEmpty && name != 'Juan Dela Cruz') return name;
+    // Without a name, the email still lets the trainer recognise the member.
+    return authName.isNotEmpty
+        ? authName
+        : FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
   }
 
   Future<void> _request(TrainerProfile trainer) async {

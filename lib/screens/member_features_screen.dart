@@ -11,6 +11,7 @@ import '../services/offline_store.dart';
 import '../services/voice_coach.dart';
 import '../theme/grindfit_theme.dart';
 import '../widgets/online_only.dart';
+import '../widgets/xp_builder.dart';
 import 'choose_coach_screen.dart';
 import 'meal_recommendations_screen.dart';
 
@@ -121,6 +122,82 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
       ),
     ),
   );
+
+  Widget _xpCard() => XpBuilder(
+    uid: _uid!,
+    builder: (context, xp, loading) => _xpSummary(xp, loading: loading),
+  );
+
+  Widget _xpSummary(int xp, {required bool loading}) {
+    final level = FitnessRank.level(xp);
+    final intoLevel = xp % 250;
+    final rank = FitnessRank.name(xp);
+    final nextRank = FitnessRank.nextRank(xp);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              rank,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: GrindFitTheme.gold.withValues(alpha: .15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: GrindFitTheme.gold.withValues(alpha: .4),
+                ),
+              ),
+              child: Text(
+                'Level $level',
+                style: const TextStyle(
+                  color: GrindFitTheme.gold,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          loading ? 'Loading your XP…' : '$xp XP total',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: intoLevel / 250,
+            minHeight: 8,
+            color: GrindFitTheme.gold,
+            backgroundColor: GrindFitTheme.border,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '$intoLevel / 250 XP to Level ${level + 1}'
+          '${rank == 'Beast' ? '' : ' · ${nextRank - xp} XP to ${rank == 'Rookie' ? 'Grinder' : 'Beast'}'}',
+          style: const TextStyle(fontSize: 12.5, color: Colors.white70),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          '+50 XP for each completed workout of at least one minute (up to three workouts a day). Ranks: Rookie → Grinder at 1,000 XP → Beast at 3,000 XP.',
+          style: TextStyle(fontSize: 12.5, color: Colors.white60),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_uid == null) {
@@ -139,43 +216,7 @@ class _MemberFeaturesScreenState extends State<MemberFeaturesScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: staggered([
-          _section('XP and levels', [
-            StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-              stream: _profile
-                  .collection('progress')
-                  .doc('rewards')
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return const Text(
-                    'XP needs the updated Firebase rules and rewards service.',
-                  );
-                }
-                final xp = (snap.data?.data()?['xp'] as num?)?.toInt() ?? 0;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${FitnessRank.name(xp)} • Level ${FitnessRank.level(xp)}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '$xp XP • Next milestone: ${FitnessRank.nextRank(xp)} XP',
-                    ),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(value: (xp % 250) / 250),
-                    const SizedBox(height: 8),
-                    const Text(
-                      '50 XP per completed workout of at least one minute, up to three workouts per UTC day. XP appears after syncing and server verification.',
-                    ),
-                  ],
-                );
-              },
-            ),
-          ]),
+          _section('XP and levels', [_xpCard()]),
           _section('Monthly member challenge', [
             const Text(
               'Optional. Only your public nickname and workout count appear on the leaderboard. No email, injury details or weight. Each month starts fresh (UTC).',

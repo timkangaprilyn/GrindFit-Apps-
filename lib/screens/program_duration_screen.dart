@@ -122,8 +122,8 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        height: 108,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
+        constraints: const BoxConstraints(minHeight: 108),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
           gradient: isSelected
@@ -276,43 +276,7 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                       totalSteps: 5,
                     ),
                   ),
-                  const SizedBox(height: 40),
-
-                  // Title
-                  Text.rich(
-                    const TextSpan(
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        color: _white,
-                        letterSpacing: -0.5,
-                        height: 1.25,
-                      ),
-                      children: [
-                        TextSpan(text: 'How many months for\nyour '),
-                        TextSpan(
-                          text: 'fitness program?',
-                          style: TextStyle(color: _goldBright),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: media.size.width * 0.78,
-                    ),
-                    child: const Text(
-                      'Set your target timeline for progress tracking and plan adjustments.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        height: 1.4,
-                        color: _gray,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
 
                   // Duration cards
                   Expanded(
@@ -320,6 +284,43 @@ class _ProgramDurationScreenState extends State<ProgramDurationScreen> {
                       padding: EdgeInsets.zero,
                       physics: const BouncingScrollPhysics(),
                       children: [
+                        const SizedBox(height: 24),
+
+                        // Title
+                        Text.rich(
+                          const TextSpan(
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: _white,
+                              letterSpacing: -0.5,
+                              height: 1.25,
+                            ),
+                            children: [
+                              TextSpan(text: 'How many months for\nyour '),
+                              TextSpan(
+                                text: 'fitness program?',
+                                style: TextStyle(color: _goldBright),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: media.size.width * 0.78,
+                          ),
+                          child: const Text(
+                            'Set your target timeline for progress tracking and plan adjustments.',
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: _gray,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
                         for (var i = 0; i < _options.length; i++)
                           _optionCard(_options[i], i),
                       ],

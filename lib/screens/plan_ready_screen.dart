@@ -278,12 +278,16 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
             children: [
               Icon(Icons.auto_awesome, color: _gold, size: 22),
               SizedBox(width: 8),
-              Text(
-                'Personalized GrindFit Plan',
-                style: TextStyle(
-                  color: _gold,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  'Personalized GrindFit Plan',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _gold,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -438,12 +442,16 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            hasError ? 'Try Again' : 'Go to Home Dashboard',
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: _bg,
+                          Flexible(
+                            child: Text(
+                              hasError ? 'Try Again' : 'Go to Home Dashboard',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: _bg,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -478,12 +486,16 @@ class _PlanReadyScreenState extends State<PlanReadyScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          details,
-          style: const TextStyle(
-            fontSize: 13,
-            color: _gold,
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            details,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              color: _gold,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

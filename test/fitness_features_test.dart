@@ -130,6 +130,45 @@ void main() {
     expect(FitnessRank.name(3000), 'Beast');
     expect(FitnessRank.level(250), 2);
   });
+  test('XP from saved workouts follows the server crediting rules', () {
+    Map<String, dynamic> workout(
+      DateTime at, {
+      int seconds = 600,
+      int sets = 3,
+      bool skipped = false,
+    }) => {
+      'durationSeconds': seconds,
+      'timestamp': at,
+      'exercises': [
+        {'name': 'Push Up', 'sets': sets, 'skipped': skipped},
+      ],
+    };
+    final day = DateTime.utc(2026, 11, 10, 8);
+    expect(
+      FitnessRank.xpFromWorkouts([
+        // Four on one UTC day: only three are credited.
+        for (var i = 0; i < 4; i++) workout(day.add(Duration(hours: i))),
+        workout(day.add(const Duration(days: 1))),
+        workout(day, seconds: 30), // too short
+        workout(day, sets: 0), // nothing completed
+        workout(day, skipped: true), // skipped
+        {
+          // Offline outbox encoding.
+          'durationSeconds': 120,
+          'timestamp': {
+            '__timestamp': day
+                .add(const Duration(days: 2))
+                .millisecondsSinceEpoch,
+          },
+          'exercises': [
+            {'sets': 1},
+          ],
+        },
+      ]),
+      250,
+    );
+    expect(FitnessRank.xpFromWorkouts(const []), 0);
+  });
   test('Form guidance differs for rows, squats and planks', () {
     expect(FormGuide.forExercise('Dumbbell Row').mistake, contains('back'));
     expect(

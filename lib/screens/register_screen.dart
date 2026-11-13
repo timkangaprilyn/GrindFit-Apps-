@@ -1,3 +1,5 @@
+import '../services/firestore_service.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/animations/motion.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -181,28 +183,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      final userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid);
-      var userDoc = await userRef.get();
-
-      if (!userDoc.exists) {
-        await userRef.set({
-          'uid': user.uid,
-          'fullName': user.displayName ?? 'Google User',
-          'email': user.email ?? '',
-          'role': 'member',
-          'setupCompleted': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        userDoc = await userRef.get();
+      final Map<String, dynamic>? docData;
+      try {
+        docData = await FirestoreService.ensureMemberProfile(user);
+      } catch (_) {
+        // Do not leave the app half signed in when the profile cannot load.
+        await GoogleAuthService.signOutEverywhere();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Signed in, but your GrindFit profile could not be created. Check your internet connection and try again.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
       }
 
-      final docData = userDoc.data();
       AppState.instance.loadProfile(docData, fallbackName: user.displayName);
       final role = docData?['role'] as String? ?? 'member';
       if (role == 'admin' || role == 'trainer') {
-        await FirebaseAuth.instance.signOut();
+        await GoogleAuthService.signOutEverywhere();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -496,12 +498,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 : const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        'Create Account',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
-                                          color: _bg,
+                                      Flexible(
+                                        child: Text(
+                                          'Create Account',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: _bg,
+                                          ),
                                         ),
                                       ),
                                       SizedBox(width: 12),
@@ -577,12 +583,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   width: 24,
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
-                                  'Continue with Google',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: _white,
+                                const Flexible(
+                                  child: Text(
+                                    'Continue with Google',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: _white,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -591,8 +601,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text(
                         'Already have an account? ',

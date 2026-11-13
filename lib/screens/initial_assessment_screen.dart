@@ -1,5 +1,6 @@
+import '../services/google_auth_service.dart';
+
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../widgets/onboarding_step_indicator.dart';
 import '../models/app_state.dart';
@@ -69,7 +70,7 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
   // Safe back handler: sign out and return to LoginScreen securely
   Future<void> _handleBackToLogin() async {
     try {
-      await FirebaseAuth.instance.signOut();
+      await GoogleAuthService.signOutEverywhere();
     } catch (_) {}
 
     if (!mounted) return;
@@ -252,13 +253,17 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
       children: [
         Icon(icon, size: 17, color: _gold),
         const SizedBox(width: 8),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: _white,
-            letterSpacing: 0.2,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: _white,
+              letterSpacing: 0.2,
+            ),
           ),
         ),
       ],
@@ -442,6 +447,7 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
                                     value: _selectedGender,
+                                    isExpanded: true,
                                     dropdownColor: _card,
                                     hint: const Text(
                                       'Select',
@@ -459,7 +465,12 @@ class _InitialAssessmentScreenState extends State<InitialAssessmentScreen> {
                                     ) {
                                       return DropdownMenuItem<String>(
                                         value: value,
-                                        child: Text(value, style: textStyle),
+                                        child: Text(
+                                          value,
+                                          style: textStyle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       );
                                     }).toList(),
                                     onChanged: (newValue) {
